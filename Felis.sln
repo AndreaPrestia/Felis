@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.Core", "Felis.Core\Felis.Core.csproj", "{1796AE4F-80D1-4786-93DF-3A046A3C8C3E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.Client", "Felis.Client\Felis.Client.csproj", "{2D00F843-28DF-4143-AACD-3BBD7EEB0387}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.Router", "Felis.Router\Felis.Router.csproj", "{EF2F82C1-9624-4F20-965C-19DB9018A141}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1796AE4F-80D1-4786-93DF-3A046A3C8C3E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1796AE4F-80D1-4786-93DF-3A046A3C8C3E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1796AE4F-80D1-4786-93DF-3A046A3C8C3E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1796AE4F-80D1-4786-93DF-3A046A3C8C3E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2D00F843-28DF-4143-AACD-3BBD7EEB0387}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2D00F843-28DF-4143-AACD-3BBD7EEB0387}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2D00F843-28DF-4143-AACD-3BBD7EEB0387}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2D00F843-28DF-4143-AACD-3BBD7EEB0387}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EF2F82C1-9624-4F20-965C-19DB9018A141}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EF2F82C1-9624-4F20-965C-19DB9018A141}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EF2F82C1-9624-4F20-965C-19DB9018A141}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EF2F82C1-9624-4F20-965C-19DB9018A141}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

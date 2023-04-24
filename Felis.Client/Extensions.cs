@@ -1,5 +1,8 @@
 ﻿using Felis.Core;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Felis.Client;
 

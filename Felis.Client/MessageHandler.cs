@@ -1,6 +1,7 @@
 ﻿using System.Text.Json;
 using Felis.Core;
 using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.Extensions.Logging;
 
 namespace Felis.Client;
 

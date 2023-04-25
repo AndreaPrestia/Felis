@@ -1,4 +1,6 @@
-﻿namespace Felis.Core;
+﻿using Microsoft.Extensions.Configuration;
+
+namespace Felis.Core;
 
 public record FelisConfiguration
 {

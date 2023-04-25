@@ -1,99 +1,66 @@
-﻿using System.Text.Json;
-using Felis.Core;
+﻿using Felis.Core;
 using Felis.Router.Interfaces;
-using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 
 namespace Felis.Router.Hubs;
 
-public class FelisRouterHub : IFelisRouterHub
+[Route("/felis/router")]
+internal sealed class FelisRouterHub : Hub, IFelisRouterHub
 {
-    private readonly HubConnection? _hubConnection;
     private readonly ILogger<FelisRouterHub> _logger;
     private readonly IFelisRouterStorage _felisRouterStorage;
-    private static string OnNewMessageMethod = "OnNewMessage";
-    private static string OnMessageStatus = "OnMessageStatus";
-    
-    public FelisRouterHub(HubConnection? hubConnection, ILogger<FelisRouterHub> logger, IFelisRouterStorage felisRouterStorage)
+
+    public FelisRouterHub(ILogger<FelisRouterHub> logger, IFelisRouterStorage felisRouterStorage)
     {
-        _hubConnection = hubConnection ?? throw new ArgumentNullException(nameof(hubConnection));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _felisRouterStorage = felisRouterStorage ?? throw new ArgumentNullException(nameof(felisRouterStorage));
     }
 
-    public async void ListenForNewMessages(CancellationToken cancellationToken = default)
+    public async Task<bool> Dispatch(Message message, CancellationToken cancellationToken = default)
     {
-        _hubConnection!.On<string, string>(OnNewMessageMethod, (_, msg) =>
-        {
-            try
-            {
-                var message = JsonSerializer.Deserialize<Message>(msg);
-
-                if (message == null)
-                {
-                    throw new ArgumentNullException(nameof(message));
-                }
-                
-                //TODO validate client
-                _felisRouterStorage.MessageAdd(message);
-                
-                //TODO add dispatch only for client connected
-                //dispatch it
-                _hubConnection?.InvokeAsync(message.Topic, message.Content, cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, ex.Message);                
-            }
-        });
-
         try
         {
-            if (_hubConnection?.State == HubConnectionState.Disconnected)
+            if (message == null)
             {
-                await _hubConnection?.StartAsync(cancellationToken)!;
+                throw new ArgumentNullException(nameof(message));
             }
+
+            //TODO validate client
+            _felisRouterStorage.MessageAdd(message);
+
+            //TODO add dispatch only for client connected
+            //dispatch it
+            await Clients.All.SendAsync(message.Topic, message.Content, cancellationToken).ConfigureAwait(false);
+
+            return true;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, ex.Message);
+            return false;
         }
-
     }
 
-    public async void ListenForMessageStatus(CancellationToken cancellationToken = default)
+    public Task<bool> Consume(ConsumedMessage consumedMessage,
+        CancellationToken cancellationToken = default)
     {
-        _hubConnection!.On<string, string>(OnMessageStatus, (_, msg) =>
-        {
-            try
-            {
-                var consumedMessage = JsonSerializer.Deserialize<ConsumedMessage>(msg);
-
-                if (consumedMessage == null)
-                {
-                    throw new ArgumentNullException(nameof(consumedMessage));
-                }
-
-                //TODO validate client
-
-                _felisRouterStorage.ConsumedMessageAdd(consumedMessage);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, ex.Message);
-            }
-        });
-
         try
         {
-            if (_hubConnection?.State == HubConnectionState.Disconnected)
+            if (consumedMessage == null)
             {
-                await _hubConnection?.StartAsync(cancellationToken)!;
+                throw new ArgumentNullException(nameof(consumedMessage));
             }
+
+            //TODO validate client
+            _felisRouterStorage.ConsumedMessageAdd(consumedMessage);
+            return Task.FromResult(true);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, ex.Message);
+            return Task.FromResult(false);
         }
     }
 }

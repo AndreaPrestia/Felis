@@ -34,7 +34,7 @@ public sealed class MessageHandler
 
             using var client = new HttpClient();
             var responseMessage = await client.PostAsJsonAsync($"{_configuration.RouterEndpoint}/dispatch",
-                Message.From(topic ?? payload.GetType().FullName, payload));
+                new Message(topic ?? payload.GetType().FullName, payload));
 
             responseMessage.EnsureSuccessStatusCode();
         }
@@ -74,7 +74,7 @@ public sealed class MessageHandler
 
                 using var client = new HttpClient();
                 var responseMessage = await client.PostAsJsonAsync($"{_configuration.RouterEndpoint}/consume",
-                    ConsumedMessage.From(messageIncoming, Guid.Parse(_hubConnection.ConnectionId)));
+                    new ConsumedMessage(messageIncoming, Guid.Parse(_hubConnection.ConnectionId)));
 
                 responseMessage.EnsureSuccessStatusCode();
             }

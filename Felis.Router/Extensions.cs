@@ -1,6 +1,7 @@
 ﻿using Felis.Core;
 using Felis.Router.Hubs;
 using Felis.Router.Interfaces;
+using Felis.Router.Services;
 using Felis.Router.Storage;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -14,10 +15,16 @@ public static class Extensions
 {
     public static void AddFelisRouter(this WebApplicationBuilder builder)
     {
+        builder.Services.Configure<JsonOptions>(options =>
+        {
+            options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+        });
+        
         builder.Services.AddSignalR();
 
         builder.Services.AddSingleton<IFelisRouterStorage, FelisRouterStorage>();
-        builder.Services.AddSingleton<IFelisRouterHub, FelisRouterHub>();
+        builder.Services.AddSingleton<FelisRouterHub>();
+        builder.Services.AddSingleton<IFelisRouterService, FelisRouterService>();
 
         builder.Services.AddEndpointsApiExplorer();
         
@@ -47,9 +54,9 @@ public static class Extensions
         app.UseSwaggerUI(options => options.SwaggerEndpoint("/swagger/v1/swagger.json",
             $"Felis Router v1"));
         
-        app.MapPost("/dispatch", async ([FromServices] IFelisRouterHub felisRouterHub, [FromBody] Message message) =>
+        app.MapPost("/dispatch", async ([FromServices] IFelisRouterService service, [FromBody] Message message) =>
         {
-            var result = await felisRouterHub.Dispatch(message);
+            var result = await service.Dispatch(message);
 
             return !result ? Results.BadRequest("Failed operation") : Results.Created("/dispatch", message);
         }).WithName("MessageDispatch").Produces<CreatedResult>(StatusCodes.Status201Created)
@@ -57,9 +64,9 @@ public static class Extensions
             .Produces<UnauthorizedResult>(StatusCodes.Status401Unauthorized)
             .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
         
-        app.MapPost("/consume", async ([FromServices] IFelisRouterHub felisRouterHub, [FromBody] ConsumedMessage message) =>
+        app.MapPost("/consume", async ([FromServices] IFelisRouterService service, [FromBody] ConsumedMessage message) =>
         {
-            var result = await felisRouterHub.Consume(message);
+            var result = await service.Consume(message);
 
             return !result ? Results.BadRequest("Failed operation") : Results.Created("/consume", message);
         }).WithName("MessageConsume").Produces<CreatedResult>(StatusCodes.Status201Created)

@@ -1,19 +1,22 @@
-﻿namespace Felis.Core;
+﻿using System.Text.Json.Serialization;
+
+namespace Felis.Core;
 
 public record ConsumedMessage
 {
-    public Message Message { get; }
-    public Guid Client { get; set; }
-    public long Timestamp { get; } = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
+    [JsonConstructor]
+    public ConsumedMessage()
+    {
+        
+    }
 
-    private ConsumedMessage(Message message, Guid client)
+    public ConsumedMessage(Message message, Guid client)
     {
         Message = message;
         Client = client;
     }
-
-    public static ConsumedMessage From(Message message, Guid client)
-    {
-        return new ConsumedMessage(message, client);
-    }
+    
+    public Message Message { get; set; }
+    public Guid Client { get; set; }
+    public long Timestamp { get; } = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
 }

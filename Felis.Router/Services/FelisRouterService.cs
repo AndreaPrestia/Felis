@@ -1,21 +1,22 @@
 ﻿using Felis.Core;
+using Felis.Router.Hubs;
 using Felis.Router.Interfaces;
-using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 
-namespace Felis.Router.Hubs;
+namespace Felis.Router.Services;
 
-[Route("/felis/router")]
-public sealed class FelisRouterHub : Hub
+public sealed class FelisRouterService : IFelisRouterService
 {
-    private readonly ILogger<FelisRouterHub> _logger;
-    private readonly IFelisRouterStorage _felisRouterStorage;
+    private readonly IHubContext<FelisRouterHub> _hubContext;
+    private readonly ILogger<FelisRouterService> _logger;
+    private readonly IFelisRouterStorage _storage;
 
-    public FelisRouterHub(ILogger<FelisRouterHub> logger, IFelisRouterStorage felisRouterStorage)
+    public FelisRouterService(IHubContext<FelisRouterHub> hubContext, ILogger<FelisRouterService> logger, IFelisRouterStorage storage)
     {
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _felisRouterStorage = felisRouterStorage ?? throw new ArgumentNullException(nameof(felisRouterStorage));
+        _hubContext = hubContext;
+        _logger = logger;
+        _storage = storage;
     }
 
     public async Task<bool> Dispatch(Message message, CancellationToken cancellationToken = default)
@@ -28,11 +29,11 @@ public sealed class FelisRouterHub : Hub
             }
 
             //TODO validate client
-            _felisRouterStorage.MessageAdd(message);
+            _storage.MessageAdd(message);
 
             //TODO add dispatch only for client connected
             //dispatch it
-            await Clients.All.SendAsync(message.Topic, message.Content, cancellationToken).ConfigureAwait(false);
+            await _hubContext.Clients.All.SendAsync(message.Topic, message.Content, cancellationToken).ConfigureAwait(false);
 
             return true;
         }
@@ -43,8 +44,7 @@ public sealed class FelisRouterHub : Hub
         }
     }
 
-    public Task<bool> Consume(ConsumedMessage consumedMessage,
-        CancellationToken cancellationToken = default)
+    public Task<bool> Consume(ConsumedMessage consumedMessage, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -54,7 +54,7 @@ public sealed class FelisRouterHub : Hub
             }
 
             //TODO validate client
-            _felisRouterStorage.ConsumedMessageAdd(consumedMessage);
+            _storage.ConsumedMessageAdd(consumedMessage);
             return Task.FromResult(true);
         }
         catch (Exception ex)

@@ -1,6 +1,7 @@
 ﻿using Felis.Core;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Connections;
+using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.Http.Connections.Client;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Configuration;
@@ -30,13 +31,16 @@ public static class Extensions
         }
 
         builder.Services.AddSingleton<FelisConfiguration>(configuration);
-        
+
         var hubConnectionBuilder = new HubConnectionBuilder();
 
         hubConnectionBuilder.Services.AddSingleton<IConnectionFactory>(
             new HttpConnectionFactory(Options.Create(new HttpConnectionOptions()), NullLoggerFactory.Instance));
 
-        builder.Services.AddSingleton(hubConnectionBuilder.WithUrl($"{configuration.RouterEndpoint}/felis/router")
+        builder.Services.AddSingleton(hubConnectionBuilder
+            .WithUrl($"{configuration.RouterEndpoint}/felis/router",
+                options => { options.Transports = HttpTransportType.WebSockets; })
+            .WithAutomaticReconnect()
             .Build());
 
         builder.Services.AddSingleton<MessageHandler>();

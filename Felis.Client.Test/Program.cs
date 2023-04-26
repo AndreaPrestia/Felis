@@ -16,4 +16,12 @@ app.MapPost("/dispatch", async (MessageHandler messageHandler, [FromBody] TestMo
     return Results.Created("/dispatch", model);
 });
 
+app.MapGet("/subscribe", async (MessageHandler messageHandler, [FromQuery] string topic) =>
+{
+    await messageHandler.Subscribe(topic);
+    return Results.NoContent();
+});
+
+app.MapGet("/consume",  (MessageHandler messageHandler, [FromQuery] string topic) => Results.Ok(messageHandler.Consume<TestModel>(topic)));
+
 app.Run();

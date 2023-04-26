@@ -1,4 +1,5 @@
-﻿using System.Net.Http.Json;
+﻿using System.Collections.Concurrent;
+using System.Net.Http.Json;
 using System.Text.Json;
 using Felis.Core;
 using Microsoft.AspNetCore.SignalR.Client;
@@ -11,30 +12,33 @@ public sealed class MessageHandler
     private readonly HubConnection? _hubConnection;
     private readonly ILogger<MessageHandler> _logger;
     private readonly FelisConfiguration _configuration;
+    private ConcurrentBag<Message> _messages = new ConcurrentBag<Message>();
 
-    public MessageHandler(HubConnection? hubConnection, ILogger<MessageHandler> logger, FelisConfiguration configuration)
+    public MessageHandler(HubConnection? hubConnection, ILogger<MessageHandler> logger,
+        FelisConfiguration configuration)
     {
         _hubConnection = hubConnection;
         _logger = logger;
         _configuration = configuration;
     }
 
-    public async Task Publish<T>(T payload, string? topic, CancellationToken cancellationToken = default) where T : class
+    public async Task Publish<T>(T payload, string? topic, CancellationToken cancellationToken = default)
+        where T : class
     {
+        if (payload == null)
+        {
+            throw new ArgumentNullException(nameof(payload));
+        }
+
         try
         {
-            if (payload == null)
-            {
-                throw new ArgumentNullException(nameof(payload));
-            }
-
             await CheckHubConnectionStateAndStartIt(cancellationToken);
 
             //TODO add an authorization token as parameter
 
             using var client = new HttpClient();
             var responseMessage = await client.PostAsJsonAsync($"{_configuration.RouterEndpoint}/dispatch",
-                new Message(topic ?? payload.GetType().FullName, payload));
+                new Message(topic ?? payload.GetType().FullName, payload), cancellationToken: cancellationToken);
 
             responseMessage.EnsureSuccessStatusCode();
         }
@@ -44,11 +48,19 @@ public sealed class MessageHandler
         }
     }
 
-    public async Task<T?> Consume<T>(string topic, CancellationToken cancellationToken = default) where T : class
+    public async Task Subscribe(string topic, CancellationToken cancellationToken = default)
     {
-        var message = default(T);
+        if (string.IsNullOrWhiteSpace(topic))
+        {
+            throw new ArgumentNullException(nameof(topic));
+        }
 
-        _hubConnection!.On<string, string>(topic, async (_, msg) =>
+        if (_hubConnection == null)
+        {
+            throw new ArgumentNullException($"Connection to Felis router not correctly initialized");
+        }
+
+        _hubConnection.On<string, string>(topic, async (_, msg) =>
         {
             try
             {
@@ -64,17 +76,17 @@ public sealed class MessageHandler
                     throw new ArgumentNullException(nameof(_hubConnection.ConnectionId));
                 }
 
-                message = messageIncoming.Content as T;
-
-                if (message == null)
+                if (_messages.Any(m => m.Topic == topic && m.Timestamp == messageIncoming.Timestamp))
                 {
-                    throw new ArgumentException(
-                        $"Cannot deserialize Content to type specified in consume {typeof(T).Name}");
+                    _messages = new ConcurrentBag<Message>(_messages.Where(m => m.Topic != topic));
                 }
+
+                _messages.Add(messageIncoming);
 
                 using var client = new HttpClient();
                 var responseMessage = await client.PostAsJsonAsync($"{_configuration.RouterEndpoint}/consume",
-                    new ConsumedMessage(messageIncoming, Guid.Parse(_hubConnection.ConnectionId)));
+                    new ConsumedMessage(messageIncoming, Guid.Parse(_hubConnection.ConnectionId)),
+                    cancellationToken: cancellationToken);
 
                 responseMessage.EnsureSuccessStatusCode();
             }
@@ -85,8 +97,23 @@ public sealed class MessageHandler
         });
 
         await CheckHubConnectionStateAndStartIt(cancellationToken);
+    }
 
-        return message;
+    public T? Consume<T>(string topic, CancellationToken cancellationToken = default) where T : class
+    {
+        if (string.IsNullOrWhiteSpace(topic))
+        {
+            throw new ArgumentNullException(nameof(topic));
+        }
+
+        var message = _messages.FirstOrDefault(m => m.Topic == topic);
+
+        if (message == null || string.IsNullOrWhiteSpace(message.Content))
+        {
+            return default;
+        }
+
+        return JsonSerializer.Deserialize<T>(message.Content);
     }
 
     private async Task CheckHubConnectionStateAndStartIt(CancellationToken cancellationToken = default)

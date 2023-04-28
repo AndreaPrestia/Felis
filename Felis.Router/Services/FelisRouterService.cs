@@ -28,10 +28,8 @@ public sealed class FelisRouterService : IFelisRouterService
                 throw new ArgumentNullException(nameof(message));
             }
 
-            //TODO validate client
             _storage.MessageAdd(message);
 
-            //TODO add dispatch only for client connected
             //dispatch it
             await _hubContext.Clients.All.SendAsync(message.Topic, message.Content, cancellationToken).ConfigureAwait(false);
 
@@ -53,8 +51,8 @@ public sealed class FelisRouterService : IFelisRouterService
                 throw new ArgumentNullException(nameof(consumedMessage));
             }
 
-            //TODO validate client
             _storage.ConsumedMessageAdd(consumedMessage);
+            
             return Task.FromResult(true);
         }
         catch (Exception ex)

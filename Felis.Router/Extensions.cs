@@ -1,6 +1,7 @@
 ﻿using Felis.Core;
 using Felis.Router.Hubs;
 using Felis.Router.Interfaces;
+using Felis.Router.Managers;
 using Felis.Router.Services;
 using Felis.Router.Storage;
 using Microsoft.AspNetCore.Builder;
@@ -22,7 +23,8 @@ public static class Extensions
         
         builder.Services.AddSignalR();
 
-        builder.Services.AddSingleton<IFelisRouterStorage, FelisRouterStorage>();
+		builder.Services.AddSingleton<IFelisConnectionManager, FelisConnectionManager>();
+		builder.Services.AddSingleton<IFelisRouterStorage, FelisRouterStorage>();
         builder.Services.AddSingleton<FelisRouterHub>();
         builder.Services.AddSingleton<IFelisRouterService, FelisRouterService>();
 

@@ -8,6 +8,8 @@ builder.AddFelisClient();
 
 var app = builder.Build();
 
+app.UseFelisClient();
+
 app.MapGet("/", () => "Felis client is up and running!");
 
 app.MapPost("/dispatch", async (MessageHandler messageHandler, [FromBody] TestModel model, [FromQuery] string topic) =>

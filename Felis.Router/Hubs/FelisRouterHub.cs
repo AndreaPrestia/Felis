@@ -11,11 +11,12 @@ public sealed class FelisRouterHub : Hub
 {
     private readonly ILogger<FelisRouterHub> _logger;
     private readonly IFelisRouterStorage _felisRouterStorage;
-
-    public FelisRouterHub(ILogger<FelisRouterHub> logger, IFelisRouterStorage felisRouterStorage)
+    private readonly IFelisConnectionManager _felisConnectionManager;
+    public FelisRouterHub(ILogger<FelisRouterHub> logger, IFelisRouterStorage felisRouterStorage, IFelisConnectionManager felisConnectionManager)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _felisRouterStorage = felisRouterStorage ?? throw new ArgumentNullException(nameof(felisRouterStorage));
+        _felisConnectionManager = felisConnectionManager ?? throw new ArgumentNullException(nameof(felisConnectionManager));
     }
 
     public async Task<bool> Dispatch(Message message, CancellationToken cancellationToken = default)
@@ -60,4 +61,11 @@ public sealed class FelisRouterHub : Hub
             return Task.FromResult(false);
         }
     }
+
+	public string SetConnectionId(Guid id)
+	{
+		_felisConnectionManager.KeepUserConnection(id,
+			Context.ConnectionId);
+		return Context.ConnectionId;
+	}
 }

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.Http.Connections.Client;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,6 +14,10 @@ namespace Felis.Client;
 
 public static class Extensions
 {
+    public static void UseFelisClient(this WebApplication? app)
+    {
+		app?.UseResponseCompression();
+    }
     public static void AddFelisClient(this WebApplicationBuilder builder)
     {
         var aspNetCoreEnvironment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
@@ -30,7 +35,14 @@ public static class Extensions
             throw new ArgumentNullException(nameof(configuration.RouterEndpoint));
         }
 
-        builder.Services.AddSingleton<FelisConfiguration>(configuration);
+		builder.Services.AddSignalR();
+		builder.Services.AddResponseCompression(opts =>
+		{
+			opts.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(
+				  new[] { "application/octet-stream" });
+		});
+
+		builder.Services.AddSingleton(configuration);
 
         var hubConnectionBuilder = new HubConnectionBuilder();
 

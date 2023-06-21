@@ -1,4 +1,5 @@
 ﻿using Felis.Core;
+using Felis.Core.Models;
 
 namespace Felis.Router.Interfaces;
 
@@ -12,7 +13,7 @@ public interface IFelisRouterStorage
 
     List<Message> MessageList(string? topic = null);
 
-    List<ConsumedMessage> ConsumedMessageList(Guid client);
+    List<ConsumedMessage> ConsumedMessageList(Client client);
 
-    List<ConsumedMessage> ConsumedMessageList(string topic);
+    List<ConsumedMessage> ConsumedMessageList(Topic topic);
 }

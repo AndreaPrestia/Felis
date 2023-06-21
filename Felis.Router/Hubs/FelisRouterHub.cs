@@ -28,9 +28,19 @@ public sealed class FelisRouterHub : Hub
                 throw new ArgumentNullException(nameof(message));
             }
 
-            _felisRouterStorage.MessageAdd(message);
+            if(message.Topic == null)
+            {
+                throw new ArgumentNullException(nameof(message.Topic));   
+            }
 
-            await Clients.All.SendAsync(message.Topic, message.Content, cancellationToken).ConfigureAwait(false);
+			if (string.IsNullOrWhiteSpace(message.Topic.Value))
+			{
+				throw new ArgumentNullException(nameof(message.Topic.Value));
+			}
+
+			_felisRouterStorage.MessageAdd(message);
+
+            await Clients.All.SendAsync(message.Topic.Value, message?.Content, cancellationToken).ConfigureAwait(false);
 
             return true;
         }

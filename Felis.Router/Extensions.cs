@@ -47,6 +47,7 @@ public static class Extensions
         });  
     }
 
+    //TODO add response result with wrapper
     public static void UseFelisRouter(this WebApplication app)
     {
         app.MapHub<FelisRouterHub>("/felis/router");

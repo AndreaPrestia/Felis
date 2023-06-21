@@ -28,10 +28,20 @@ public sealed class FelisRouterService : IFelisRouterService
                 throw new ArgumentNullException(nameof(message));
             }
 
-            _storage.MessageAdd(message);
+			if (message.Topic == null)
+			{
+				throw new ArgumentNullException(nameof(message.Topic));
+			}
+
+			if (string.IsNullOrWhiteSpace(message.Topic.Value))
+			{
+				throw new ArgumentNullException(nameof(message.Topic.Value));
+			}
+
+			_storage.MessageAdd(message);
 
             //dispatch it
-            await _hubContext.Clients.All.SendAsync(message.Topic, message.Content, cancellationToken).ConfigureAwait(false);
+            await _hubContext.Clients.All.SendAsync(message.Topic.Value, message, cancellationToken).ConfigureAwait(false);
 
             return true;
         }

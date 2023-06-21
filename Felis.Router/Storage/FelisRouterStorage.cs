@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using Felis.Core;
+using Felis.Core.Models;
 using Felis.Router.Interfaces;
 
 namespace Felis.Router.Storage;
@@ -15,9 +16,9 @@ public class FelisRouterStorage : IFelisRouterStorage
     public void ConsumedMessageAdd(ConsumedMessage consumedMessage)
     {
         if (_consumedMessages.Any(cm => cm.Client == consumedMessage.Client
-                                        && string.Equals(cm.Message.Topic, consumedMessage.Message.Topic,
+                                        && string.Equals(cm?.Message?.Topic?.Value, consumedMessage?.Message?.Topic?.Value,
                                             StringComparison.InvariantCultureIgnoreCase)
-                                        && cm.Timestamp == consumedMessage.Timestamp))
+                                        && cm?.Timestamp == consumedMessage?.Timestamp))
         {
             return;
         }
@@ -27,8 +28,8 @@ public class FelisRouterStorage : IFelisRouterStorage
 
     public void MessageAdd(Message message)
     {
-        if (_messages.Any(m => string.Equals(m.Topic, message.Topic, StringComparison.InvariantCultureIgnoreCase)
-                               && m.Timestamp == message.Timestamp))
+        if (_messages.Any(m => string.Equals(m?.Topic?.Value, message?.Topic?.Value, StringComparison.InvariantCultureIgnoreCase)
+                               && m?.Timestamp == message?.Timestamp))
         {
             return;
         }
@@ -38,23 +39,23 @@ public class FelisRouterStorage : IFelisRouterStorage
 
     public List<Message> MessageList(string? topic = null)
     {
-        return _messages.Where(m => string.IsNullOrWhiteSpace(topic) || m.Topic.Contains(topic)).ToList();
+        return _messages.Where(m => string.IsNullOrWhiteSpace(topic) || m.Topic!.Value!.Contains(topic)).ToList();
     }
 
-    public List<ConsumedMessage> ConsumedMessageList(Guid client)
+    public List<ConsumedMessage> ConsumedMessageList(Client client)
     {
-        return _consumedMessages.Where(cm => cm.Client == client).ToList();
+        return _consumedMessages.Where(cm => cm.Client?.Value == client.Value).ToList();
     }
 
-    public List<ConsumedMessage> ConsumedMessageList(string topic)
+    public List<ConsumedMessage> ConsumedMessageList(Topic topic)
     {
         return _consumedMessages
-            .Where(cm => string.Equals(cm.Message.Topic, topic, StringComparison.InvariantCultureIgnoreCase)).ToList();
+            .Where(cm => string.Equals(cm.Message?.Topic?.Value, topic.Value, StringComparison.InvariantCultureIgnoreCase)).ToList();
     }
 
     public void MessagePurge(string topic)
     {
         _messages = new ConcurrentQueue<Message>(_messages.Where(m =>
-            !string.Equals(topic, m.Topic, StringComparison.InvariantCultureIgnoreCase)).OrderBy(m => m.Timestamp));
+            !string.Equals(topic, m.Topic?.Value, StringComparison.InvariantCultureIgnoreCase)).OrderBy(m => m.Timestamp));
     }
 }

@@ -2,6 +2,7 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using Felis.Core;
+using Felis.Core.Models;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging;
 
@@ -39,7 +40,7 @@ public sealed class MessageHandler : IAsyncDisposable
 
 			using var client = new HttpClient();
 			var responseMessage = await client.PostAsJsonAsync($"{_configuration.RouterEndpoint}/dispatch",
-				new Message(topic ?? payload.GetType().FullName, payload), cancellationToken: cancellationToken);
+				new Message(new Topic() { Value = topic ?? payload.GetType().FullName }, payload), cancellationToken: cancellationToken);
 
 			responseMessage.EnsureSuccessStatusCode();
 		}
@@ -61,41 +62,43 @@ public sealed class MessageHandler : IAsyncDisposable
 			throw new ArgumentNullException($"Connection to Felis router not correctly initialized");
 		}
 
-		_hubConnection.On<string, string>(topic, async (_, msg) =>
+		//TODO add check to listen in while for message received
+
+		_hubConnection.On<Message>(topic, async (messageIncoming) =>
+	{
+		try
 		{
-			try
+			if (messageIncoming == null)
 			{
-				var messageIncoming = JsonSerializer.Deserialize<Message>(msg);
-
-				if (messageIncoming == null)
-				{
-					throw new ArgumentNullException(nameof(messageIncoming));
-				}
-
-				if (string.IsNullOrWhiteSpace(_hubConnection?.ConnectionId))
-				{
-					throw new ArgumentNullException(nameof(_hubConnection.ConnectionId));
-				}
-
-				if (_messages.Any(m => m.Topic == topic && m.Timestamp == messageIncoming.Timestamp))
-				{
-					_messages = new ConcurrentBag<Message>(_messages.Where(m => m.Topic != topic));
-				}
-
-				_messages.Add(messageIncoming);
-
-				using var client = new HttpClient();
-				var responseMessage = await client.PostAsJsonAsync($"{_configuration.RouterEndpoint}/consume",
-					new ConsumedMessage(messageIncoming, Guid.Parse(_hubConnection.ConnectionId)),
-					cancellationToken: cancellationToken);
-
-				responseMessage.EnsureSuccessStatusCode();
+				throw new ArgumentNullException(nameof(messageIncoming));
 			}
-			catch (Exception ex)
+
+			if (string.IsNullOrWhiteSpace(_hubConnection?.ConnectionId))
 			{
-				_logger.LogError(ex, ex.Message);
+				throw new ArgumentNullException(nameof(_hubConnection.ConnectionId));
 			}
-		});
+
+			if (_messages.Any(m => m.Topic?.Value == topic && m.Timestamp == messageIncoming.Timestamp))
+			{
+				_messages = new ConcurrentBag<Message>(_messages.Where(m => m.Topic?.Value != topic));
+			}
+
+			_messages.Add(messageIncoming);
+
+			using var client = new HttpClient();
+			var responseMessage = await client.PostAsJsonAsync($"{_configuration.RouterEndpoint}/consume",
+				new ConsumedMessage(messageIncoming, new Core.Models.Client() { Value = _hubConnection.ConnectionId }),
+				cancellationToken: cancellationToken);
+
+			responseMessage.EnsureSuccessStatusCode();
+
+			//TODO invoke automatically the consume passing the message
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, ex.Message);
+		}
+	});
 
 		await CheckHubConnectionStateAndStartIt(cancellationToken);
 	}
@@ -107,7 +110,7 @@ public sealed class MessageHandler : IAsyncDisposable
 			throw new ArgumentNullException(nameof(topic));
 		}
 
-		var message = _messages.FirstOrDefault(m => m.Topic == topic);
+		var message = _messages.FirstOrDefault(m => m.Topic?.Value == topic);
 
 		if (message == null || string.IsNullOrWhiteSpace(message.Content))
 		{
@@ -121,7 +124,7 @@ public sealed class MessageHandler : IAsyncDisposable
 	{
 		try
 		{
-			if(_hubConnection == null)
+			if (_hubConnection == null)
 			{
 				throw new ArgumentNullException(nameof(_hubConnection));
 			}

@@ -1,5 +1,4 @@
-﻿using System.Collections.Concurrent;
-using System.Net.Http.Json;
+﻿using System.Net.Http.Json;
 using System.Reflection;
 using System.Text.Json;
 using Felis.Core;
@@ -15,7 +14,6 @@ public sealed class MessageHandler : IAsyncDisposable
 	private readonly HubConnection? _hubConnection;
 	private readonly ILogger<MessageHandler> _logger;
 	private readonly FelisConfiguration _configuration;
-	private ConcurrentBag<Message> _messages = new ConcurrentBag<Message>();
 	private readonly Guid _handlerId;
 	private readonly IServiceProvider _serviceProvider;
 	private readonly string _topic = "NewDispatchedMethod";
@@ -79,13 +77,6 @@ public sealed class MessageHandler : IAsyncDisposable
 					throw new ArgumentNullException(nameof(_hubConnection.ConnectionId));
 				}
 
-				if (_messages.Any(m => m.Topic?.Value == messageIncoming?.Topic?.Value && m.Timestamp == messageIncoming?.Timestamp))
-				{
-					_messages = new ConcurrentBag<Message>(_messages.Where(m => m.Topic?.Value != messageIncoming?.Topic?.Value));
-				}
-
-				_messages.Add(messageIncoming);
-
 				var type = GetEntityType(messageIncoming.Type);
 
 				if (type == null)
@@ -100,13 +91,6 @@ public sealed class MessageHandler : IAsyncDisposable
 					throw new ArgumentNullException(nameof(entity));
 				}
 
-				var consumer = FindConsumer(messageIncoming?.Topic?.Value);
-
-				if (consumer == null)
-				{
-					throw new ArgumentNullException(nameof(consumer));
-				}
-
 				using var client = new HttpClient();
 				var responseMessage = await client.PostAsJsonAsync($"{_configuration.RouterEndpoint}/consume",
 					new ConsumedMessage(messageIncoming, new Core.Models.Client() { Value = _hubConnection.ConnectionId }),
@@ -114,7 +98,7 @@ public sealed class MessageHandler : IAsyncDisposable
 
 				responseMessage.EnsureSuccessStatusCode();
 
-				consumer.Process(entity);
+				Consume(messageIncoming?.Topic?.Value, type, entity);
 			}
 			catch (Exception ex)
 			{
@@ -157,53 +141,70 @@ public sealed class MessageHandler : IAsyncDisposable
 	}
 
 	#region PrivateMethods
-	private Consume<ConsumeEntity>? FindConsumer(string? topic)
+	private void Consume(string? topic, Type entityType, object entity)
 	{
-		return AppDomain.CurrentDomain.GetAssemblies()
-			.First(x => x.GetName().Name == AppDomain.CurrentDomain.FriendlyName).GetTypes().Where(t =>
-				t.IsSubclassOf(typeof(Consume<>))
-				&& !t.IsAbstract && !t.IsInterface).Where(tp => tp.GetMethods().Any(n =>
-				n.GetCustomAttributes<TopicAttribute>().Any(x => x.Value == topic)))
-			.Select(t =>
-			{
-				var firstConstructor = t.GetConstructors().FirstOrDefault();
+		var constructed = AppDomain.CurrentDomain.GetAssemblies().First(x => x.GetName().Name == AppDomain.CurrentDomain.FriendlyName)
+	.GetTypes().Where(t => t.BaseType != null && t.BaseType.FullName != null
+	&& t.BaseType.FullName.Contains("Felis.Client.Consume") && !t.IsInterface && !t.IsAbstract 
+	&& t.GetCustomAttributes<TopicAttribute>().Count(x => string.Equals(topic, x.Value)) == 1
+	&& t.GetMethods().Any(x => x.Name == "Process" && x.GetParameters().Count(x => x.ParameterType.Name == entityType.Name) == 1)).FirstOrDefault();
 
-				var parameters = new List<object>();
+		if (constructed == null)
+		{
+			throw new InvalidOperationException($"Not found implementation of Consumer<{entityType.Name}>");
+		}
 
-				if (firstConstructor == null)
-				{
-					throw new NotImplementedException($"Not implemented constructor in ${t.Name}");
-				}
+		var firstConstructor = constructed.GetConstructors().FirstOrDefault();
 
-				foreach (var param in firstConstructor.GetParameters())
-				{
-					using var serviceScope = _serviceProvider.CreateScope();
-					var provider = serviceScope.ServiceProvider;
+		var parameters = new List<object>();
 
-					var service = provider.GetService(param.ParameterType);
+		if (firstConstructor == null)
+		{
+			throw new NotImplementedException($"Constructor not implemented in {constructed.Name}");
+		}
 
-					if (service == null)
-					{
-						throw new ArgumentNullException("Service not correctly injected");
-					}
+		foreach (var param in firstConstructor.GetParameters())
+		{
+			using var serviceScope = _serviceProvider.CreateScope();
+			var provider = serviceScope.ServiceProvider;
 
-					parameters.Add(service);
-				}
+			var service = provider.GetService(param.ParameterType);
 
-				return (Consume<ConsumeEntity>?)Activator.CreateInstance(t, parameters.ToArray());
-			}).FirstOrDefault();
+			parameters.Add(service!);
+		}
+
+		var instance = Activator.CreateInstance(constructed, parameters.ToArray())!;
+
+		if (instance == null!)
+		{
+			throw new ApplicationException($"Cannot create an instance of {constructed.Name}");
+		}
+
+		var processMethod = instance.GetType().GetMethods().Where(t => t.Name.Equals("Process")
+																   && t.GetParameters().Length == 1 &&
+																   t.GetParameters().FirstOrDefault()!.ParameterType
+																	   .Name.Equals(entityType.Name)
+			 ).Select(x => x)
+			 .FirstOrDefault();
+
+		if (processMethod == null)
+		{
+			throw new EntryPointNotFoundException($"No implementation of method {entity} Process({entity} entity)");
+		}
+
+		var result = processMethod.Invoke(instance, new[] { entity });
 	}
 
 	private static Type? GetEntityType(string? type)
 	{
 		return AppDomain.CurrentDomain.GetAssemblies()
 			.First(x => x.GetName().Name == AppDomain.CurrentDomain.FriendlyName).GetTypes()
-			.FirstOrDefault(x => x.IsSubclassOf(typeof(ConsumeEntity)) && string.Equals(type, x.FullName));
+			.FirstOrDefault(x => string.Equals(type, x.FullName));
 	}
 
-	private ConsumeEntity? Deserialize(string? content, Type type)
+	private object? Deserialize(string? content, Type type)
 	{
-		return string.IsNullOrWhiteSpace(content) ? null : (ConsumeEntity?)JsonSerializer.Deserialize(content, type);
+		return string.IsNullOrWhiteSpace(content) ? null : JsonSerializer.Deserialize(content, type);
 	}
 	#endregion
 }

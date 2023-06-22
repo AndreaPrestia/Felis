@@ -63,47 +63,46 @@ public static class Extensions
 	{
 		builder.Services.AddSingleton<MessageHandler>();
 
-		// Build the intermediate service provider
 		var sp = builder.Services.BuildServiceProvider();
 
-		// This will succeed.
 		var messageHandler = sp.GetService<MessageHandler>();
 
 		messageHandler?.Subscribe().Wait();
 
-		//TODO autoregister consumers!
-		AppDomain.CurrentDomain.GetAssemblies().First(x => x.GetName().Name == AppDomain.CurrentDomain.FriendlyName)
-		.GetTypes().Where(t =>
-			  t.IsSubclassOf(typeof(Consume<ConsumeEntity>)) && !t.IsInterface
-												&& !t.IsAbstract).ToList().ForEach(t =>
-												{
-													var firstConstructor = t.GetConstructors().FirstOrDefault();
+		//var types = AppDomain.CurrentDomain.GetAssemblies().First(x => x.GetName().Name == AppDomain.CurrentDomain.FriendlyName)
+		//.GetTypes().Where(t => t.BaseType != null && t.BaseType.FullName != null
+		//&& t.BaseType.FullName.Contains("Felis.Client.Consume") && !t.IsInterface && !t.IsAbstract);
 
-													var parameters = new List<object>();
+		//foreach (var type in types)
+		//{
+		//	var firstConstructor = type.GetConstructors().FirstOrDefault();
 
-													if (firstConstructor == null)
-													{
-														throw new NotImplementedException($"Constructor not implemented in {t.Name}");
-													}
+		//	var parameters = new List<object>();
 
-													foreach (var param in firstConstructor.GetParameters())
-													{
-														using var serviceScope = sp.CreateScope();
-														var provider = serviceScope.ServiceProvider;
+		//	if (firstConstructor == null)
+		//	{
+		//		throw new NotImplementedException($"Constructor not implemented in {type.Name}");
+		//	}
 
-														var service = provider.GetService(param.ParameterType);
+		//	foreach (var param in firstConstructor.GetParameters())
+		//	{
+		//		using var serviceScope = sp.CreateScope();
+		//		var provider = serviceScope.ServiceProvider;
 
-														parameters.Add(service!);
-													}
+		//		var service = provider.GetService(param.ParameterType);
 
-													var instance = (Consume<ConsumeEntity>)Activator.CreateInstance(t, parameters.ToArray())!;
+		//		parameters.Add(service!);
+		//	}
 
-													if (instance == null!)
-													{
-														throw new ApplicationException($"Cannot create an instance of {t.Name}");
-													}
+		//	var instance = Activator.CreateInstance(type, parameters.ToArray())!;
 
-													builder.Services.AddSingleton(t, instance);
-												});
+		//	if (instance == null!)
+		//	{
+		//		throw new ApplicationException($"Cannot create an instance of {type.Name}");
+		//	}
+
+		//	builder.Services.AddTransient(type, );
+
+		//}
 	}
 }

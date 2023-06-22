@@ -21,7 +21,7 @@ public sealed class FelisRouterHub : Hub
         _felisConnectionManager = felisConnectionManager ?? throw new ArgumentNullException(nameof(felisConnectionManager));
     }
 
-    public async Task<bool> Dispatch(Message message, CancellationToken cancellationToken = default)
+    public async Task<bool> Dispatch(Message? message, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -42,7 +42,7 @@ public sealed class FelisRouterHub : Hub
 
 			_felisRouterStorage.MessageAdd(message);
 
-            await Clients.All.SendAsync(_topic, message?.Content, cancellationToken).ConfigureAwait(false);
+            await Clients.All.SendAsync(_topic, message.Content, cancellationToken).ConfigureAwait(false);
 
             return true;
         }
@@ -53,7 +53,7 @@ public sealed class FelisRouterHub : Hub
         }
     }
 
-    public Task<bool> Consume(ConsumedMessage consumedMessage,
+    public Task<bool> Consume(ConsumedMessage? consumedMessage,
         CancellationToken cancellationToken = default)
     {
         try

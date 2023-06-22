@@ -5,15 +5,18 @@ namespace Felis.Router.Interfaces;
 
 public interface IFelisRouterStorage
 {
-    void ConsumedMessageAdd(ConsumedMessage consumedMessage);
+    void ConsumedMessageAdd(ConsumedMessage? consumedMessage);
 
-    void MessageAdd(Message message);
+    void MessageAdd(Message? message);
 
-    void MessagePurge(string topic);
+    void MessagePurge(Topic? topic);
 
-    List<Message> MessageList(string? topic = null);
+	void ErrorMessageAdd(ErrorMessage? message);
 
-    List<ConsumedMessage> ConsumedMessageList(Client client);
+	List<Message?> MessageList(Topic? topic = null);
+	List<ErrorMessage?> ErrorMessageList(Topic? topic = null, long? start = null, long? end = null);
 
-    List<ConsumedMessage> ConsumedMessageList(Topic topic);
+	List<ConsumedMessage?> ConsumedMessageList(Client client);
+
+    List<ConsumedMessage?> ConsumedMessageList(Topic topic);
 }

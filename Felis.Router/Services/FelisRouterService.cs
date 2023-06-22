@@ -20,7 +20,7 @@ public sealed class FelisRouterService : IFelisRouterService
         _storage = storage;
     }
 
-    public async Task<bool> Dispatch(Message message, CancellationToken cancellationToken = default)
+    public async Task<bool> Dispatch(Message? message, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -53,7 +53,7 @@ public sealed class FelisRouterService : IFelisRouterService
         }
     }
 
-    public Task<bool> Consume(ConsumedMessage consumedMessage, CancellationToken cancellationToken = default)
+    public Task<bool> Consume(ConsumedMessage? consumedMessage, CancellationToken cancellationToken = default)
     {
         try
         {

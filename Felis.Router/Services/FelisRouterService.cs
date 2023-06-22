@@ -11,6 +11,7 @@ public sealed class FelisRouterService : IFelisRouterService
     private readonly IHubContext<FelisRouterHub> _hubContext;
     private readonly ILogger<FelisRouterService> _logger;
     private readonly IFelisRouterStorage _storage;
+    private readonly string _topic = "NewDispatchedMethod";
 
     public FelisRouterService(IHubContext<FelisRouterHub> hubContext, ILogger<FelisRouterService> logger, IFelisRouterStorage storage)
     {
@@ -41,7 +42,7 @@ public sealed class FelisRouterService : IFelisRouterService
 			_storage.MessageAdd(message);
 
             //dispatch it
-            await _hubContext.Clients.All.SendAsync(message.Topic.Value, message, cancellationToken).ConfigureAwait(false);
+            await _hubContext.Clients.All.SendAsync(_topic, message, cancellationToken).ConfigureAwait(false);
 
             return true;
         }

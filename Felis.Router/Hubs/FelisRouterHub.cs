@@ -12,7 +12,9 @@ public sealed class FelisRouterHub : Hub
     private readonly ILogger<FelisRouterHub> _logger;
     private readonly IFelisRouterStorage _felisRouterStorage;
     private readonly IFelisConnectionManager _felisConnectionManager;
-    public FelisRouterHub(ILogger<FelisRouterHub> logger, IFelisRouterStorage felisRouterStorage, IFelisConnectionManager felisConnectionManager)
+    private readonly string _topic = "NewDispatchedMethod";
+
+	public FelisRouterHub(ILogger<FelisRouterHub> logger, IFelisRouterStorage felisRouterStorage, IFelisConnectionManager felisConnectionManager)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _felisRouterStorage = felisRouterStorage ?? throw new ArgumentNullException(nameof(felisRouterStorage));
@@ -40,7 +42,7 @@ public sealed class FelisRouterHub : Hub
 
 			_felisRouterStorage.MessageAdd(message);
 
-            await Clients.All.SendAsync(message.Topic.Value, message?.Content, cancellationToken).ConfigureAwait(false);
+            await Clients.All.SendAsync(_topic, message?.Content, cancellationToken).ConfigureAwait(false);
 
             return true;
         }

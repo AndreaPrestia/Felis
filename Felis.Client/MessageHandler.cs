@@ -72,23 +72,42 @@ public sealed class MessageHandler : IAsyncDisposable
 					throw new ArgumentNullException(nameof(messageIncoming));
 				}
 
+				if(messageIncoming.Topic == null || string.IsNullOrWhiteSpace(messageIncoming.Topic.Value))
+				{
+					throw new ArgumentNullException(nameof(messageIncoming.Topic));
+				}
+
 				if (string.IsNullOrWhiteSpace(_hubConnection?.ConnectionId))
 				{
 					throw new ArgumentNullException(nameof(_hubConnection.ConnectionId));
 				}
 
-				var type = GetEntityType(messageIncoming.Type);
+				var entityType = GetEntityType(messageIncoming.Type);
 
-				if (type == null)
+				if (entityType == null)
 				{
-					throw new ArgumentNullException(nameof(type));
+					throw new ArgumentNullException(nameof(entityType));
 				}
 
-				var entity = Deserialize(messageIncoming.Content, type);
+				var entity = Deserialize(messageIncoming.Content, entityType);
 
 				if (entity == null)
 				{
 					throw new ArgumentNullException(nameof(entity));
+				}
+
+				var consumer = GetConsumer(messageIncoming.Topic.Value, entityType);
+
+				if(consumer == null)
+				{
+					throw new InvalidOperationException($"Consumer not found for topic {messageIncoming.Topic.Value} and entity {entityType.Name}");
+				}
+
+				var processMethod = GetProcessMethod(consumer, entityType);
+
+				if (processMethod == null)
+				{
+					throw new EntryPointNotFoundException($"No implementation of method {entity} Process({entity} entity)");
 				}
 
 				using var client = new HttpClient();
@@ -98,7 +117,7 @@ public sealed class MessageHandler : IAsyncDisposable
 
 				responseMessage.EnsureSuccessStatusCode();
 
-				Consume(messageIncoming?.Topic?.Value, type, entity);
+				processMethod.Invoke(consumer, new[] { entity });
 			}
 			catch (Exception ex)
 			{
@@ -141,11 +160,11 @@ public sealed class MessageHandler : IAsyncDisposable
 	}
 
 	#region PrivateMethods
-	private void Consume(string? topic, Type entityType, object entity)
+	private object? GetConsumer(string? topic, Type entityType)
 	{
 		var constructed = AppDomain.CurrentDomain.GetAssemblies().First(x => x.GetName().Name == AppDomain.CurrentDomain.FriendlyName)
 	.GetTypes().Where(t => t.BaseType != null && t.BaseType.FullName != null
-	&& t.BaseType.FullName.Contains("Felis.Client.Consume") && !t.IsInterface && !t.IsAbstract 
+	&& t.BaseType.FullName.Contains("Felis.Client.Consume") && !t.IsInterface && !t.IsAbstract
 	&& t.GetCustomAttributes<TopicAttribute>().Count(x => string.Equals(topic, x.Value)) == 1
 	&& t.GetMethods().Any(x => x.Name == "Process" && x.GetParameters().Count(x => x.ParameterType.Name == entityType.Name) == 1)).FirstOrDefault();
 
@@ -180,19 +199,27 @@ public sealed class MessageHandler : IAsyncDisposable
 			throw new ApplicationException($"Cannot create an instance of {constructed.Name}");
 		}
 
-		var processMethod = instance.GetType().GetMethods().Where(t => t.Name.Equals("Process")
-																   && t.GetParameters().Length == 1 &&
-																   t.GetParameters().FirstOrDefault()!.ParameterType
-																	   .Name.Equals(entityType.Name)
-			 ).Select(x => x)
-			 .FirstOrDefault();
+		return instance;
+	}
 
-		if (processMethod == null)
+	private MethodInfo? GetProcessMethod(object instance, Type entityType)
+	{
+		if (instance == null)
 		{
-			throw new EntryPointNotFoundException($"No implementation of method {entity} Process({entity} entity)");
+			throw new ArgumentNullException(nameof(instance));
 		}
 
-		var result = processMethod.Invoke(instance, new[] { entity });
+		if(entityType == null)
+		{
+			throw new ArgumentNullException(nameof(entityType));
+		}
+
+		return instance.GetType().GetMethods().Where(t => t.Name.Equals("Process")
+														   && t.GetParameters().Length == 1 &&
+														   t.GetParameters().FirstOrDefault()!.ParameterType
+															   .Name.Equals(entityType.Name)
+	 ).Select(x => x)
+	 .FirstOrDefault();
 	}
 
 	private static Type? GetEntityType(string? type)

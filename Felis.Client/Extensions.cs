@@ -56,53 +56,12 @@ public static class Extensions
 			.WithAutomaticReconnect()
 			.Build());
 
-		builder.AddConsumers();
-	}
-
-	private static void AddConsumers(this WebApplicationBuilder builder)
-	{
 		builder.Services.AddSingleton<MessageHandler>();
 
-		var sp = builder.Services.BuildServiceProvider();
+		var serviceProvider = builder.Services.BuildServiceProvider();
 
-		var messageHandler = sp.GetService<MessageHandler>();
+		var messageHandler = serviceProvider.GetService<MessageHandler>();
 
 		messageHandler?.Subscribe().Wait();
-
-		//var types = AppDomain.CurrentDomain.GetAssemblies().First(x => x.GetName().Name == AppDomain.CurrentDomain.FriendlyName)
-		//.GetTypes().Where(t => t.BaseType != null && t.BaseType.FullName != null
-		//&& t.BaseType.FullName.Contains("Felis.Client.Consume") && !t.IsInterface && !t.IsAbstract);
-
-		//foreach (var type in types)
-		//{
-		//	var firstConstructor = type.GetConstructors().FirstOrDefault();
-
-		//	var parameters = new List<object>();
-
-		//	if (firstConstructor == null)
-		//	{
-		//		throw new NotImplementedException($"Constructor not implemented in {type.Name}");
-		//	}
-
-		//	foreach (var param in firstConstructor.GetParameters())
-		//	{
-		//		using var serviceScope = sp.CreateScope();
-		//		var provider = serviceScope.ServiceProvider;
-
-		//		var service = provider.GetService(param.ParameterType);
-
-		//		parameters.Add(service!);
-		//	}
-
-		//	var instance = Activator.CreateInstance(type, parameters.ToArray())!;
-
-		//	if (instance == null!)
-		//	{
-		//		throw new ApplicationException($"Cannot create an instance of {type.Name}");
-		//	}
-
-		//	builder.Services.AddTransient(type, );
-
-		//}
 	}
 }

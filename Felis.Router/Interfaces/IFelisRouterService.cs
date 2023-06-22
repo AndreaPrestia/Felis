@@ -10,4 +10,6 @@ public interface IFelisRouterService
     Task<bool> Dispatch(Message? message, CancellationToken cancellationToken = default);
 
     Task<bool> Consume(ConsumedMessage? consumedMessage, CancellationToken cancellationToken = default);
+    
+    Task<bool> Error(ErrorMessage? errorMessage, CancellationToken cancellationToken = default);
 }

@@ -76,5 +76,15 @@ public static class Extensions
             .Produces<BadRequestResult>(StatusCodes.Status400BadRequest)
             .Produces<UnauthorizedResult>(StatusCodes.Status401Unauthorized)
             .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
+        
+        app.MapPost("/error", async ([FromServices] IFelisRouterService service, [FromBody] ErrorMessage message) =>
+            {
+                var result = await service.Error(message);
+
+                return !result ? Results.BadRequest("Failed operation") : Results.Created("/error", message);
+            }).WithName("ErrorMessageAdd").Produces<CreatedResult>(StatusCodes.Status201Created)
+            .Produces<BadRequestResult>(StatusCodes.Status400BadRequest)
+            .Produces<UnauthorizedResult>(StatusCodes.Status401Unauthorized)
+            .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
     }
 }

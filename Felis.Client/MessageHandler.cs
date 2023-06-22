@@ -127,6 +127,7 @@ public sealed class MessageHandler : IAsyncDisposable
             catch (Exception ex)
             {
                 _logger.LogError(ex, ex.Message);
+                await SendError(messageIncoming, ex, cancellationToken);
             }
         });
 
@@ -239,11 +240,31 @@ public sealed class MessageHandler : IAsyncDisposable
 
     private object? Deserialize(string? content, Type type)
     {
-        return string.IsNullOrWhiteSpace(content) ? null : JsonSerializer.Deserialize(content, type, new JsonSerializerOptions()
+        return string.IsNullOrWhiteSpace(content)
+            ? null
+            : JsonSerializer.Deserialize(content, type, new JsonSerializerOptions()
+            {
+                AllowTrailingCommas = true,
+                PropertyNameCaseInsensitive = true
+            });
+    }
+
+    private async Task SendError(Message? message, Exception exception, CancellationToken cancellationToken = default)
+    {
+        try
         {
-            AllowTrailingCommas = true,
-            PropertyNameCaseInsensitive = true
-        });
+            using var client = new HttpClient();
+            var responseMessage = await client.PostAsJsonAsync($"{_configuration.RouterEndpoint}/error",
+                new ErrorMessage(message,
+                    new Core.Models.Client() { Value = _hubConnection?.ConnectionId }, exception),
+                cancellationToken: cancellationToken);
+
+            responseMessage.EnsureSuccessStatusCode();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, ex.Message);
+        }
     }
 
     #endregion

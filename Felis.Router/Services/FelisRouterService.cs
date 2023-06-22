@@ -13,7 +13,8 @@ public sealed class FelisRouterService : IFelisRouterService
     private readonly IFelisRouterStorage _storage;
     private readonly string _topic = "NewDispatchedMethod";
 
-    public FelisRouterService(IHubContext<FelisRouterHub> hubContext, ILogger<FelisRouterService> logger, IFelisRouterStorage storage)
+    public FelisRouterService(IHubContext<FelisRouterHub> hubContext, ILogger<FelisRouterService> logger,
+        IFelisRouterStorage storage)
     {
         _hubContext = hubContext;
         _logger = logger;
@@ -29,17 +30,17 @@ public sealed class FelisRouterService : IFelisRouterService
                 throw new ArgumentNullException(nameof(message));
             }
 
-			if (message.Topic == null)
-			{
-				throw new ArgumentNullException(nameof(message.Topic));
-			}
+            if (message.Topic == null)
+            {
+                throw new ArgumentNullException(nameof(message.Topic));
+            }
 
-			if (string.IsNullOrWhiteSpace(message.Topic.Value))
-			{
-				throw new ArgumentNullException(nameof(message.Topic.Value));
-			}
+            if (string.IsNullOrWhiteSpace(message.Topic.Value))
+            {
+                throw new ArgumentNullException(nameof(message.Topic.Value));
+            }
 
-			_storage.MessageAdd(message);
+            _storage.MessageAdd(message);
 
             //dispatch it
             await _hubContext.Clients.All.SendAsync(_topic, message, cancellationToken).ConfigureAwait(false);
@@ -63,7 +64,27 @@ public sealed class FelisRouterService : IFelisRouterService
             }
 
             _storage.ConsumedMessageAdd(consumedMessage);
-            
+
+            return Task.FromResult(true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, ex.Message);
+            return Task.FromResult(false);
+        }
+    }
+
+    public Task<bool> Error(ErrorMessage? errorMessage, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (errorMessage == null)
+            {
+                throw new ArgumentNullException(nameof(errorMessage));
+            }
+
+            _storage.ErrorMessageAdd(errorMessage);
+
             return Task.FromResult(true);
         }
         catch (Exception ex)

@@ -4,11 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.AddFelisClient();
+builder.AddFelisClientWeb();
 
 var app = builder.Build();
-
-app.UseFelisClient();
 
 app.MapGet("/", () => "Felis client is up and running!");
 

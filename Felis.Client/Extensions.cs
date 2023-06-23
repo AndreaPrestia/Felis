@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -14,12 +15,57 @@ namespace Felis.Client;
 
 public static class Extensions
 {
-	public static void UseFelisClient(this WebApplication? app)
+	public static void AddFelisClient(this IHostBuilder builder)
 	{
-		app?.UseResponseCompression();
-	}
+		builder.ConfigureServices(serviceCollection =>
+		{
+			var aspNetCoreEnvironment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
 
-	public static void AddFelisClient(this WebApplicationBuilder builder)
+			var configurationBuilder = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory())
+				.AddJsonFile(string.IsNullOrEmpty(aspNetCoreEnvironment)
+					? "appsettings.json"
+					: $"appsettings.{aspNetCoreEnvironment}.json");
+			var config = configurationBuilder.Build();
+
+			var configuration = config.GetSection("FelisClient").Get<FelisConfiguration>();
+
+			if (string.IsNullOrWhiteSpace(configuration?.RouterEndpoint))
+			{
+				throw new ArgumentNullException(nameof(configuration.RouterEndpoint));
+			}
+
+			serviceCollection.AddSignalR();
+			
+			serviceCollection.AddResponseCompression(opts =>
+			{
+				opts.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(
+					new[] { "application/octet-stream" });
+			});
+
+			serviceCollection.AddSingleton(configuration);
+
+			var hubConnectionBuilder = new HubConnectionBuilder();
+
+			hubConnectionBuilder.Services.AddSingleton<IConnectionFactory>(
+				new HttpConnectionFactory(Options.Create(new HttpConnectionOptions()), NullLoggerFactory.Instance));
+
+			serviceCollection.AddSingleton(hubConnectionBuilder
+				.WithUrl($"{configuration.RouterEndpoint}/felis/router",
+					options => { options.Transports = HttpTransportType.WebSockets; })
+				.WithAutomaticReconnect()
+				.Build());
+
+			serviceCollection.AddSingleton<MessageHandler>();
+
+			var serviceProvider = serviceCollection.BuildServiceProvider();
+
+			var messageHandler = serviceProvider.GetService<MessageHandler>();
+
+			messageHandler?.Subscribe().Wait();
+		});
+	}
+	
+	public static void AddFelisClientWeb(this WebApplicationBuilder builder)
 	{
 		var aspNetCoreEnvironment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
 

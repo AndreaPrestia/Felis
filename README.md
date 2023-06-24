@@ -1,6 +1,5 @@
 # Felis
-An experiment used to bring a message broker totally written in .NET 
-
+An experiment used to bring a message broker totally written in .NET , based on SignalR.
 The Felis project is composed of two parts:
 
 - **Router**, containing the logic to dispatch , store and validate messages.
@@ -69,7 +68,7 @@ The configuration is composed of:
 - Service, the object representing the service descriptor of the Felis client.
   	- Name , the service name.
   	- Host, the host of the service instance.
-  	- IsPublic, says, to the router , if this server istance can be reached and discovered by other services connected to felis router.
+  	- IsPublic, says, to the router , if this server istance can be reached and discovered by other services connected to Felis router.
  
 **Program.cs**
 

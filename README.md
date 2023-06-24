@@ -61,12 +61,10 @@ Just add this part in appsettings.json . This tells to the client which Felis ro
 **Program.cs**
 
 For ASP NET core application add:
-Add this two lines:
 ```
 builder.AddFelisClientWeb();
 ```
-For every else .NET application add:
-Add this two lines:
+For all the others .NET application add:
 ```
 builder.AddFelisClient();
 ```

@@ -11,13 +11,13 @@ public record ConsumedMessage
         
     }
 
-    public ConsumedMessage(Message? message, Client client)
+    public ConsumedMessage(Message? message, Service? service)
     {
         Message = message;
-        Client = client;
+        Service = service;
     }
     
     public Message? Message { get; set; }
-    public Client? Client { get; set; }
+    public Service? Service { get; set; }
     public long Timestamp { get; } = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
 }

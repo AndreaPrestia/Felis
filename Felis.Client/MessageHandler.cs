@@ -173,7 +173,7 @@ public sealed class MessageHandler : IAsyncDisposable
                 using var client = new HttpClient();
                 var responseMessage = await client.PostAsJsonAsync($"{_configuration.RouterEndpoint}/consume",
                     new ConsumedMessage(messageIncoming,
-                        new Core.Models.Client(_hubConnection.ConnectionId)),
+                        _currentService),
                     cancellationToken: cancellationToken);
 
                 responseMessage.EnsureSuccessStatusCode();

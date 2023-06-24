@@ -16,7 +16,7 @@ public interface IFelisRouterStorage
 	List<Message?> MessageList(Topic? topic = null);
 	List<ErrorMessage?> ErrorMessageList(Topic? topic = null, long? start = null, long? end = null);
 
-	List<ConsumedMessage?> ConsumedMessageList(Client client);
+	List<ConsumedMessage?> ConsumedMessageList(Service service);
 
     List<ConsumedMessage?> ConsumedMessageList(Topic topic);
 }

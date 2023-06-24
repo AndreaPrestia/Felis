@@ -27,17 +27,12 @@ public sealed class MessageHandler : IAsyncDisposable
 
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
 
-        if (_configuration.Service == null)
-        {
-            throw new ArgumentNullException(nameof(_configuration.Service));
-        }
-
         if (string.IsNullOrWhiteSpace(_configuration.RouterEndpoint))
         {
             throw new ArgumentNullException(nameof(_configuration.RouterEndpoint));
         }
 
-        _currentService = _configuration.Service with { Id = Guid.NewGuid() };
+        _currentService = _configuration.Service ?? throw new ArgumentNullException(nameof(_configuration.Service));
     }
 
     public async Task Publish<T>(T payload, string? topic, CancellationToken cancellationToken = default)

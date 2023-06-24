@@ -96,8 +96,8 @@ public sealed class FelisRouterHub : Hub
         _felisConnectionManager.RemoveServiceConnections(service);
     }
 
-    public List<string> GetConnectionIds(Guid id)
+    public List<string> GetConnectionIds(Service service)
     {
-        return _felisConnectionManager.GetServiceConnections(id);
+        return _felisConnectionManager.GetServiceConnections(service);
     }
 }

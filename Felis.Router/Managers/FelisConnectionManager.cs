@@ -8,13 +8,13 @@ namespace Felis.Router.Managers
 		private static readonly Dictionary<Service, List<string>> FelisConnectionMap = new();
 		private static readonly string UserConnectionMapLocker = string.Empty;
 
-		public List<string> GetServiceConnections(Guid id)
+		public List<string> GetServiceConnections(Service service)
 		{
 			List<string> connections;
 
 			lock (FelisConnectionMap)
 			{ 
-				connections = FelisConnectionMap.Where(x => x.Key.Id == id).SelectMany(x => x.Value).ToList();
+				connections = FelisConnectionMap.Where(x => x.Key == service).SelectMany(x => x.Value).ToList();
 			}
 
 			return connections;

@@ -2,7 +2,7 @@
 
 namespace Felis.Core.Models;
 
-public record Service(Guid Id, string? Name, string? Host, bool IsPublic);
+public record Service(string? Name, string? Host, bool IsPublic);
 
 //TODO 
 
@@ -13,4 +13,3 @@ public record Service(Guid Id, string? Name, string? Host, bool IsPublic);
 //add the service registration automatic
 
 //add the service to service communication with the use of connection id, service id 
-

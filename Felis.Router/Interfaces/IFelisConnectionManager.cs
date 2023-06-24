@@ -6,7 +6,7 @@ namespace Felis.Router.Interfaces
 	{
 		void KeepServiceConnection(Service service, string connectionId);
 		void RemoveServiceConnections(Service service);
-		List<string> GetServiceConnections(Guid id);
+		List<string> GetServiceConnections(Service service);
 		List<Service> GetConnectedServices();
 	}
 }

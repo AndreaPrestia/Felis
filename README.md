@@ -45,19 +45,30 @@ This can be used as whatever C# application you want.
 It implements a class , called TestConsumer that implements the Consume<T> abstract class. It contains the Process(T entity) method implemented. It is only implemented to see how it intercepts messages.
 
 **Configuration**
-Just add this part in appsettings.json . This tells to the client which Felis router subscribe.
+Just add this part in appsettings.json . This tells to the client which Felis router subscribe. It also must contains the client instance informations as service.
 ```
  "FelisClient": {
-    "RouterEndpoint": "https://localhost:7103"
+    "RouterEndpoint": "https://localhost:7103",
+    "Service": {
+      	"Id": "00000000-0000-0000-0000-000000000000",
+      	"Name": "name",
+      	"Host": "host",
+      	"IsPublic": true
+     }
   }
 ```
 
 **Program.cs**
 
+For ASP NET core application add:
+Add this two lines:
+```
+builder.AddFelisClientWeb();
+```
+For every else .NET application add:
 Add this two lines:
 ```
 builder.AddFelisClient();
-app.UseFelisClient();
 ```
 
 **How to use a consumer?**

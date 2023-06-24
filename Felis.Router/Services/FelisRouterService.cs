@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Felis.Router.Services;
 
-public sealed class FelisRouterService : IFelisRouterService
+internal sealed class FelisRouterService : IFelisRouterService
 {
     private readonly IHubContext<FelisRouterHub> _hubContext;
     private readonly ILogger<FelisRouterService> _logger;
@@ -33,20 +33,20 @@ public sealed class FelisRouterService : IFelisRouterService
                 throw new ArgumentNullException(nameof(message));
             }
 
-            if (message.Topic == null)
+            if (message.Header?.Topic == null)
             {
-                throw new ArgumentNullException(nameof(message.Topic));
+                throw new ArgumentNullException($"No Topic provided in Header");
             }
 
-            if (string.IsNullOrWhiteSpace(message.Topic.Value))
+            if (string.IsNullOrWhiteSpace(message.Header?.Topic?.Value))
             {
-                throw new ArgumentNullException(nameof(message.Topic.Value));
+                throw new ArgumentNullException($"No Topic Value provided in Header");
             }
 
             _storage.MessageAdd(message);
-
+            
             //dispatch it
-            if (message.ServiceHosts != null && message.ServiceHosts.Any())
+            if (message.Header?.Services != null && message.Header.Services.Any())
             {
                 var connectedServices = _felisConnectionManager.GetConnectedServices();
                 
@@ -56,17 +56,26 @@ public sealed class FelisRouterService : IFelisRouterService
                     return false;
                 }
 
-                if (!connectedServices.Select(x => x.Host).Intersect(message.ServiceHosts).Any())
+                if (!connectedServices.Intersect(message.Header.Services).Any())
                 {
                     _logger.LogWarning(
                         "No connected services available in the list provided to dispatch. The message won't be published");
                     return false;
                 }
 
-                foreach (var serviceHost in message.ServiceHosts)
+                foreach (var service in message.Header.Services)
                 {
-                    await _hubContext.Clients.Client(serviceHost).SendAsync(_topic, message, cancellationToken)
-                        .ConfigureAwait(false);
+                    var connectionIds = _felisConnectionManager.GetServiceConnections(service);
+
+                    if (!connectionIds.Any())
+                    {
+                        continue;
+                    }
+
+                    foreach (var connectionId in connectionIds)
+                    {
+                        await _hubContext.Clients.Client(connectionId).SendAsync(_topic, message, cancellationToken).ConfigureAwait(false);
+                    }
                 }
             }
             else

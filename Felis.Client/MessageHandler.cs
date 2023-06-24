@@ -51,9 +51,11 @@ public sealed class MessageHandler : IAsyncDisposable
 
             var type = payload.GetType().FullName;
 
+            var json = JsonSerializer.Serialize(payload);
+
             using var client = new HttpClient();
             var responseMessage = await client.PostAsJsonAsync($"{_configuration.RouterEndpoint}/dispatch",
-                new Message(new Topic(topic ?? type), payload, type),
+                new Message(new Header(new Topic(topic ?? type), new List<Service>()), new Content(json, type)),
                 cancellationToken: cancellationToken);
 
             responseMessage.EnsureSuccessStatusCode();
@@ -64,7 +66,7 @@ public sealed class MessageHandler : IAsyncDisposable
         }
     }
 
-    public async Task Publish<T>(T payload, string? topic, List<string>? serviceHosts,
+    public async Task Publish<T>(T payload, string? topic, List<Service>? services,
         CancellationToken cancellationToken = default)
         where T : class
     {
@@ -73,9 +75,9 @@ public sealed class MessageHandler : IAsyncDisposable
             throw new ArgumentNullException(nameof(payload));
         }
 
-        if (serviceHosts == null || !serviceHosts.Any())
+        if (services == null || !services.Any())
         {
-            throw new ArgumentNullException(nameof(serviceHosts));
+            throw new ArgumentNullException(nameof(services));
         }
 
         try
@@ -90,7 +92,7 @@ public sealed class MessageHandler : IAsyncDisposable
                 return;
             }
 
-            if (!connectedServices.Select(x => x.Host).Intersect(serviceHosts).Any())
+            if (!connectedServices.Select(x => x).Intersect(services).Any())
             {
                 _logger.LogWarning(
                     "No connected services available in the list provided to dispatch. The message won't be published");
@@ -100,9 +102,11 @@ public sealed class MessageHandler : IAsyncDisposable
             //TODO add an authorization token as parameter
             var type = payload.GetType().FullName;
 
+            var json = JsonSerializer.Serialize(payload);
+
             using var client = new HttpClient();
             var responseMessage = await client.PostAsJsonAsync($"{_configuration.RouterEndpoint}/dispatch",
-                new Message(new Topic(topic ?? type), payload, type, serviceHosts),
+                new Message(new Header(new Topic(topic ?? type), services), new Content(json, type)),
                 cancellationToken: cancellationToken);
 
             responseMessage.EnsureSuccessStatusCode();
@@ -129,9 +133,9 @@ public sealed class MessageHandler : IAsyncDisposable
                     throw new ArgumentNullException(nameof(messageIncoming));
                 }
 
-                if (messageIncoming.Topic == null || string.IsNullOrWhiteSpace(messageIncoming.Topic.Value))
+                if (messageIncoming.Header?.Topic == null || string.IsNullOrWhiteSpace(messageIncoming.Header?.Topic?.Value))
                 {
-                    throw new ArgumentNullException(nameof(messageIncoming.Topic));
+                    throw new ArgumentNullException($"No Topic provided in Header");
                 }
 
                 if (string.IsNullOrWhiteSpace(_hubConnection?.ConnectionId))
@@ -139,26 +143,26 @@ public sealed class MessageHandler : IAsyncDisposable
                     throw new ArgumentNullException(nameof(_hubConnection.ConnectionId));
                 }
 
-                var entityType = GetEntityType(messageIncoming.Type);
+                var entityType = GetEntityType(messageIncoming.Content?.Type);
 
                 if (entityType == null)
                 {
                     throw new ArgumentNullException(nameof(entityType));
                 }
 
-                var entity = Deserialize(messageIncoming.Content, entityType);
+                var entity = Deserialize(messageIncoming.Content?.Json, entityType);
 
                 if (entity == null)
                 {
                     throw new ArgumentNullException(nameof(entity));
                 }
 
-                var consumer = GetConsumer(messageIncoming.Topic.Value, entityType);
+                var consumer = GetConsumer(messageIncoming.Header?.Topic?.Value, entityType);
 
                 if (consumer == null!)
                 {
                     _logger.LogInformation(
-                        $"Consumer not found for topic {messageIncoming.Topic.Value} and entity {entityType.Name}");
+                        $"Consumer not found for topic {messageIncoming.Header?.Topic?.Value} and entity {entityType.Name}");
                     return;
                 }
 

@@ -2,7 +2,7 @@
 
 namespace Felis.Router.Interfaces
 {
-	public interface IFelisConnectionManager
+	internal interface IFelisConnectionManager
 	{
 		void KeepServiceConnection(Service service, string connectionId);
 		void RemoveServiceConnections(Service service);

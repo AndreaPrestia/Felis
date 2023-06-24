@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 namespace Felis.Router.Hubs;
 
 [Route("/felis/router")]
-public sealed class FelisRouterHub : Hub
+internal sealed class FelisRouterHub : Hub
 {
     private readonly ILogger<FelisRouterHub> _logger;
     private readonly IFelisRouterStorage _felisRouterStorage;
@@ -33,25 +33,38 @@ public sealed class FelisRouterHub : Hub
                 throw new ArgumentNullException(nameof(message));
             }
 
-            if (message.Topic == null)
+            if (message.Header?.Topic == null)
             {
-                throw new ArgumentNullException(nameof(message.Topic));
+                throw new ArgumentNullException($"Topic non provided in Header");
             }
 
-            if (string.IsNullOrWhiteSpace(message.Topic.Value))
+            if (string.IsNullOrWhiteSpace(message.Header?.Topic?.Value))
             {
-                throw new ArgumentNullException(nameof(message.Topic.Value));
+                throw new ArgumentNullException($"Topic Value non provided in Header");
             }
 
             _felisRouterStorage.MessageAdd(message);
 
-            if (message.ServiceHosts != null && message.ServiceHosts.Any())
+            if (message.Header.Services != null && message.Header.Services.Any())
             {
-                
+                foreach (var service in message.Header.Services)
+                {
+                    var connectionIds = GetConnectionIds(service);
+
+                    if (!connectionIds.Any())
+                    {
+                        continue;
+                    }
+
+                    foreach (var connectionId in connectionIds)
+                    {
+                        await Clients.Client(connectionId).SendAsync(_topic, message, cancellationToken).ConfigureAwait(false);
+                    }
+                }
             }
             else
             {
-                await Clients.All.SendAsync(_topic, message.Content, cancellationToken).ConfigureAwait(false);
+                await Clients.All.SendAsync(_topic, message, cancellationToken).ConfigureAwait(false);
             }
 
             return true;

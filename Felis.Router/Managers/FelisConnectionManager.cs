@@ -3,7 +3,7 @@ using Felis.Router.Interfaces;
 
 namespace Felis.Router.Managers
 {
-	public class FelisConnectionManager : IFelisConnectionManager
+	internal class FelisConnectionManager : IFelisConnectionManager
 	{
 		private static readonly Dictionary<Service, List<string>> FelisConnectionMap = new();
 		private static readonly string UserConnectionMapLocker = string.Empty;

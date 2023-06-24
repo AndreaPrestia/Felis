@@ -1,27 +1,9 @@
-﻿using System.Drawing;
-using Felis.Core.Models;
-using System.Text.Json.Serialization;
+﻿using Felis.Core.Models;
 
 namespace Felis.Core
 {
-	public record ErrorMessage
+	public record ErrorMessage(Message? Message, Service? Service, Exception? Exception)
 	{
-		[JsonConstructor]
-		public ErrorMessage()
-		{
-
-		}
-
-		public ErrorMessage(Message? message, Service service, Exception? exception)
-		{
-			Message = message;
-			Service = service;
-			Exception = exception;
-		}
-
-		public Message? Message { get; set; }
-		public Service? Service { get; set; }
-		public Exception? Exception { get; set; }
 		public long Timestamp { get; } = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
 	}
 }

@@ -1,4 +1,5 @@
 ﻿using Felis.Core;
+using Felis.Core.Models;
 using Felis.Router.Hubs;
 using Felis.Router.Interfaces;
 using Microsoft.AspNetCore.SignalR;
@@ -12,13 +13,15 @@ public sealed class FelisRouterService : IFelisRouterService
     private readonly ILogger<FelisRouterService> _logger;
     private readonly IFelisRouterStorage _storage;
     private readonly string _topic = "NewDispatchedMethod";
+    private readonly IFelisConnectionManager _felisConnectionManager;
 
     public FelisRouterService(IHubContext<FelisRouterHub> hubContext, ILogger<FelisRouterService> logger,
-        IFelisRouterStorage storage)
+        IFelisRouterStorage storage, IFelisConnectionManager felisConnectionManager)
     {
         _hubContext = hubContext;
         _logger = logger;
         _storage = storage;
+        _felisConnectionManager = felisConnectionManager;
     }
 
     public async Task<bool> Dispatch(Message? message, CancellationToken cancellationToken = default)
@@ -43,7 +46,33 @@ public sealed class FelisRouterService : IFelisRouterService
             _storage.MessageAdd(message);
 
             //dispatch it
-            await _hubContext.Clients.All.SendAsync(_topic, message, cancellationToken).ConfigureAwait(false);
+            if (message.ServiceHosts != null && message.ServiceHosts.Any())
+            {
+                var connectedServices = _felisConnectionManager.GetConnectedServices();
+                
+                if (!connectedServices.Any())
+                {
+                    _logger.LogWarning("No connected services to dispatch. The message won't be published");
+                    return false;
+                }
+
+                if (!connectedServices.Select(x => x.Host).Intersect(message.ServiceHosts).Any())
+                {
+                    _logger.LogWarning(
+                        "No connected services available in the list provided to dispatch. The message won't be published");
+                    return false;
+                }
+
+                foreach (var serviceHost in message.ServiceHosts)
+                {
+                    await _hubContext.Clients.Client(serviceHost).SendAsync(_topic, message, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+            }
+            else
+            {
+                await _hubContext.Clients.All.SendAsync(_topic, message, cancellationToken).ConfigureAwait(false);
+            }
 
             return true;
         }
@@ -91,6 +120,19 @@ public sealed class FelisRouterService : IFelisRouterService
         {
             _logger.LogError(ex, ex.Message);
             return Task.FromResult(false);
+        }
+    }
+
+    public Task<List<Service>> GetConnectedServices(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return Task.FromResult(_felisConnectionManager.GetConnectedServices());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, ex.Message);
+            return Task.FromResult(new List<Service>());
         }
     }
 }

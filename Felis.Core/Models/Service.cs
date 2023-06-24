@@ -1,12 +1,8 @@
-﻿namespace Felis.Core.Models;
+﻿using System.Security.Cryptography;
 
-public class Service
-{
-    public Guid Id { get; set; }
-    public string? Name { get; set; }
-    public string? Host { get; set; }
-    public bool IsPublic { get; set; }
-}
+namespace Felis.Core.Models;
+
+public record Service(Guid Id, string? Name, string? Host, bool IsPublic);
 
 //TODO 
 

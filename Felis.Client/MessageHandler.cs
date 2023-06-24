@@ -14,18 +14,30 @@ public sealed class MessageHandler : IAsyncDisposable
     private readonly HubConnection? _hubConnection;
     private readonly ILogger<MessageHandler> _logger;
     private readonly FelisConfiguration _configuration;
-    private readonly Guid _handlerId;
     private readonly IServiceProvider _serviceProvider;
     private readonly string _topic = "NewDispatchedMethod";
+    private readonly Service _currentService;
 
     public MessageHandler(HubConnection? hubConnection, ILogger<MessageHandler> logger,
         FelisConfiguration configuration, IServiceProvider serviceProvider)
     {
-        _hubConnection = hubConnection;
-        _logger = logger;
-        _configuration = configuration;
-        _serviceProvider = serviceProvider;
-        _handlerId = Guid.NewGuid();
+        _hubConnection = hubConnection ?? throw new ArgumentNullException(nameof(hubConnection));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+
+        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+
+        if (_configuration.Service == null)
+        {
+            throw new ArgumentNullException(nameof(_configuration.Service));
+        }
+
+        if (string.IsNullOrWhiteSpace(_configuration.RouterEndpoint))
+        {
+            throw new ArgumentNullException(nameof(_configuration.RouterEndpoint));
+        }
+
+        _currentService = _configuration.Service with { Id = Guid.NewGuid() };
     }
 
     public async Task Publish<T>(T payload, string? topic, CancellationToken cancellationToken = default)
@@ -46,7 +58,56 @@ public sealed class MessageHandler : IAsyncDisposable
 
             using var client = new HttpClient();
             var responseMessage = await client.PostAsJsonAsync($"{_configuration.RouterEndpoint}/dispatch",
-                new Message(new Topic() { Value = topic ?? type }, payload, type),
+                new Message(new Topic(topic ?? type), payload, type),
+                cancellationToken: cancellationToken);
+
+            responseMessage.EnsureSuccessStatusCode();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, ex.Message);
+        }
+    }
+
+    public async Task Publish<T>(T payload, string? topic, List<string>? serviceHosts,
+        CancellationToken cancellationToken = default)
+        where T : class
+    {
+        if (payload == null)
+        {
+            throw new ArgumentNullException(nameof(payload));
+        }
+
+        if (serviceHosts == null || !serviceHosts.Any())
+        {
+            throw new ArgumentNullException(nameof(serviceHosts));
+        }
+
+        try
+        {
+            await CheckHubConnectionStateAndStartIt(cancellationToken);
+
+            var connectedServices = await GetConnectedServices(cancellationToken);
+
+            if (connectedServices == null || !connectedServices.Any())
+            {
+                _logger.LogWarning("No connected services to dispatch. The message won't be published");
+                return;
+            }
+
+            if (!connectedServices.Select(x => x.Host).Intersect(serviceHosts).Any())
+            {
+                _logger.LogWarning(
+                    "No connected services available in the list provided to dispatch. The message won't be published");
+                return;
+            }
+
+            //TODO add an authorization token as parameter
+            var type = payload.GetType().FullName;
+
+            using var client = new HttpClient();
+            var responseMessage = await client.PostAsJsonAsync($"{_configuration.RouterEndpoint}/dispatch",
+                new Message(new Topic(topic ?? type), payload, type, serviceHosts),
                 cancellationToken: cancellationToken);
 
             responseMessage.EnsureSuccessStatusCode();
@@ -99,7 +160,7 @@ public sealed class MessageHandler : IAsyncDisposable
 
                 var consumer = GetConsumer(messageIncoming.Topic.Value, entityType);
 
-                if (consumer == null)
+                if (consumer == null!)
                 {
                     _logger.LogInformation(
                         $"Consumer not found for topic {messageIncoming.Topic.Value} and entity {entityType.Name}");
@@ -117,7 +178,7 @@ public sealed class MessageHandler : IAsyncDisposable
                 using var client = new HttpClient();
                 var responseMessage = await client.PostAsJsonAsync($"{_configuration.RouterEndpoint}/consume",
                     new ConsumedMessage(messageIncoming,
-                        new Core.Models.Client() { Value = _hubConnection.ConnectionId }),
+                        new Core.Models.Client(_hubConnection.ConnectionId)),
                     cancellationToken: cancellationToken);
 
                 responseMessage.EnsureSuccessStatusCode();
@@ -148,7 +209,7 @@ public sealed class MessageHandler : IAsyncDisposable
                 await _hubConnection?.StartAsync(cancellationToken)!;
             }
 
-            await _hubConnection?.InvokeAsync("SetConnectionId", _handlerId, cancellationToken)!;
+            await _hubConnection?.InvokeAsync("SetConnectionId", _currentService, cancellationToken)!;
         }
         catch (Exception ex)
         {
@@ -160,13 +221,14 @@ public sealed class MessageHandler : IAsyncDisposable
     {
         if (_hubConnection != null)
         {
+            await _hubConnection?.InvokeAsync("RemoveConnectionIds", _currentService)!;
             await _hubConnection.DisposeAsync();
         }
     }
 
     #region PrivateMethods
 
-    private object? GetConsumer(string? topic, MemberInfo entityType)
+    private object GetConsumer(string? topic, MemberInfo entityType)
     {
         var constructed = AppDomain.CurrentDomain.GetAssemblies()
             .First(x => x.GetName().Name == AppDomain.CurrentDomain.FriendlyName).GetTypes().FirstOrDefault(t =>
@@ -256,7 +318,7 @@ public sealed class MessageHandler : IAsyncDisposable
             using var client = new HttpClient();
             var responseMessage = await client.PostAsJsonAsync($"{_configuration.RouterEndpoint}/error",
                 new ErrorMessage(message,
-                    new Core.Models.Client() { Value = _hubConnection?.ConnectionId }, exception),
+                    _currentService, exception),
                 cancellationToken: cancellationToken);
 
             responseMessage.EnsureSuccessStatusCode();
@@ -264,6 +326,26 @@ public sealed class MessageHandler : IAsyncDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, ex.Message);
+        }
+    }
+
+    private async Task<List<Service>?> GetConnectedServices(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var client = new HttpClient();
+            var responseMessage = await client.GetAsync($"{_configuration.RouterEndpoint}/services", cancellationToken)
+                .ConfigureAwait(false);
+
+            responseMessage.EnsureSuccessStatusCode();
+
+            return JsonSerializer.Deserialize<List<Service>>(await responseMessage.Content
+                .ReadAsStringAsync(cancellationToken).ConfigureAwait(false));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, ex.Message);
+            return new List<Service>();
         }
     }
 

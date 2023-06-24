@@ -1,54 +1,54 @@
-﻿using Felis.Router.Interfaces;
+﻿using Felis.Core.Models;
+using Felis.Router.Interfaces;
 
 namespace Felis.Router.Managers
 {
 	public class FelisConnectionManager : IFelisConnectionManager
 	{
-		private static readonly Dictionary<Guid, List<string>> FelisConnectionMap = new();
+		private static readonly Dictionary<Service, List<string>> FelisConnectionMap = new();
 		private static readonly string UserConnectionMapLocker = string.Empty;
 
-		public List<string> GetUserConnections(Guid id)
+		public List<string> GetServiceConnections(Guid id)
 		{
-			var connections = new List<string>();
+			List<string> connections;
 
 			lock (FelisConnectionMap)
-			{
-				if (FelisConnectionMap.ContainsKey(id))
-				{
-					connections = FelisConnectionMap[id];
-				}
+			{ 
+				connections = FelisConnectionMap.Where(x => x.Key.Id == id).SelectMany(x => x.Value).ToList();
 			}
 
 			return connections;
 		}
 
-		public void KeepUserConnection(Guid id, string connectionId)
+		public List<Service> GetConnectedServices()
+		{
+			List<Service> services;
+
+			lock (FelisConnectionMap)
+			{
+				services = FelisConnectionMap.Where(x => x.Key.IsPublic).Select(x => x.Key).ToList();
+			}
+
+			return services;
+		}
+
+		public void KeepServiceConnection(Service service, string connectionId)
 		{
 			lock (UserConnectionMapLocker)
 			{
-				if (!FelisConnectionMap.ContainsKey(id))
+				if (!FelisConnectionMap.ContainsKey(service))
 				{
-					FelisConnectionMap[id] = new List<string>();
+					FelisConnectionMap[service] = new List<string>();
 				}
-				FelisConnectionMap[id].Add(connectionId);
+				FelisConnectionMap[service].Add(connectionId);
 			}
 		}
 
-		public void RemoveUserConnection(string connectionId)
+		public void RemoveServiceConnections(Service service)
 		{
 			lock (UserConnectionMapLocker)
 			{
-				foreach (var userId in FelisConnectionMap.Keys)
-				{
-					if (FelisConnectionMap.ContainsKey(userId))
-					{
-						if (FelisConnectionMap[userId].Contains(connectionId))
-						{
-							FelisConnectionMap[userId].Remove(connectionId);
-							break;
-						}
-					}
-				}
+				 FelisConnectionMap.Remove(service);
 			}
 		}
 	}

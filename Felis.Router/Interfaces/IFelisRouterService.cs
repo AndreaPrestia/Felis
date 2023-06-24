@@ -1,4 +1,5 @@
 ﻿using Felis.Core;
+using Felis.Core.Models;
 
 namespace Felis.Router.Interfaces;
 
@@ -12,4 +13,6 @@ public interface IFelisRouterService
     Task<bool> Consume(ConsumedMessage? consumedMessage, CancellationToken cancellationToken = default);
     
     Task<bool> Error(ErrorMessage? errorMessage, CancellationToken cancellationToken = default);
+
+    Task<List<Service>> GetConnectedServices(CancellationToken cancellationToken = default);
 }

@@ -20,69 +20,80 @@ public static class Extensions
         {
             options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
         });
-        
+
         builder.Services.AddSignalR();
 
-		builder.Services.AddSingleton<IFelisConnectionManager, FelisConnectionManager>();
-		builder.Services.AddSingleton<IFelisRouterStorage, FelisRouterStorage>();
+        builder.Services.AddSingleton<IFelisConnectionManager, FelisConnectionManager>();
+        builder.Services.AddSingleton<IFelisRouterStorage, FelisRouterStorage>();
         builder.Services.AddSingleton<FelisRouterHub>();
         builder.Services.AddSingleton<IFelisRouterService, FelisRouterService>();
 
         builder.Services.AddEndpointsApiExplorer();
-        
-        builder.Services.AddSwaggerGen(c =>  
-        {  
-            c.SwaggerDoc("v1", new OpenApiInfo  
-            {  
-                Version = "v1",  
-                Title = "Felis router",  
-                Description = "Felis router endpoints",  
-                Contact = new OpenApiContact  
-                {  
-                    Name = "Andrea Prestia",  
-                    Email = string.Empty,  
-                    Url = new Uri("https://www.linkedin.com/in/andrea-prestia-5212a2166/"),  
+
+        builder.Services.AddSwaggerGen(c =>
+        {
+            c.SwaggerDoc("v1", new OpenApiInfo
+            {
+                Version = "v1",
+                Title = "Felis router",
+                Description = "Felis router endpoints",
+                Contact = new OpenApiContact
+                {
+                    Name = "Andrea Prestia",
+                    Email = string.Empty,
+                    Url = new Uri("https://www.linkedin.com/in/andrea-prestia-5212a2166/"),
                 }
-            });  
-        });  
+            });
+        });
     }
 
     //TODO add response result with wrapper
     public static void UseFelisRouter(this WebApplication app)
     {
         app.MapHub<FelisRouterHub>("/felis/router");
-        
+
         app.UseSwagger();
-        
+
         app.UseSwaggerUI(options => options.SwaggerEndpoint("/swagger/v1/swagger.json",
             $"Felis Router v1"));
-        
+
         app.MapPost("/dispatch", async ([FromServices] IFelisRouterService service, [FromBody] Message message) =>
-        {
-            var result = await service.Dispatch(message);
+            {
+                var result = await service.Dispatch(message);
 
-            return !result ? Results.BadRequest("Failed operation") : Results.Created("/dispatch", message);
-        }).WithName("MessageDispatch").Produces<CreatedResult>(StatusCodes.Status201Created)
+                return !result ? Results.BadRequest("Failed operation") : Results.Created("/dispatch", message);
+            }).WithName("MessageDispatch").Produces<CreatedResult>(StatusCodes.Status201Created)
             .Produces<BadRequestResult>(StatusCodes.Status400BadRequest)
             .Produces<UnauthorizedResult>(StatusCodes.Status401Unauthorized)
             .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
-        
-        app.MapPost("/consume", async ([FromServices] IFelisRouterService service, [FromBody] ConsumedMessage message) =>
-        {
-            var result = await service.Consume(message);
 
-            return !result ? Results.BadRequest("Failed operation") : Results.Created("/consume", message);
-        }).WithName("MessageConsume").Produces<CreatedResult>(StatusCodes.Status201Created)
+        app.MapPost("/consume",
+                async ([FromServices] IFelisRouterService service, [FromBody] ConsumedMessage message) =>
+                {
+                    var result = await service.Consume(message);
+
+                    return !result ? Results.BadRequest("Failed operation") : Results.Created("/consume", message);
+                }).WithName("MessageConsume").Produces<CreatedResult>(StatusCodes.Status201Created)
             .Produces<BadRequestResult>(StatusCodes.Status400BadRequest)
             .Produces<UnauthorizedResult>(StatusCodes.Status401Unauthorized)
             .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
-        
+
         app.MapPost("/error", async ([FromServices] IFelisRouterService service, [FromBody] ErrorMessage message) =>
             {
                 var result = await service.Error(message);
 
                 return !result ? Results.BadRequest("Failed operation") : Results.Created("/error", message);
             }).WithName("ErrorMessageAdd").Produces<CreatedResult>(StatusCodes.Status201Created)
+            .Produces<BadRequestResult>(StatusCodes.Status400BadRequest)
+            .Produces<UnauthorizedResult>(StatusCodes.Status401Unauthorized)
+            .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
+
+        app.MapGet("/services", async ([FromServices] IFelisRouterService service) =>
+            {
+                var result = await service.GetConnectedServices();
+
+                return Results.Ok(result);
+            }).WithName("ServiceList").Produces<OkResult>(StatusCodes.Status200OK)
             .Produces<BadRequestResult>(StatusCodes.Status400BadRequest)
             .Produces<UnauthorizedResult>(StatusCodes.Status401Unauthorized)
             .Produces<ForbidResult>(StatusCodes.Status403Forbidden);

@@ -51,19 +51,26 @@ It implements a class , called TestConsumer that implements the Consume<T> abstr
 
 **Configuration**
 
-Just add this part in appsettings.json . This tells to the client which Felis router subscribe. It also must contains the client instance informations as service.
+Just add this part in appsettings.json. 
+
 ```
  "FelisClient": {
     "RouterEndpoint": "https://localhost:7103",
     "Service": {
-      	"Id": "00000000-0000-0000-0000-000000000000",
       	"Name": "name",
       	"Host": "host",
       	"IsPublic": true
      }
   }
 ```
+The configuration is composed of:
 
+- RouterEndpoint, representing the endpoint where the client must subscribe. It's the router.
+- Service, the object representing the service descriptor of the Felis client.
+  	- Name , the service name.
+  	- Host, the host of the service instance.
+  	- IsPublic, says, to the router , if this server istance can be reached and discovered by other services connected to felis router.
+ 
 **Program.cs**
 
 For ASP NET core application add:

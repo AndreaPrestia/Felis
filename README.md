@@ -14,6 +14,7 @@ We have two examples:
 - **Felis.Router.Test**
 
 **Felis.Router.Test**
+
 An AspNet minimal api application, containing the two endpoints exposed by Felis.
 The two endpoints are:
 
@@ -21,12 +22,15 @@ The two endpoints are:
 - Consume
 
 **Dispatch**
+
 This endpoint is used to dispatch a message, on a topic , to every listener connected to Felis, with whatever contract in the payload :)
 
 **Consume**
+
 This endpoint says to Felis that a Consumer has consumed a message. It is used to keep track of the operations.
 
 **Configuration**
+
 Currently we don'have one. I have to add something for storage, now there is a dummy in memory one :)
 
 **Program.cs**
@@ -39,12 +43,14 @@ app.UseFelisRouter(); => this uses the implementations
 ```
 
 **Felis.Client.Test**
+
 For sake of simplicity i have implemented an AspNet minimal api application, that exposes a publish endpoint, to facilitate the tests.
 This can be used as whatever C# application you want.
 
 It implements a class , called TestConsumer that implements the Consume<T> abstract class. It contains the Process(T entity) method implemented. It is only implemented to see how it intercepts messages.
 
 **Configuration**
+
 Just add this part in appsettings.json . This tells to the client which Felis router subscribe. It also must contains the client instance informations as service.
 ```
  "FelisClient": {
@@ -70,6 +76,7 @@ builder.AddFelisClient();
 ```
 
 **How to use a consumer?**
+
 It's very simple, just create a class that implements the Consume<T> abstract one.
 Here an example in GitHub:
 
@@ -91,6 +98,7 @@ namespace Felis.Client.Test
 ```
 
 **Conclusion**
+
 This is an experiment , it doesn't have the claim to be something like a game changer :D 
 
 There a lot of things to do.

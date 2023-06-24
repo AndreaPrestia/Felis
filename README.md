@@ -310,7 +310,6 @@ There a lot of things to do.
 - Implement an authorization mechanism to use it in public networks.
 - Code cleanup and a lot of other things that now i don't remember.
 - Add a mechanism of public and private key header validation.
-- Rewrite the message entity separating the payload of the message from the header part.
 
   
 

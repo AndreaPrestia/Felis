@@ -37,23 +37,29 @@ This endpoint is used to dispatch a message, on a topic , to every listener conn
 curl --location 'https://localhost:7103/dispatch' \
 --header 'Content-Type: application/json' \
 --data '{
-  "topic": {
-    "value": "test"
-  },
-  "content": "{\"description\":\"Test\"}",
-  "type": "Felis.Client.Test.TestModel",
-  "serviceHosts": []
+    "header": {
+        "topic": {
+            "value": "test"
+        },
+        "services": []
+    },
+    "content": {
+        "json": "{\"description\":\"Test\"}",
+        "type": "Felis.Client.Test.TestModel",
+    }
 }'
 ```
 
 ***Request***
 Property | Type | Context |
 --- | --- | --- |
-topic | object | value object containing the topic of the message to dispatch. |
-topic.value | string | the value content of the topic to dispatch. |
-content | string | Jsonized string of the message to dispatch. |
-type | string | the .NET type of the interface to use to deserialize the message to dispatch. It is used by the Consumer for deserialize.|
-serviceHosts | array<string> | array of service hosts to dispatch the message to a set of specific targets | 
+header | object | the message header, containing the metadata of the message |
+header.topic | object | value object containing the topic of the message to dispatch. |
+header.topic.value | string | the value content of the topic to dispatch. |
+header.services |  array<service> | array of service hosts to dispatch the message to a set of specific targets | 
+content | object | the message content. |
+content.json | string | Jsonized string of the message to dispatch. |
+content.type | string | the .NET type of the interface to use to deserialize the message to dispatch. It is used by the Consumer for deserialize.|
 
 ***Response***
 Status code | Type | Context |
@@ -72,12 +78,16 @@ curl --location 'https://localhost:7103/consume' \
 --header 'Content-Type: application/json' \
 --data '{
     "message": {
-        "topic": {
-            "value": "test"
+        "header": {
+            "topic": {
+                "value": "test"
+            },
+            "services": []
         },
-        "content": "{\"description\":\"Test\"}",
-        "type": "Felis.Client.Test.TestModel",
-        "serviceHosts": []
+        "content": {
+            "json": "{\"description\":\"Test\"}",
+            "type": "Felis.Client.Test.TestModel",
+        }
     },
     "service": {
         "name": "string",
@@ -91,11 +101,13 @@ curl --location 'https://localhost:7103/consume' \
 Property | Type | Context |
 --- | --- | --- |
 message | object | The message entity used by Felis system. |
-message.topic | object | value object containing the topic of the message consumed. |
-message.topic.value | string | the value content of the topic of the message consumed. |
-message.content | string | Jsonized string of the message consumed. |
-message.type | string | the .NET type of the interface used to deserialize the message consumed. It is used by the Consumer for deserialize.|
-message.serviceHosts | array<string> | array of service hosts to dispatch the message to a set of specific targets | 
+message.header | object | the message header, containing the metadata of the message |
+message.header.topic | object | value object containing the topic of the message consumed. |
+message.header.topic.value | string | the value content of the topic of the message consumed. |
+message.header.services | array<service> | array of service used to dispatch the message to a set of specific targets | 
+message.content | object | the message content. |
+message.content.json | string | Jsonized string of the message consumed. |
+message.content.type | string | the .NET type of the interface used to deserialize the message consumed. It is used by the Consumer for deserialize.|
 service | object | The service entity that represent the identity of the consumer. |
 service.name | string | The service entity name of the consumer. |
 service.host | string | The service entity host of the consumer. |
@@ -118,12 +130,16 @@ curl --location 'https://localhost:7103/error' \
 --header 'Content-Type: application/json' \
 --data '{
     "message": {
-        "topic": {
-            "value": "test"
+        "header": {
+            "topic": {
+                "value": "test"
+            },
+            "services": []
         },
-        "content": "{\"description\":\"Test\"}",
-        "type": "Felis.Client.Test.TestModel",
-        "serviceHosts": []
+        "content": {
+            "json": "{\"description\":\"Test\"}",
+            "type": "Felis.Client.Test.TestModel",
+        }
     },
     "service": {
         "name": "string",
@@ -158,11 +174,13 @@ curl --location 'https://localhost:7103/error' \
 Property | Type | Context |
 --- | --- | --- |
 message | object | The message entity used by Felis system. |
-message.topic | object | value object containing the topic of the message that throws an error. |
-message.topic.value | string | the value content of the topic of the message that throws an error. |
-message.content | string | Jsonized string of the message that throws an error. |
-message.type | string | the .NET type of the interface used to deserialize the message that throws an error. It is used by the Consumer for deserialize.|
-message.serviceHosts | array<string> | array of service hosts to dispatch the message to a set of specific targets | 
+message.header | object | the message header, containing the metadata of the message |
+message.header.topic | object | value object containing the topic of the message that throws an error. |
+message.header.topic.value | string | the value content of the topic of the message that throws an error. |
+message.header.service | array<service> | array of service used to dispatch the message to a set of specific targets | 
+message.content | object | the message content. |
+message.content.json | string | Jsonized string of the message that throws an error. |
+message.content.type | string | the .NET type of the interface used to deserialize the message that throws an error. It is used by the Consumer for deserialize.|
 service | object | The service entity that represent the identity of the consumer. |
 service.name | string | The service entity name of the consumer. |
 service.host | string | The service entity host of the consumer. |
@@ -292,7 +310,6 @@ There a lot of things to do.
 - Implement an authorization mechanism to use it in public networks.
 - Code cleanup and a lot of other things that now i don't remember.
 - Add a mechanism of public and private key header validation.
-- Rewrite the message entity separating the payload of the message from the header part.
 
   
 

@@ -224,7 +224,32 @@ isPublic | boolean | Says if the consumer is configured to be discovered by othe
 
 **Configuration**
 
-Currently we don'have one. I have to add something for storage, now there is a dummy in memory one :)
+Add this part in appsettings.json. 
+
+```
+"FelisRouter": {
+    "MessageConfiguration": {
+      "TimeToLiveMinutes": 5,
+      "MinutesForEveryClean": 2
+    },
+    "StorageConfiguration": {
+      "Strategy": "InMemory",
+      "Configurations": {
+        "abc": "def"
+      }
+    }
+  }
+```
+The configuration is composed of:
+
+Property | Type | Context |
+--- | --- | --- |
+MessageConfiguration | object | The configuration about the message part. |
+MessageConfiguration.TimeToLiveMinutes | int | The TTL for a message in the router queue. |
+MessageConfiguration.MinutesForEveryClean | int | Says every N minute that the queue cleaner has to run. |
+StorageConfiguration | object | The configuration about the storage part. |
+StorageConfiguration.TimeToLiveMinutes | string | The storage strategy to use. The available values are **InMemory** and **Persistent**. If empty or not provided the **InMemory** one will be used. |
+StorageConfiguration.Configurations | Dictionary<string,string> | Dictionary for storage configuration to use when **Persistent** strategy is choosen. |
 
 **Program.cs**
 
@@ -258,11 +283,14 @@ Just add this part in appsettings.json.
 ```
 The configuration is composed of:
 
-- RouterEndpoint, representing the endpoint where the client must subscribe. It's the router.
-- Service, the object representing the service descriptor of the Felis client.
-  	- Name , the service name.
-  	- Host, the host of the service instance.
-  	- IsPublic, says, to the router , if this server istance can be reached and discovered by other services connected to Felis router.
+Property | Type | Context |
+--- | --- | --- |
+Router | object | The router configuration object. |
+Router.Endpoint | string | The endpoint where the client must subscribe. It's the router. |
+Service | object | The service entity , representing the configuration as service of the Felis client. |
+Service.Name | string | The service name. Paired with **host** gives the unique identity on the Felis router. |
+Service.Host | string | The service host. Paired with **name** gives the unique identity on the Felis router. |
+Service.IsPublic | boolean | Says, to the router , if this server istance can be reached and discovered by other services connected to Felis router. |
  
 **Program.cs**
 

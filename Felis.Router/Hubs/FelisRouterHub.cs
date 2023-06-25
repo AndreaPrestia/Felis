@@ -43,7 +43,12 @@ internal sealed class FelisRouterHub : Hub
                 throw new ArgumentNullException($"Topic Value non provided in Header");
             }
 
-            _felisRouterStorage.MessageAdd(message);
+            var result = _felisRouterStorage.MessageAdd(message);
+
+            if (!result)
+            {
+                _logger.LogWarning("Cannot add message in storage.");
+            }
 
             if (message.Header.Services != null && message.Header.Services.Any())
             {
@@ -58,7 +63,8 @@ internal sealed class FelisRouterHub : Hub
 
                     foreach (var connectionId in connectionIds)
                     {
-                        await Clients.Client(connectionId).SendAsync(_topic, message, cancellationToken).ConfigureAwait(false);
+                        await Clients.Client(connectionId).SendAsync(_topic, message, cancellationToken)
+                            .ConfigureAwait(false);
                     }
                 }
             }
@@ -86,9 +92,14 @@ internal sealed class FelisRouterHub : Hub
                 throw new ArgumentNullException(nameof(consumedMessage));
             }
 
-            _felisRouterStorage.ConsumedMessageAdd(consumedMessage);
+            var result = _felisRouterStorage.ConsumedMessageAdd(consumedMessage);
 
-            return Task.FromResult(true);
+            if (!result)
+            {
+                _logger.LogWarning("Cannot add consumed message in storage.");
+            }
+
+            return Task.FromResult(result);
         }
         catch (Exception ex)
         {

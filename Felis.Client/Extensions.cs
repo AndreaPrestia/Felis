@@ -29,9 +29,9 @@ public static class Extensions
 
 			var configuration = config.GetSection("FelisClient").Get<FelisConfiguration>();
 
-			if (string.IsNullOrWhiteSpace(configuration?.RouterEndpoint))
+			if (string.IsNullOrWhiteSpace(configuration?.Router?.Endpoint))
 			{
-				throw new ArgumentNullException(nameof(configuration.RouterEndpoint));
+				throw new ArgumentNullException($"No Router:Endpoint configuration provided");
 			}
 
 			serviceCollection.AddSignalR();
@@ -50,7 +50,7 @@ public static class Extensions
 				new HttpConnectionFactory(Options.Create(new HttpConnectionOptions()), NullLoggerFactory.Instance));
 
 			serviceCollection.AddSingleton(hubConnectionBuilder
-				.WithUrl($"{configuration.RouterEndpoint}/felis/router",
+				.WithUrl($"{configuration.Router?.Endpoint}/felis/router",
 					options => { options.Transports = HttpTransportType.WebSockets; })
 				.WithAutomaticReconnect()
 				.Build());
@@ -77,9 +77,9 @@ public static class Extensions
 
 		var configuration = config.GetSection("FelisClient").Get<FelisConfiguration>();
 
-		if (string.IsNullOrWhiteSpace(configuration?.RouterEndpoint))
+		if (string.IsNullOrWhiteSpace(configuration?.Router?.Endpoint))
 		{
-			throw new ArgumentNullException(nameof(configuration.RouterEndpoint));
+			throw new ArgumentNullException($"No Router:Endpoint configuration provided");
 		}
 
 		builder.Services.AddSignalR();
@@ -97,7 +97,7 @@ public static class Extensions
 			new HttpConnectionFactory(Options.Create(new HttpConnectionOptions()), NullLoggerFactory.Instance));
 
 		builder.Services.AddSingleton(hubConnectionBuilder
-			.WithUrl($"{configuration.RouterEndpoint}/felis/router",
+			.WithUrl($"{configuration.Router?.Endpoint}/felis/router",
 				options => { options.Transports = HttpTransportType.WebSockets; })
 			.WithAutomaticReconnect()
 			.Build());

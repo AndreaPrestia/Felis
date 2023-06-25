@@ -43,13 +43,19 @@ internal sealed class FelisRouterService : IFelisRouterService
                 throw new ArgumentNullException($"No Topic Value provided in Header");
             }
 
-            _storage.MessageAdd(message);
-            
+            var result = _storage.MessageAdd(message);
+
+            if (!result)
+            {
+                _logger.LogWarning("Cannot add message in storage.");
+                return result;
+            }
+
             //dispatch it
             if (message.Header?.Services != null && message.Header.Services.Any())
             {
                 var connectedServices = _felisConnectionManager.GetConnectedServices();
-                
+
                 if (!connectedServices.Any())
                 {
                     _logger.LogWarning("No connected services to dispatch. The message won't be published");
@@ -74,7 +80,8 @@ internal sealed class FelisRouterService : IFelisRouterService
 
                     foreach (var connectionId in connectionIds)
                     {
-                        await _hubContext.Clients.Client(connectionId).SendAsync(_topic, message, cancellationToken).ConfigureAwait(false);
+                        await _hubContext.Clients.Client(connectionId).SendAsync(_topic, message, cancellationToken)
+                            .ConfigureAwait(false);
                     }
                 }
             }
@@ -83,7 +90,7 @@ internal sealed class FelisRouterService : IFelisRouterService
                 await _hubContext.Clients.All.SendAsync(_topic, message, cancellationToken).ConfigureAwait(false);
             }
 
-            return true;
+            return result;
         }
         catch (Exception ex)
         {
@@ -101,9 +108,14 @@ internal sealed class FelisRouterService : IFelisRouterService
                 throw new ArgumentNullException(nameof(consumedMessage));
             }
 
-            _storage.ConsumedMessageAdd(consumedMessage);
+            var result = _storage.ConsumedMessageAdd(consumedMessage);
 
-            return Task.FromResult(true);
+            if (!result)
+            {
+                _logger.LogWarning("Cannot add consumed message in storage.");
+            }
+
+            return Task.FromResult(result);
         }
         catch (Exception ex)
         {
@@ -121,9 +133,14 @@ internal sealed class FelisRouterService : IFelisRouterService
                 throw new ArgumentNullException(nameof(errorMessage));
             }
 
-            _storage.ErrorMessageAdd(errorMessage);
+            var result = _storage.ErrorMessageAdd(errorMessage);
 
-            return Task.FromResult(true);
+            if (!result)
+            {
+                _logger.LogWarning("Cannot add error message in storage.");
+            }
+
+            return Task.FromResult(result);
         }
         catch (Exception ex)
         {

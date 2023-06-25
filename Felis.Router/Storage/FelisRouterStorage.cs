@@ -14,7 +14,7 @@ public class FelisRouterStorage : IFelisRouterStorage
     private ConcurrentQueue<ConsumedMessage?> _consumedMessages = new();
     private ConcurrentQueue<ErrorMessage?> _errorMessages = new();
 
-    public void ConsumedMessageAdd(ConsumedMessage? consumedMessage)
+    public bool ConsumedMessageAdd(ConsumedMessage? consumedMessage)
     {
         if (_consumedMessages.Any(cm => cm?.Service == consumedMessage?.Service
                                         && string.Equals(cm?.Message?.Header?.Topic?.Value,
@@ -22,23 +22,27 @@ public class FelisRouterStorage : IFelisRouterStorage
                                             StringComparison.InvariantCultureIgnoreCase)
                                         && cm?.Timestamp == consumedMessage?.Timestamp))
         {
-            return;
+            return false;
         }
 
         _consumedMessages = new ConcurrentQueue<ConsumedMessage?>(_consumedMessages.Append(consumedMessage));
+
+        return true;
     }
 
-    public void MessageAdd(Message? message)
+    public bool MessageAdd(Message? message)
     {
         if (_messages.Any(m =>
                 string.Equals(m?.Header?.Topic?.Value, message?.Header?.Topic?.Value,
                     StringComparison.InvariantCultureIgnoreCase)
                 && m?.Header?.Timestamp == message?.Header?.Timestamp))
         {
-            return;
+            return false;
         }
 
         _messages = new ConcurrentQueue<Message?>(_messages.Append(message));
+
+        return true;
     }
 
     public List<Message?> MessageList(Topic? topic = null)
@@ -59,20 +63,40 @@ public class FelisRouterStorage : IFelisRouterStorage
     {
         return _consumedMessages
             .Where(cm =>
-                string.Equals(cm?.Message?.Header?.Topic?.Value, topic.Value, StringComparison.InvariantCultureIgnoreCase))
+                string.Equals(cm?.Message?.Header?.Topic?.Value, topic.Value,
+                    StringComparison.InvariantCultureIgnoreCase))
             .ToList();
     }
 
-    public void MessagePurge(Topic? topic)
+    public bool MessagePurge(Topic? topic)
     {
         _messages = new ConcurrentQueue<Message?>(_messages.Where(m =>
                 !string.Equals(topic?.Value, m?.Header?.Topic?.Value, StringComparison.InvariantCultureIgnoreCase))
             .OrderBy(m => m?.Header?.Timestamp));
+
+        return true;
     }
 
-    public void ErrorMessageAdd(ErrorMessage? message)
+    public bool MessagePurge(int? timeToLiveMinutes)
+    {
+        if (!timeToLiveMinutes.HasValue || timeToLiveMinutes <= 0)
+        {
+            return false;
+        }
+
+        _messages = new ConcurrentQueue<Message?>(_messages
+            .Where(m => m?.Header?.Timestamp < new DateTimeOffset(DateTime.UtcNow).AddMinutes(-timeToLiveMinutes.Value)
+                .ToUnixTimeMilliseconds())
+            .OrderBy(m => m?.Header?.Timestamp));
+
+        return true;
+    }
+
+    public bool ErrorMessageAdd(ErrorMessage? message)
     {
         _errorMessages = new ConcurrentQueue<ErrorMessage?>(_errorMessages.Append(message));
+
+        return true;
     }
 
     public List<ErrorMessage?> ErrorMessageList(Topic? topic = null, long? start = null, long? end = null)

@@ -27,9 +27,9 @@ public sealed class MessageHandler : IAsyncDisposable
 
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
 
-        if (string.IsNullOrWhiteSpace(_configuration.RouterEndpoint))
+        if (string.IsNullOrWhiteSpace(_configuration.Router?.Endpoint))
         {
-            throw new ArgumentNullException(nameof(_configuration.RouterEndpoint));
+            throw new ArgumentNullException($"No Router:Endpoint configuration provided");
         }
 
         _currentService = _configuration.Service ?? throw new ArgumentNullException(nameof(_configuration.Service));
@@ -54,7 +54,7 @@ public sealed class MessageHandler : IAsyncDisposable
             var json = JsonSerializer.Serialize(payload);
 
             using var client = new HttpClient();
-            var responseMessage = await client.PostAsJsonAsync($"{_configuration.RouterEndpoint}/dispatch",
+            var responseMessage = await client.PostAsJsonAsync($"{_configuration.Router?.Endpoint}/dispatch",
                 new Message(new Header(new Topic(topic ?? type), new List<Service>()), new Content(json, type)),
                 cancellationToken: cancellationToken);
 
@@ -105,7 +105,7 @@ public sealed class MessageHandler : IAsyncDisposable
             var json = JsonSerializer.Serialize(payload);
 
             using var client = new HttpClient();
-            var responseMessage = await client.PostAsJsonAsync($"{_configuration.RouterEndpoint}/dispatch",
+            var responseMessage = await client.PostAsJsonAsync($"{_configuration.Router?.Endpoint}/dispatch",
                 new Message(new Header(new Topic(topic ?? type), services), new Content(json, type)),
                 cancellationToken: cancellationToken);
 
@@ -175,7 +175,7 @@ public sealed class MessageHandler : IAsyncDisposable
                 }
 
                 using var client = new HttpClient();
-                var responseMessage = await client.PostAsJsonAsync($"{_configuration.RouterEndpoint}/consume",
+                var responseMessage = await client.PostAsJsonAsync($"{_configuration.Router?.Endpoint}/consume",
                     new ConsumedMessage(messageIncoming,
                         _currentService),
                     cancellationToken: cancellationToken);
@@ -315,7 +315,7 @@ public sealed class MessageHandler : IAsyncDisposable
         try
         {
             using var client = new HttpClient();
-            var responseMessage = await client.PostAsJsonAsync($"{_configuration.RouterEndpoint}/error",
+            var responseMessage = await client.PostAsJsonAsync($"{_configuration.Router?.Endpoint}/error",
                 new ErrorMessage(message,
                     _currentService, exception),
                 cancellationToken: cancellationToken);
@@ -333,7 +333,7 @@ public sealed class MessageHandler : IAsyncDisposable
         try
         {
             using var client = new HttpClient();
-            var responseMessage = await client.GetAsync($"{_configuration.RouterEndpoint}/services", cancellationToken)
+            var responseMessage = await client.GetAsync($"{_configuration.Router?.Endpoint}/services", cancellationToken)
                 .ConfigureAwait(false);
 
             responseMessage.EnsureSuccessStatusCode();

@@ -5,6 +5,11 @@ namespace Felis.Core;
 
 public record FelisConfiguration
 {
-    public string? RouterEndpoint { get; set; }
+    public FelisConfigurationRouter? Router { get; set; }
     public Service? Service { get; set; }
+}
+
+public record FelisConfigurationRouter
+{
+    public string? Endpoint { get; set; }
 }

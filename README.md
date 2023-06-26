@@ -334,10 +334,8 @@ There a lot of things to do.
 **TODO**
 
 - Implement a mechanism of persistance storage of message in router, now are persisted in memory, it's not efficient.
-- Implement a mechanism of cleanup of the storage, now the in-memory are not be deleted after a TTL to provide in configuration.
 - Implement an authorization mechanism to use it in public networks.
 - Code cleanup and a lot of other things that now i don't remember.
-- Add a mechanism of public and private key header validation.
 
   
 

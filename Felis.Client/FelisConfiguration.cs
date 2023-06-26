@@ -1,7 +1,6 @@
 ﻿using Felis.Core.Models;
-using Microsoft.Extensions.Configuration;
 
-namespace Felis.Core;
+namespace Felis.Client;
 
 public record FelisConfiguration
 {

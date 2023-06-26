@@ -16,7 +16,8 @@ We have two examples:
 **Felis.Router.Test**
 
 An AspNet minimal api application, containing the four endpoints exposed by Felis.
-The two endpoints are:
+
+The four endpoints are:
 
 - dispatch
 - consume

@@ -67,7 +67,7 @@ public class FelisStorageCleanService : BackgroundService
         }
         finally
         {
-            _logger.LogInformation("End FelisStorageCleanService ExecuteAsync");
+            _logger.LogInformation("Shutdown FelisStorageCleanService");
         }
     }
 }

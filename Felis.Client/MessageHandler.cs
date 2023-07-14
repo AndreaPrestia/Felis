@@ -55,7 +55,7 @@ public sealed class MessageHandler : IAsyncDisposable
 
             using var client = new HttpClient();
             var responseMessage = await client.PostAsJsonAsync($"{_configuration.Router?.Endpoint}/dispatch",
-                new Message(new Header(new Topic(topic ?? type), new List<Service>()), new Content(json, type)),
+                new Message(new Header(new Topic(topic ?? type), new List<Service>()), new Content(json)),
                 cancellationToken: cancellationToken);
 
             responseMessage.EnsureSuccessStatusCode();
@@ -100,13 +100,11 @@ public sealed class MessageHandler : IAsyncDisposable
             }
 
             //TODO add an authorization token as parameter
-            var type = payload.GetType().FullName;
-
             var json = JsonSerializer.Serialize(payload);
 
             using var client = new HttpClient();
             var responseMessage = await client.PostAsJsonAsync($"{_configuration.Router?.Endpoint}/dispatch",
-                new Message(new Header(new Topic(topic ?? type), services), new Content(json, type)),
+                new Message(new Header(new Topic(topic), services), new Content(json)),
                 cancellationToken: cancellationToken);
 
             responseMessage.EnsureSuccessStatusCode();
@@ -133,7 +131,8 @@ public sealed class MessageHandler : IAsyncDisposable
                     throw new ArgumentNullException(nameof(messageIncoming));
                 }
 
-                if (messageIncoming.Header?.Topic == null || string.IsNullOrWhiteSpace(messageIncoming.Header?.Topic?.Value))
+                if (messageIncoming.Header?.Topic == null ||
+                    string.IsNullOrWhiteSpace(messageIncoming.Header?.Topic?.Value))
                 {
                     throw new ArgumentNullException($"No Topic provided in Header");
                 }
@@ -142,36 +141,33 @@ public sealed class MessageHandler : IAsyncDisposable
                 {
                     throw new ArgumentNullException(nameof(_hubConnection.ConnectionId));
                 }
+               
+                var consumerSearchResult = GetConsumer(messageIncoming.Header?.Topic?.Value);
 
-                var entityType = GetEntityType(messageIncoming.Content?.Type);
-
-                if (entityType == null)
-                {
-                    throw new ArgumentNullException(nameof(entityType));
-                }
-
-                var entity = Deserialize(messageIncoming.Content?.Json, entityType);
-
-                if (entity == null)
-                {
-                    throw new ArgumentNullException(nameof(entity));
-                }
-
-                var consumer = GetConsumer(messageIncoming.Header?.Topic?.Value, entityType);
-
-                if (consumer == null!)
+                if (consumerSearchResult.Consumer == null!)
                 {
                     _logger.LogInformation(
-                        $"Consumer not found for topic {messageIncoming.Header?.Topic?.Value} and entity {entityType.Name}");
+                        $"Consumer not found for topic {messageIncoming.Header?.Topic?.Value}");
                     return;
                 }
 
+                var consumer = consumerSearchResult.Consumer;
+
+                var entityType = consumerSearchResult.MessageType;
+                
                 var processMethod = GetProcessMethod(consumer, entityType);
 
                 if (processMethod == null)
                 {
                     throw new EntryPointNotFoundException(
-                        $"No implementation of method {entity} Process({entity} entity)");
+                        $"No implementation of method {entityType?.Name} Process({entityType?.Name} entity)");
+                }
+                
+                var entity = Deserialize(messageIncoming.Content?.Json, entityType);
+
+                if (entity == null)
+                {
+                    throw new ArgumentNullException(nameof(entity));
                 }
 
                 using var client = new HttpClient();
@@ -227,21 +223,22 @@ public sealed class MessageHandler : IAsyncDisposable
 
     #region PrivateMethods
 
-    private object GetConsumer(string? topic, MemberInfo entityType)
+    private ConsumerSearchResult GetConsumer(string? topic)
     {
         var constructed = AppDomain.CurrentDomain.GetAssemblies()
             .First(x => x.GetName().Name == AppDomain.CurrentDomain.FriendlyName).GetTypes().FirstOrDefault(t =>
                 t.BaseType?.FullName != null
-                && t.BaseType.FullName.Contains("Felis.Client.Consume") && !t.IsInterface && !t.IsAbstract
-                && t.GetCustomAttributes<TopicAttribute>().Count(x => string.Equals(topic, x.Value)) == 1
+                && t.BaseType.FullName.Contains("Felis.Client.Consume") && t is { IsInterface: false, IsAbstract: false } 
+                && t.GetCustomAttributes<TopicAttribute>().Count(x => string.Equals(topic, x.Value, StringComparison.InvariantCultureIgnoreCase)) == 1 
                 && t.GetMethods().Any(x => x.Name == "Process"
-                                           && x.GetParameters().Count(pi => pi.ParameterType.Name == entityType.Name) ==
+                                           && x.GetParameters().Count() ==
                                            1));
 
         if (constructed == null)
         {
-            throw new InvalidOperationException($"Not found implementation of Consumer<{entityType.Name}>");
+            throw new InvalidOperationException($"Not found implementation of Consumer for topic {topic}");
         }
+
 
         var firstConstructor = constructed.GetConstructors().FirstOrDefault();
 
@@ -262,6 +259,15 @@ public sealed class MessageHandler : IAsyncDisposable
             parameters.Add(service!);
         }
 
+        var processParameterInfo = constructed.GetMethod("Process")?.GetParameters().FirstOrDefault();
+
+        if (processParameterInfo == null)
+        {
+            throw new InvalidOperationException($"Not found parameter of Consumer.Process for topic {topic}");
+        }
+
+        var parameterType = processParameterInfo.ParameterType;
+
         var instance = Activator.CreateInstance(constructed, parameters.ToArray())!;
 
         if (instance == null!)
@@ -269,10 +275,14 @@ public sealed class MessageHandler : IAsyncDisposable
             throw new ApplicationException($"Cannot create an instance of {constructed.Name}");
         }
 
-        return instance;
+        return new ConsumerSearchResult()
+        {
+            MessageType = parameterType,
+            Consumer = instance
+        };
     }
 
-    private MethodInfo? GetProcessMethod(object instance, Type entityType)
+    private MethodInfo? GetProcessMethod(object instance, Type? entityType)
     {
         if (instance == null)
         {
@@ -292,15 +302,13 @@ public sealed class MessageHandler : IAsyncDisposable
             .FirstOrDefault();
     }
 
-    private static Type? GetEntityType(string? type)
+    private object? Deserialize(string? content, Type? type)
     {
-        return AppDomain.CurrentDomain.GetAssemblies()
-            .First(x => x.GetName().Name == AppDomain.CurrentDomain.FriendlyName).GetTypes()
-            .FirstOrDefault(x => string.Equals(type, x.FullName));
-    }
-
-    private object? Deserialize(string? content, Type type)
-    {
+        if (type == null)
+        {
+            throw new ArgumentNullException(nameof(type));
+        }
+        
         return string.IsNullOrWhiteSpace(content)
             ? null
             : JsonSerializer.Deserialize(content, type, new JsonSerializerOptions()
@@ -333,7 +341,8 @@ public sealed class MessageHandler : IAsyncDisposable
         try
         {
             using var client = new HttpClient();
-            var responseMessage = await client.GetAsync($"{_configuration.Router?.Endpoint}/services", cancellationToken)
+            var responseMessage = await client
+                .GetAsync($"{_configuration.Router?.Endpoint}/services", cancellationToken)
                 .ConfigureAwait(false);
 
             responseMessage.EnsureSuccessStatusCode();
@@ -346,6 +355,12 @@ public sealed class MessageHandler : IAsyncDisposable
             _logger.LogError(ex, ex.Message);
             return new List<Service>();
         }
+    }
+
+    private class ConsumerSearchResult
+    {
+        public object? Consumer { get; init; }
+        public Type? MessageType { get; init; }
     }
 
     #endregion

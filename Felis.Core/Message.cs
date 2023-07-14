@@ -11,4 +11,4 @@ public record Header(Topic? Topic, List<Service>? Services)
     public long Timestamp => new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
 }
 
-public record Content(string? Json, string? Type);
+public record Content(string? Json);

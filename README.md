@@ -45,8 +45,7 @@ curl --location 'https://localhost:7103/dispatch' \
         "services": []
     },
     "content": {
-        "json": "{\"description\":\"Test\"}",
-        "type": "Felis.Client.Test.TestModel",
+        "json": "{\"description\":\"Test\"}"
     }
 }'
 ```
@@ -60,7 +59,6 @@ header.topic.value | string | the value content of the topic to dispatch. |
 header.services |  array<service> | array of service hosts to dispatch the message to a set of specific targets | 
 content | object | the message content. |
 content.json | string | Jsonized string of the message to dispatch. |
-content.type | string | the .NET type of the interface to use to deserialize the message to dispatch. It is used by the Consumer for deserialize.|
 
 ***Response***
 Status code | Type | Context |
@@ -86,8 +84,7 @@ curl --location 'https://localhost:7103/consume' \
             "services": []
         },
         "content": {
-            "json": "{\"description\":\"Test\"}",
-            "type": "Felis.Client.Test.TestModel",
+            "json": "{\"description\":\"Test\"}"
         }
     },
     "service": {
@@ -108,7 +105,6 @@ message.header.topic.value | string | the value content of the topic of the mess
 message.header.services | array<service> | array of service used to dispatch the message to a set of specific targets | 
 message.content | object | the message content. |
 message.content.json | string | Jsonized string of the message consumed. |
-message.content.type | string | the .NET type of the interface used to deserialize the message consumed. It is used by the Consumer for deserialize.|
 service | object | The service entity that represent the identity of the consumer. |
 service.name | string | The service entity name of the consumer. |
 service.host | string | The service entity host of the consumer. |
@@ -138,8 +134,7 @@ curl --location 'https://localhost:7103/error' \
             "services": []
         },
         "content": {
-            "json": "{\"description\":\"Test\"}",
-            "type": "Felis.Client.Test.TestModel",
+            "json": "{\"description\":\"Test\"}"
         }
     },
     "service": {
@@ -181,7 +176,6 @@ message.header.topic.value | string | the value content of the topic of the mess
 message.header.service | array<service> | array of service used to dispatch the message to a set of specific targets | 
 message.content | object | the message content. |
 message.content.json | string | Jsonized string of the message that throws an error. |
-message.content.type | string | the .NET type of the interface used to deserialize the message that throws an error. It is used by the Consumer for deserialize.|
 service | object | The service entity that represent the identity of the consumer. |
 service.name | string | The service entity name of the consumer. |
 service.host | string | The service entity host of the consumer. |

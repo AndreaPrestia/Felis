@@ -32,14 +32,6 @@ public class FelisRouterStorage : IFelisRouterStorage
 
     public bool MessageAdd(Message? message)
     {
-        if (_messages.Any(m =>
-                string.Equals(m?.Header?.Topic?.Value, message?.Header?.Topic?.Value,
-                    StringComparison.InvariantCultureIgnoreCase)
-                && m?.Header?.Timestamp == message?.Header?.Timestamp))
-        {
-            return false;
-        }
-
         _messages = new ConcurrentQueue<Message?>(_messages.Append(message));
 
         return true;

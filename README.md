@@ -369,6 +369,7 @@ There a lot of things to do.
 - Implement a mechanism of persistance storage of message in router, now are persisted in memory, it's not efficient.
 - Implement an authorization mechanism to use it in public networks.
 - Code cleanup and a lot of other things that now i don't remember.
+- Add unit testing.
 
   
 

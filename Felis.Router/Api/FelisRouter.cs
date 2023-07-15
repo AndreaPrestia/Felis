@@ -1,4 +1,5 @@
 ﻿using Felis.Core;
+using Felis.Core.Models;
 using Felis.Router.Interfaces;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -47,6 +48,16 @@ internal class FelisRouter : ApiRouter
 
                 return Results.Ok(result);
             }).WithName("ServiceList").Produces<OkResult>()
+            .Produces<BadRequestResult>(StatusCodes.Status400BadRequest)
+            .Produces<UnauthorizedResult>(StatusCodes.Status401Unauthorized)
+            .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
+        
+        app.MapDelete("/purge/{topic}", async ([FromServices] IFelisRouterService service, [FromQuery] string? topic) =>
+            {
+                var result = await service.Purge(new Topic(topic));
+
+                return !result ? Results.BadRequest("Failed operation") : Results.NoContent();
+            }).WithName("MessagePurge").Produces<NoContentResult>(StatusCodes.Status204NoContent)
             .Produces<BadRequestResult>(StatusCodes.Status400BadRequest)
             .Produces<UnauthorizedResult>(StatusCodes.Status401Unauthorized)
             .Produces<ForbidResult>(StatusCodes.Status403Forbidden);

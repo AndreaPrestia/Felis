@@ -325,7 +325,7 @@ public sealed class MessageHandler : IAsyncDisposable
             using var client = new HttpClient();
             var responseMessage = await client.PostAsJsonAsync($"{_configuration.Router?.Endpoint}/error",
                 new ErrorMessage(message,
-                    _currentService, exception),
+                    _currentService, exception, _configuration.RetryPolicy),
                 cancellationToken: cancellationToken);
 
             responseMessage.EnsureSuccessStatusCode();

@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Felis.Router.Services.Background;
 
-public class FelisStorageCleanService : BackgroundService
+internal class FelisStorageCleanService : BackgroundService
 {
     private readonly IFelisRouterStorage _felisRouterStorage;
     private readonly ILogger<FelisStorageCleanService> _logger;
@@ -23,7 +23,7 @@ public class FelisStorageCleanService : BackgroundService
     {
         try
         {
-            var minutesForClean = _configuration?.MessageConfiguration?.MinutesForEveryClean;
+            var minutesForClean = _configuration.MessageConfiguration?.MinutesForEveryClean;
 
             if (!minutesForClean.HasValue || minutesForClean <= 0)
             {
@@ -43,8 +43,8 @@ public class FelisStorageCleanService : BackgroundService
                     if (_configuration?.MessageConfiguration?.TimeToLiveMinutes is not > 0) continue;
                     
                     _logger.LogInformation(
-                        $"Purging messages with TTL {_configuration?.MessageConfiguration?.TimeToLiveMinutes}");
-                    var result = _felisRouterStorage.MessagePurge(_configuration?.MessageConfiguration?.TimeToLiveMinutes);
+                        $"Purging messages with TTL {_configuration.MessageConfiguration?.TimeToLiveMinutes}");
+                    var result = _felisRouterStorage.MessagePurge(_configuration.MessageConfiguration?.TimeToLiveMinutes);
 
                     if (!result)
                     {

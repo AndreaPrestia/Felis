@@ -4,4 +4,5 @@ public sealed class MessageConfiguration
 {
     public int TimeToLiveMinutes { get; set; }
     public int MinutesForEveryClean { get; set; }
+    public int MinutesForEveryRequeue { get; set; }
 }

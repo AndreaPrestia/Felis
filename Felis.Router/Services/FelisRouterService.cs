@@ -161,4 +161,27 @@ internal sealed class FelisRouterService : IFelisRouterService
             return Task.FromResult(new List<Service>());
         }
     }
+
+    public Task<bool> Purge(Topic? topic, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (topic == null)
+            {
+                throw new ArgumentNullException(nameof(topic));
+            }
+
+            if (string.IsNullOrWhiteSpace(topic.Value))
+            {
+                throw new ArgumentNullException(nameof(topic.Value));
+            }
+
+            return Task.FromResult(_storage.MessagePurge(topic));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, ex.Message);
+            return Task.FromResult(false);
+        }
+    }
 }

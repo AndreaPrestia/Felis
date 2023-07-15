@@ -12,7 +12,7 @@ public class FelisRouterStorage : IFelisRouterStorage
 {
     private ConcurrentQueue<Message?> _messages = new();
     private ConcurrentQueue<ConsumedMessage?> _consumedMessages = new();
-    private ConcurrentQueue<ErrorMessage?> _errorMessages = new();
+    private readonly ConcurrentDictionary<ErrorMessage, int> _errorMessages = new();
 
     public bool ConsumedMessageAdd(ConsumedMessage? consumedMessage)
     {
@@ -68,6 +68,11 @@ public class FelisRouterStorage : IFelisRouterStorage
             .ToList();
     }
 
+    public List<ErrorMessage> ListMessagesToRequeue()
+    {
+        return _errorMessages.Where(em => em.Key.RetryPolicy?.Attempts <= em.Value).Select(em => em.Key).ToList();
+    }
+
     public bool MessagePurge(Topic? topic)
     {
         _messages = new ConcurrentQueue<Message?>(_messages.Where(m =>
@@ -92,19 +97,19 @@ public class FelisRouterStorage : IFelisRouterStorage
         return true;
     }
 
-    public bool ErrorMessageAdd(ErrorMessage? message)
+    public bool ErrorMessageAdd(ErrorMessage message)
     {
-        _errorMessages = new ConcurrentQueue<ErrorMessage?>(_errorMessages.Append(message));
+        var hasValue = _errorMessages.TryGetValue(message, out int retries);
 
-        return true;
+        return hasValue ? _errorMessages.TryUpdate(message, retries + 1, retries) : _errorMessages.TryAdd(message, 1);
     }
 
-    public List<ErrorMessage?> ErrorMessageList(Topic? topic = null, long? start = null, long? end = null)
+    public List<ErrorMessage> ErrorMessageList(Topic? topic = null, long? start = null, long? end = null)
     {
-        return _errorMessages
+        return _errorMessages.Select(em => em.Key)
             .Where(em =>
-                (topic == null || string.Equals(em?.Message?.Header?.Topic?.Value, topic.Value,
+                (topic == null || string.Equals(em.Message?.Header?.Topic?.Value, topic.Value,
                     StringComparison.InvariantCultureIgnoreCase))
-                && ((start == null && end == null) || (em?.Timestamp >= start && em?.Timestamp <= end))).ToList();
+                && ((start == null && end == null) || (em.Timestamp >= start && em.Timestamp <= end))).ToList();
     }
 }

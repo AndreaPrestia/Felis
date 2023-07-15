@@ -15,14 +15,15 @@ We have two examples:
 
 **Felis.Router.Test**
 
-An AspNet minimal api application, containing the four endpoints exposed by Felis.
+An AspNet minimal api application, containing the five endpoints exposed by Felis.
 
-The four endpoints are:
+The five endpoints are:
 
 - dispatch
 - consume
 - error
 - services
+- purge
 
 These endpoints are documented in the page
 
@@ -217,6 +218,36 @@ name | string | The service entity name of the consumer. |
 host | string | The service entity host of the consumer. |
 isPublic | boolean | Says if the consumer is configured to be discovered by other services or not. |
 
+**Purge**
+
+This endpoints tells to the router to purge the queue for a specific Topic. It is irreversible.
+
+```
+curl --location --request DELETE 'https://localhost:7103/purge' \
+--header 'Content-Type: application/json' \
+--data '{
+    "topic": {
+        "value": "topic"
+    }
+}'
+```
+
+***Request***
+
+Property | Type | Context |
+--- | --- | --- |
+topic | object | value object containing the topic of the message queue to purge. |
+topic.value | string | the value content of the topic of the message queue to purge. |
+
+***Response***
+
+Status code | Type | Context |
+--- | --- | --- |
+204 | NoContentRequest | When everything goes well. |
+400 | BadRequestResult | When a validation or something not related to the authorization part fails. |
+401 | UnauthorizedResult | When an operation fails for missing authorization. |
+403 | ForbiddenResult | When an operation fails because not valid in the context. |
+
 **Configuration**
 
 Add this part in appsettings.json. 
@@ -225,7 +256,8 @@ Add this part in appsettings.json.
 "FelisRouter": {
     "MessageConfiguration": {
       "TimeToLiveMinutes": 5,
-      "MinutesForEveryClean": 2
+      "MinutesForEveryClean": 2,
+      "MinutesForEveryRequeue": 2
     },
     "StorageConfiguration": {
       "Strategy": "InMemory",
@@ -242,6 +274,7 @@ Property | Type | Context |
 MessageConfiguration | object | The configuration about the message part. |
 MessageConfiguration.TimeToLiveMinutes | int | The TTL for a message in the router queue. |
 MessageConfiguration.MinutesForEveryClean | int | Says every N minute that the queue cleaner has to run. |
+MessageConfiguration.MinutesForEveryRequeue | int | Says every N minute that the re-queue service has to run. |
 StorageConfiguration | object | The configuration about the storage part. |
 StorageConfiguration.TimeToLiveMinutes | string | The storage strategy to use. The available values are **InMemory** and **Persistent**. If empty or not provided the **InMemory** one will be used. |
 StorageConfiguration.Configurations | Dictionary<string,string> | Dictionary for storage configuration to use when **Persistent** strategy is choosen. |
@@ -273,6 +306,9 @@ Just add this part in appsettings.json.
       	"Name": "name",
       	"Host": "host",
       	"IsPublic": true
+     },
+     "RetryPolicy" : {
+	"Attempts": 5
      }
   }
 ```
@@ -286,7 +322,9 @@ Service | object | The service entity , representing the configuration as servic
 Service.Name | string | The service name. Paired with **host** gives the unique identity on the Felis router. |
 Service.Host | string | The service host. Paired with **name** gives the unique identity on the Felis router. |
 Service.IsPublic | boolean | Says, to the router , if this server istance can be reached and discovered by other services connected to Felis router. |
- 
+RetryPolicy | object | The object containing the retry policy for messages in the Felis client instance |
+RetryPolicy.Attempts | int | Says, to the router , till the max number of attempts have to resend that specific message with the retry policy configured in the Felis client. The attempts are logged in the Router. |
+
 **Program.cs**
 
 For ASP NET core application add:

@@ -309,6 +309,11 @@ Just add this part in appsettings.json.
      },
      "RetryPolicy" : {
 	"Attempts": 5
+     },
+     "Cache": {
+      "SlidingExpiration": 3600,
+      "AbsoluteExpiration": 3600,
+      "MaxSizeBytes": 3000
      }
   }
 ```
@@ -324,6 +329,10 @@ Service.Host | string | The service host. Paired with **name** gives the unique 
 Service.IsPublic | boolean | Says, to the router , if this server istance can be reached and discovered by other services connected to Felis router. |
 RetryPolicy | object | The object containing the retry policy for messages in the Felis client instance |
 RetryPolicy.Attempts | int | Says, to the router , till the max number of attempts have to resend that specific message with the retry policy configured in the Felis client. The attempts are logged in the Router. |
+Cache | object | The object containing the cache configuration part for Felis client, used to cache the consumers, to avoid the reflection part everytime. |
+Cache.SlidingExpiration | double | The SlidingExpiration for IMemoryCacheOptions used. |
+Cache.AbsoluteExpiration | double | The AbsoluteExpiration for IMemoryCacheOptions used.|
+Cache.MaxSizeBytes | long | The MaxSizeBytes that can reach the cache, used for IMemoryCacheOptions used. |
 
 **Program.cs**
 

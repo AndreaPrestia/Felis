@@ -4,6 +4,7 @@ using System.Text.Json;
 using Felis.Core;
 using Felis.Core.Models;
 using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -17,13 +18,16 @@ public sealed class MessageHandler : IAsyncDisposable
     private readonly IServiceProvider _serviceProvider;
     private readonly string _topic = "NewDispatchedMethod";
     private readonly Service _currentService;
+    private readonly IMemoryCache _cache;
+    private readonly MemoryCacheEntryOptions _cacheEntryOptions;
 
     public MessageHandler(HubConnection? hubConnection, ILogger<MessageHandler> logger,
-        FelisConfiguration configuration, IServiceProvider serviceProvider)
+        FelisConfiguration configuration, IServiceProvider serviceProvider, IMemoryCache cache)
     {
         _hubConnection = hubConnection ?? throw new ArgumentNullException(nameof(hubConnection));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+        _cache = cache ?? throw new ArgumentNullException(nameof(cache));
 
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
 
@@ -32,6 +36,17 @@ public sealed class MessageHandler : IAsyncDisposable
             throw new ArgumentNullException($"No Router:Endpoint configuration provided");
         }
 
+        if (_configuration.Cache == null)
+        {
+            throw new ArgumentNullException($"No Cache configuration provided");
+        }
+
+        _cacheEntryOptions = new MemoryCacheEntryOptions()
+            .SetSlidingExpiration(TimeSpan.FromSeconds(_configuration.Cache.SlidingExpiration))
+            .SetAbsoluteExpiration(TimeSpan.FromSeconds(_configuration.Cache.AbsoluteExpiration))
+            .SetSize(_configuration.Cache.MaxSizeBytes)
+            .SetPriority(CacheItemPriority.High);
+        
         _currentService = _configuration.Service ?? throw new ArgumentNullException(nameof(_configuration.Service));
     }
 
@@ -225,6 +240,13 @@ public sealed class MessageHandler : IAsyncDisposable
 
     private ConsumerSearchResult GetConsumer(string? topic)
     {
+        var consumerSearchResult = GetFromCache(topic);
+
+        if (consumerSearchResult != null)
+        {
+            return consumerSearchResult;
+        }
+        
         var constructed = AppDomain.CurrentDomain.GetAssemblies()
             .First(x => x.GetName().Name == AppDomain.CurrentDomain.FriendlyName).GetTypes().FirstOrDefault(t =>
                 t.BaseType?.FullName != null
@@ -275,11 +297,15 @@ public sealed class MessageHandler : IAsyncDisposable
             throw new ApplicationException($"Cannot create an instance of {constructed.Name}");
         }
 
-        return new ConsumerSearchResult()
+        consumerSearchResult = new ConsumerSearchResult()
         {
             MessageType = parameterType,
             Consumer = instance
         };
+        
+        SetInCache(topic, consumerSearchResult);
+        
+        return consumerSearchResult;
     }
 
     private MethodInfo? GetProcessMethod(object instance, Type? entityType)
@@ -355,6 +381,34 @@ public sealed class MessageHandler : IAsyncDisposable
             _logger.LogError(ex, ex.Message);
             return new List<Service>();
         }
+    }
+    
+    private void SetInCache(string? topic, ConsumerSearchResult value)
+    {
+        if (string.IsNullOrWhiteSpace(topic))
+        {
+            throw new ArgumentNullException(nameof(topic));
+        }
+
+        if (value == null)
+        {
+            throw new ArgumentNullException(nameof(value));
+        }
+
+        _cache.Remove(topic);
+        _cache.Set(topic, value, _cacheEntryOptions);
+    }
+
+    private ConsumerSearchResult? GetFromCache(string? topic)
+    {
+        if (string.IsNullOrWhiteSpace(topic))
+        {
+            throw new ArgumentNullException(nameof(topic));
+        }
+
+        var found = _cache.TryGetValue(topic, out ConsumerSearchResult? result);
+
+        return !found ? default : result;
     }
 
     private class ConsumerSearchResult

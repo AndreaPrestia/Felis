@@ -33,6 +33,8 @@ public static class Extensions
 				throw new ArgumentNullException($"No Router:Endpoint configuration provided");
 			}
 
+			serviceCollection.AddMemoryCache();
+			
 			serviceCollection.AddSignalR();
 			
 			serviceCollection.AddResponseCompression(opts =>
@@ -81,6 +83,7 @@ public static class Extensions
 			throw new ArgumentNullException($"No Router:Endpoint configuration provided");
 		}
 
+		builder.Services.AddMemoryCache();
 		builder.Services.AddSignalR();
 		builder.Services.AddResponseCompression(opts =>
 		{

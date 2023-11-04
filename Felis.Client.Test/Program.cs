@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.AddFelisClientWeb();
+builder.Host.AddFelisClient();
 
 var app = builder.Build();
 

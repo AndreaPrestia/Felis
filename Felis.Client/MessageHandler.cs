@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Felis.Client;
 
@@ -22,14 +23,14 @@ public sealed class MessageHandler : IAsyncDisposable
     private readonly MemoryCacheEntryOptions _cacheEntryOptions;
 
     public MessageHandler(HubConnection? hubConnection, ILogger<MessageHandler> logger,
-        FelisConfiguration configuration, IServiceProvider serviceProvider, IMemoryCache cache)
+        IOptionsMonitor<FelisConfiguration> configuration, IServiceProvider serviceProvider, IMemoryCache cache)
     {
         _hubConnection = hubConnection ?? throw new ArgumentNullException(nameof(hubConnection));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _cache = cache ?? throw new ArgumentNullException(nameof(cache));
 
-        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+        _configuration = configuration.CurrentValue ?? throw new ArgumentNullException(nameof(configuration));
 
         if (string.IsNullOrWhiteSpace(_configuration.Router?.Endpoint))
         {

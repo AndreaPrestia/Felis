@@ -8,83 +8,71 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
 
 namespace Felis.Router;
 
 public static class Extensions
 {
-    public static void AddFelisRouter(this WebApplicationBuilder builder)
+    public static void AddFelisRouter(this IHostBuilder builder)
     {
-        var configuration = GetFelisRouterConfiguration(builder);
-
-        builder.Services.Configure<JsonOptions>(options =>
+        builder.ConfigureServices((context, services) =>
         {
-            options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+            services.Configure<FelisRouterConfiguration>(context.Configuration.GetSection(
+                FelisRouterConfiguration.FelisRouter));
+
+            var configuration = context.Configuration.GetSection("FelisRouter").Get<FelisRouterConfiguration>() ?? throw new ApplicationException("FelisRouter configuration not provided");
+
+            if (configuration.MessageConfiguration == null)
+            {
+                throw new ApplicationException("FelisRouter:MessageConfiguration not provided");
+            }
+
+            if (configuration.StorageConfiguration == null)
+            {
+                throw new ApplicationException("FelisRouter:StorageConfiguration not provided");
+            }
+
+            services.Configure<JsonOptions>(options =>
+            {
+                options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+            });
+
+            services.AddSignalR();
+
+            AddServices(services, configuration);
+
+            AddSwagger(services);
         });
-
-        builder.Services.AddSignalR();
-
-        AddServices(builder, configuration);
-
-        AddSwagger(builder);
     }
 
-    private static FelisRouterConfiguration GetFelisRouterConfiguration(WebApplicationBuilder builder)
+    private static void AddServices(IServiceCollection serviceCollection, FelisRouterConfiguration? configuration)
     {
-        var configuration = builder.Configuration.GetSection("FelisRouter").Get<FelisRouterConfiguration>();
-
-        if (configuration == null)
-        {
-            throw new ApplicationException("FelisRouter configuration not provided");
-        }
-
-        if (configuration.MessageConfiguration == null)
-        {
-            throw new ApplicationException("FelisRouter:MessageConfiguration not provided");
-        }
-
-        if (configuration.StorageConfiguration == null)
-        {
-            throw new ApplicationException("FelisRouter:StorageConfiguration not provided");
-        }
-
-        return configuration;
-    }
-
-    private static void AddServices(WebApplicationBuilder builder, FelisRouterConfiguration? configuration)
-    {
-        builder.Services.AddSingleton(configuration!);
-
-        builder.Services.AddSingleton<IFelisConnectionManager, FelisConnectionManager>();
+        serviceCollection.AddSingleton<IFelisConnectionManager, FelisConnectionManager>();
 
         if (string.Equals(KnownStorageStrategies.Persistent, configuration?.StorageConfiguration?.Strategy))
         {
-            var concreteType = GetStorageSourceConcreteTypeNotInMemory();
+            var concreteType = GetStorageSourceConcreteTypeNotInMemory() ?? throw new ApplicationException(
+                $"No concrete type different than FelisRouterStorage implemented for StorageConfiguration:Strategy {KnownStorageStrategies.Persistent}.");
 
-            if (concreteType == null)
-            {
-                throw new ApplicationException(
-                    $"No concrete type different than FelisRouterStorage implemented for StorageConfiguration:Strategy {KnownStorageStrategies.Persistent}.");
-            }
-            
             //TODO review this terrible code!
-            builder.Services.AddSingleton<IFelisRouterStorage>((IFelisRouterStorage)concreteType);
+            serviceCollection.AddSingleton<IFelisRouterStorage>((IFelisRouterStorage)concreteType);
         }
         else
         {
-            builder.Services.AddSingleton<IFelisRouterStorage, FelisRouterStorage>();
+            serviceCollection.AddSingleton<IFelisRouterStorage, FelisRouterStorage>();
         }
 
-        builder.Services.AddSingleton<IFelisRouterService, FelisRouterService>();
-        builder.Services.AddSingleton<FelisRouterHub>();
+        serviceCollection.AddSingleton<IFelisRouterService, FelisRouterService>();
+        serviceCollection.AddSingleton<FelisRouterHub>();
     }
 
-    private static void AddSwagger(WebApplicationBuilder builder)
+    private static void AddSwagger(IServiceCollection serviceCollection)
     {
-        builder.Services.AddEndpointsApiExplorer();
+        serviceCollection.AddEndpointsApiExplorer();
 
-        builder.Services.AddSwaggerGen(c =>
+        serviceCollection.AddSwaggerGen(c =>
         {
             c.SwaggerDoc("v1", new OpenApiInfo
             {
@@ -117,8 +105,7 @@ public static class Extensions
     {
         AppDomain.CurrentDomain.GetAssemblies().First(x => x.GetName().Name == "Felis.Router")
             .GetTypes().Where(t =>
-                t.IsSubclassOf(typeof(ApiRouter)) && !t.IsInterface
-                                                  && !t.IsAbstract && !t.IsInterface).ToList().ForEach(t =>
+                t.IsSubclassOf(typeof(ApiRouter)) && t is { IsInterface: false and false, IsAbstract: false }).ToList().ForEach(t =>
             {
                 var instance = (ApiRouter)Activator.CreateInstance(t)!;
 
@@ -135,7 +122,6 @@ public static class Extensions
     {
        return AppDomain.CurrentDomain.GetAssemblies().First(x => x.GetName().Name == AppDomain.CurrentDomain.FriendlyName)
             .GetTypes().FirstOrDefault(t =>
-                t.IsSubclassOf(typeof(IFelisRouterStorage)) && !t.IsInterface
-                                                            && !t.IsAbstract && t != typeof(FelisRouterStorage));
+                t.IsSubclassOf(typeof(IFelisRouterStorage)) && t is { IsInterface: false, IsAbstract: false } && t != typeof(FelisRouterStorage));
     }
 }

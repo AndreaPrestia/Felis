@@ -2,6 +2,7 @@
 using Felis.Router.Interfaces;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Felis.Router.Services.Background;
 
@@ -12,11 +13,11 @@ internal class FelisStorageCleanService : BackgroundService
     private readonly FelisRouterConfiguration _configuration;
 
     public FelisStorageCleanService(IFelisRouterStorage felisRouterStorage, ILogger<FelisStorageCleanService> logger,
-        FelisRouterConfiguration configuration)
+        IOptionsMonitor<FelisRouterConfiguration> configuration)
     {
         _felisRouterStorage = felisRouterStorage ?? throw new ArgumentNullException(nameof(felisRouterStorage));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+        _configuration = configuration.CurrentValue ?? throw new ArgumentNullException(nameof(configuration));
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)

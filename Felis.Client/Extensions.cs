@@ -16,19 +16,14 @@ public static class Extensions
 {
 	public static void AddFelisClient(this IHostBuilder builder)
 	{
-		builder.ConfigureServices(serviceCollection =>
-		{
-			var aspNetCoreEnvironment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+        builder.ConfigureServices((context, serviceCollection) =>
+        {
+            serviceCollection.Configure<FelisConfiguration>(context.Configuration.GetSection(
+                FelisConfiguration.FelisClient));
 
-			var configurationBuilder = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory())
-				.AddJsonFile(string.IsNullOrEmpty(aspNetCoreEnvironment)
-					? "appsettings.json"
-					: $"appsettings.{aspNetCoreEnvironment}.json");
-			var config = configurationBuilder.Build();
+			var configuration = context.Configuration.GetSection(FelisConfiguration.FelisClient).Get<FelisConfiguration>();
 
-			var configuration = config.GetSection("FelisClient").Get<FelisConfiguration>();
-
-			if (string.IsNullOrWhiteSpace(configuration?.Router?.Endpoint))
+            if (string.IsNullOrWhiteSpace(configuration?.Router?.Endpoint))
 			{
 				throw new ArgumentNullException($"No Router:Endpoint configuration provided");
 			}
@@ -64,52 +59,5 @@ public static class Extensions
 
 			messageHandler?.Subscribe().Wait();
 		});
-	}
-	
-	public static void AddFelisClientWeb(this WebApplicationBuilder builder)
-	{
-		var aspNetCoreEnvironment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-
-		var configurationBuilder = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory())
-			.AddJsonFile(string.IsNullOrEmpty(aspNetCoreEnvironment)
-				? "appsettings.json"
-				: $"appsettings.{aspNetCoreEnvironment}.json");
-		var config = configurationBuilder.Build();
-
-		var configuration = config.GetSection("FelisClient").Get<FelisConfiguration>();
-
-		if (string.IsNullOrWhiteSpace(configuration?.Router?.Endpoint))
-		{
-			throw new ArgumentNullException($"No Router:Endpoint configuration provided");
-		}
-
-		builder.Services.AddMemoryCache();
-		builder.Services.AddSignalR();
-		builder.Services.AddResponseCompression(opts =>
-		{
-			opts.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(
-				  new[] { "application/octet-stream" });
-		});
-
-		builder.Services.AddSingleton(configuration);
-
-		var hubConnectionBuilder = new HubConnectionBuilder();
-
-		hubConnectionBuilder.Services.AddSingleton<IConnectionFactory>(
-			new HttpConnectionFactory(Options.Create(new HttpConnectionOptions()), NullLoggerFactory.Instance));
-
-		builder.Services.AddSingleton(hubConnectionBuilder
-			.WithUrl($"{configuration.Router?.Endpoint}/felis/router",
-				options => { options.Transports = HttpTransportType.WebSockets; })
-			.WithAutomaticReconnect()
-			.Build());
-
-		builder.Services.AddSingleton<MessageHandler>();
-
-		var serviceProvider = builder.Services.BuildServiceProvider();
-
-		var messageHandler = serviceProvider.GetService<MessageHandler>();
-
-		messageHandler?.Subscribe().Wait();
 	}
 }

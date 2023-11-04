@@ -2,6 +2,7 @@
 using Felis.Router.Interfaces;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Felis.Router.Services.Background;
 
@@ -12,11 +13,11 @@ internal class FelisStorageRequeueService : BackgroundService
     private readonly FelisRouterConfiguration _configuration;
     private readonly IFelisRouterService _felisRouterService;
 
-    public FelisStorageRequeueService(IFelisRouterStorage felisRouterStorage, ILogger<FelisStorageRequeueService> logger, FelisRouterConfiguration configuration, IFelisRouterService felisRouterService)
+    public FelisStorageRequeueService(IFelisRouterStorage felisRouterStorage, ILogger<FelisStorageRequeueService> logger, IOptionsMonitor<FelisRouterConfiguration> configuration, IFelisRouterService felisRouterService)
     {
         _felisRouterStorage = felisRouterStorage ?? throw new ArgumentNullException(nameof(felisRouterStorage));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+        _configuration = configuration.CurrentValue ?? throw new ArgumentNullException(nameof(configuration));
         _felisRouterService = felisRouterService ?? throw new ArgumentNullException(nameof(felisRouterService));
     }
 

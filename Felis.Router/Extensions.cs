@@ -22,7 +22,7 @@ public static class Extensions
             services.Configure<FelisRouterConfiguration>(context.Configuration.GetSection(
                 FelisRouterConfiguration.FelisRouter));
 
-            var configuration = context.Configuration.GetSection("FelisRouter").Get<FelisRouterConfiguration>() ?? throw new ApplicationException("FelisRouter configuration not provided");
+            var configuration = context.Configuration.GetSection(FelisRouterConfiguration.FelisRouter).Get<FelisRouterConfiguration>() ?? throw new ApplicationException($"{FelisRouterConfiguration.FelisRouter} configuration not provided");
 
             if (configuration.MessageConfiguration == null)
             {

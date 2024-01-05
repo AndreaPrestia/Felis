@@ -170,29 +170,28 @@ curl --location 'https://localhost:7103/error' \
 Property | Type | Context |
 --- | --- | --- |
 message | object | The message entity used by Felis system. |
-message.header | object | the message header, containing the metadata of the message |
+message.header | object | the message header, containing the metadata of the message. |
 message.header.topic | object | value object containing the topic of the message that throws an error. |
-message.header.topic.value | string | the value content of the topic of the message that throws an error. |
-message.header.service | array<service> | array of service used to dispatch the message to a set of specific targets | 
+message.header.topic.value | string | the actual value of the topic of the message that throws an error. |
 message.content | object | the message content. |
-message.content.json | string | Jsonized string of the message that throws an error. |
-service | object | The service entity that represent the identity of the consumer. |
-service.name | string | The service entity name of the consumer. |
-service.host | string | The service entity host of the consumer. |
-service.isPublic | boolean | Says if the consumer is configured to be discovered by other services or not. |
-exception | object | The .NET exception object that contains the error occurred. |
+message.content.json | string | Json string of the message that throws an error. |
+service | object | The service entity that represents the client identity. |
+service.name | string | The name property of the client. |
+service.host | string | The host property of the client. |
+service.isPublic | boolean | This property states whether the client is configured to be discovered by other clients or not. |
+exception | object | The .NET exception object that contains the occurred error. |
 
 ***Response***
 Status code | Type | Context |
 --- | --- | --- |
-201 | CreatedResult object | When everything goes well. |
-400 | BadRequestResult | When a validation or something not related to the authorization part fails. |
-401 | UnauthorizedResult | When an operation fails for missing authorization. |
-403 | ForbiddenResult | When an operation fails because not valid in the context. |
+201 | CreatedResult object | When the request is successfully processed. |
+400 | BadRequestResult | When a validation or something not related to the authorization process fails. |
+401 | UnauthorizedResult | When an operation fails due to missing authorization. |
+403 | ForbiddenResult | When an operation fails because it is not allowed in the context. |
 
 **Services**
 
-This endpoint says which services are connected to Felis. It exposes only the services that are configured with the property **IsPublic** to **true**. So these services are discoverable.
+This endpoint provides a list of the clients connected to Felis. It exposes only the clients that are configured with the property **IsPublic** to **true**, which makes the clients discoverable.
 
 ```
 curl --location 'https://localhost:7103/services'
@@ -209,17 +208,17 @@ curl --location 'https://localhost:7103/services'
     }
 ]
 ```
-This endpoints returns an array of service entities.
+This endpoint returns an array of clients.
 
 Property | Type | Context |
 --- | --- | --- |
-name | string | The service entity name of the consumer. |
-host | string | The service entity host of the consumer. |
-isPublic | boolean | Says if the consumer is configured to be discovered by other services or not. |
+name | string | The name property of the client. |
+host | string | The host property of the client. |
+isPublic | boolean | This property states whether the client is configured to be discovered by other clients or not. |
 
 **Purge**
 
-This endpoints tells to the router to purge the queue for a specific Topic. It is irreversible.
+This endpoint tells the router to purge the queue for a specific topic. It is irreversible.
 
 ```
 curl --location --request DELETE 'https://localhost:7103/purge' \
@@ -236,20 +235,20 @@ curl --location --request DELETE 'https://localhost:7103/purge' \
 Property | Type | Context |
 --- | --- | --- |
 topic | object | value object containing the topic of the message queue to purge. |
-topic.value | string | the value content of the topic of the message queue to purge. |
+topic.value | string | the actual value of the topic of the message queue to purge. |
 
 ***Response***
 
 Status code | Type | Context |
 --- | --- | --- |
-204 | NoContentRequest | When everything goes well. |
-400 | BadRequestResult | When a validation or something not related to the authorization part fails. |
-401 | UnauthorizedResult | When an operation fails for missing authorization. |
-403 | ForbiddenResult | When an operation fails because not valid in the context. |
+204 | NoContentRequest | When the request is successfully processed. |
+400 | BadRequestResult | When a validation or something not related to the authorization process fails. |
+401 | UnauthorizedResult | When an operation fails due to missing authorization. |
+403 | ForbiddenResult | When an operation fails because it is not allowed in the context. |
 
 **Configuration**
 
-Add this part in appsettings.json. 
+Add this section to appsettings.json. 
 
 ```
 "FelisRouter": {
@@ -266,37 +265,36 @@ Add this part in appsettings.json.
     }
   }
 ```
-The configuration is composed of:
+The configuration is made of:
 
 Property | Type | Context |
 --- | --- | --- |
-MessageConfiguration | object | The configuration about the message part. |
+MessageConfiguration | object | The message configuration. |
 MessageConfiguration.TimeToLiveMinutes | int | The TTL for a message in the router queue. |
-MessageConfiguration.MinutesForEveryClean | int | Says every N minute that the queue cleaner has to run. |
-MessageConfiguration.MinutesForEveryRequeue | int | Says every N minute that the re-queue service has to run. |
-StorageConfiguration | object | The configuration about the storage part. |
-StorageConfiguration.TimeToLiveMinutes | string | The storage strategy to use. The available values are **InMemory** and **Persistent**. If empty or not provided the **InMemory** one will be used. |
-StorageConfiguration.Configurations | Dictionary<string,string> | Dictionary for storage configuration to use when **Persistent** strategy is choosen. |
+MessageConfiguration.MinutesForEveryClean | int | It makes the queue cleaner run every N minutes. |
+MessageConfiguration.MinutesForEveryRequeue | int | It makes the re-queue service run every N minutes. |
+StorageConfiguration | object | The storage configuration. |
+StorageConfiguration.TimeToLiveMinutes | string | The storage strategy. The available values are **InMemory** and **Persistent**. If the field is left empty or not provided, **InMemory** will be used by default. |
+StorageConfiguration.Configurations | Dictionary<string,string> | Dictionary for storage configuration, to be used upon choosing **Persistent**. |
 
 **Program.cs**
 
-Add this two lines:
+Add these two lines of code:
 
 ```
-builder.AddFelisRouter(); => this adds the FelisRouter with related implementation for services and dispatchers
-app.UseFelisRouter(); => this uses the implementations
+builder.AddFelisRouter(); => this line adds the FelisRouter with its related implementation for clients and dispatchers
+app.UseFelisRouter(); => this line uses the implementations and endpoints
 ```
 
 **Felis.Client.Test**
 
-For sake of simplicity i have implemented an AspNet minimal api application, that exposes a publish endpoint, to facilitate the tests.
-This can be used as whatever C# application you want.
+To ease the testing process, I have implemented an ASP-NET minimal API application that exposes a publish endpoint.
 
-It implements a class , called TestConsumer that implements the Consume<T> abstract class. It contains the Process(T entity) method implemented. It is only implemented to see how it intercepts messages.
+This application contains a class, called TestConsumer, that implements the Consume<T> abstract class. It contains the Process(T entity) method implemented. It only shows how messages are intercepted.
 
 **Configuration**
 
-Just add this part in appsettings.json. 
+Just add this section to appsettings.json. 
 
 ```
  "FelisClient": {
@@ -316,12 +314,12 @@ Just add this part in appsettings.json.
      }
   }
 ```
-The configuration is composed of:
+The configuration is made of:
 
 Property | Type | Context |
 --- | --- | --- |
 Router | object | The router configuration object. |
-Router.Endpoint | string | The endpoint where the client must subscribe. It's the router. |
+Router.Endpoint | string | The FelisRouter endpoint that the client must subscribe. |
 Service | object | The service entity , representing the configuration as service of the Felis client. |
 Service.Name | string | The service name. Paired with **host** gives the unique identity on the Felis router. |
 Service.Host | string | The service host. Paired with **name** gives the unique identity on the Felis router. |

@@ -108,7 +108,7 @@ message.content.json | string | Json string of the consumed message. |
 service | object | The service entity that represents the client identity. |
 service.name | string | The name property of the client. |
 service.host | string | The host property of the client. |
-service.isPublic | boolean | This property states whether the client is configured to be discovered by other clients or not. |
+service.isPublic | boolean | This property tells the router whether the client is configured to be discovered by other clients or not. |
 
 ***Response***
 Status code | Type | Context |
@@ -178,7 +178,7 @@ message.content.json | string | Json string of the message that throws an error.
 service | object | The service entity that represents the client identity. |
 service.name | string | The name property of the client. |
 service.host | string | The host property of the client. |
-service.isPublic | boolean | This property states whether the client is configured to be discovered by other clients or not. |
+service.isPublic | boolean | This property tells the router whether the client is configured to be discovered by other clients or not. |
 exception | object | The .NET exception object that contains the occurred error. |
 
 ***Response***
@@ -214,7 +214,7 @@ Property | Type | Context |
 --- | --- | --- |
 name | string | The name property of the client. |
 host | string | The host property of the client. |
-isPublic | boolean | This property states whether the client is configured to be discovered by other clients or not. |
+isPublic | boolean | This property tells the router whether the client is configured to be discovered by other clients or not. |
 
 **Purge**
 
@@ -320,32 +320,32 @@ Property | Type | Context |
 --- | --- | --- |
 Router | object | The router configuration object. |
 Router.Endpoint | string | The FelisRouter endpoint that the client must subscribe. |
-Service | object | The service entity , representing the configuration as service of the Felis client. |
-Service.Name | string | The service name. Paired with **host** gives the unique identity on the Felis router. |
-Service.Host | string | The service host. Paired with **name** gives the unique identity on the Felis router. |
-Service.IsPublic | boolean | Says, to the router , if this server istance can be reached and discovered by other services connected to Felis router. |
-RetryPolicy | object | The object containing the retry policy for messages in the Felis client instance |
-RetryPolicy.Attempts | int | Says, to the router , till the max number of attempts have to resend that specific message with the retry policy configured in the Felis client. The attempts are logged in the Router. |
-Cache | object | The object containing the cache configuration part for Felis client, used to cache the consumers, to avoid the reflection part everytime. |
-Cache.SlidingExpiration | double | The SlidingExpiration for IMemoryCacheOptions used. |
-Cache.AbsoluteExpiration | double | The AbsoluteExpiration for IMemoryCacheOptions used.|
-Cache.MaxSizeBytes | long | The MaxSizeBytes that can reach the cache, used for IMemoryCacheOptions used. |
+Service | object | The client configuration. |
+Service.Name | string | The client name. Paired with **host**, it provides its unique identity to FelisRouter. |
+Service.Host | string | The client host. Paired with **name**, it provides its unique identity to FelisRouter. |
+Service.IsPublic | boolean | This property tells the router whether the client is configured to be discovered by other clients or not. |
+RetryPolicy | object | The retry policy configuration. |
+RetryPolicy.Attempts | int | It tells the router the maximum number of attempts that should be made to resend a message in the error queue, according to the configured retry policy. All the attempts are logged in the router. |
+Cache | object | The cache configuration. The cache applies to all the client consumers. |
+Cache.SlidingExpiration | double | The SlidingExpiration for IMemoryCacheOptions. |
+Cache.AbsoluteExpiration | double | The AbsoluteExpiration for IMemoryCacheOptions.|
+Cache.MaxSizeBytes | long | The MaxSizeBytes that can reach the cache, used for IMemoryCacheOptions. |
 
 **Program.cs**
 
-For ASP NET core application add:
+For the ASP-NET core applications, add:
 ```
 builder.AddFelisClientWeb();
 ```
-For all the others .NET application add:
+For all the other .NET applications, add:
 ```
 builder.AddFelisClient();
 ```
 
-**How to use a consumer?**
+**How do I use a consumer?**
 
-It's very simple, just create a class that implements the Consume<T> abstract one.
-Here an example in GitHub:
+It is very simple. Just create a class that implements the Consume<T> abstract one.
+See an example from GitHub here below:
 
 ```
 using Felis.Client.Test.Models;
@@ -366,16 +366,14 @@ namespace Felis.Client.Test
 
 **Conclusion**
 
-This is an experiment , it doesn't have the claim to be something like a game changer :D 
-
-There a lot of things to do.
+Though there is room for further improvement, the project is fit for becoming a sound and usable product in a short time. I hope that my work can inspire similar projects or help someone else.
 
 **TODO**
 
-- Implement a mechanism of persistance storage of message in router, now are persisted in memory, it's not efficient.
-- Implement an authorization mechanism to use it in public networks.
-- Code cleanup and a lot of other things that now i don't remember.
-- Add unit testing.
+- Implement an authorization mechanism to make Felis available in public networks.
+- Code refactoring.
+- Unit testing.
+- Stress testing.
 
   
 

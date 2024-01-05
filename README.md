@@ -1,21 +1,21 @@
 # Felis
-An experiment used to bring a message broker totally written in .NET , based on SignalR.
+A message broker totally written in .NET, based on SignalR.
 
 The Felis project is composed of two parts:
 
-- **Router**, containing the logic to dispatch , store and validate messages.
-- **Client**, containing the logic of the client, that will consume a message by topic , using a specific entity contract.
+- **Router**, containing the logic for dispatching, storing and validating messages.
+- **Client**, containing the logic of the client, that will consume a message by topic, using a specific entity contract.
 
-**How can i use it?**
+**How can I use it?**
 
-We have two examples:
+This repository provides two examples of usage:
 
 - **Felis.Client.Test**
 - **Felis.Router.Test**
 
 **Felis.Router.Test**
 
-An AspNet minimal api application, containing the five endpoints exposed by Felis.
+An ASP-NET minimal API application, containing the five endpoints exposed by Felis.
 
 The five endpoints are:
 
@@ -25,7 +25,7 @@ The five endpoints are:
 - services
 - purge
 
-These endpoints are documented in the page
+These endpoints are documented in the following page:
 
 ```
 https://localhost:7103/swagger/index.html
@@ -33,7 +33,7 @@ https://localhost:7103/swagger/index.html
 
 **Dispatch**
 
-This endpoint is used to dispatch a message, on a topic , to every listener connected to Felis, with whatever contract in the payload.
+This endpoint is used to dispatch a message with whatever contract in the payload, by topic, to every listener connected to Felis.
 
 ```
 curl --location 'https://localhost:7103/dispatch' \
@@ -54,24 +54,24 @@ curl --location 'https://localhost:7103/dispatch' \
 ***Request***
 Property | Type | Context |
 --- | --- | --- |
-header | object | the message header, containing the metadata of the message |
+header | object | the message header, containing the metadata of the message. |
 header.topic | object | value object containing the topic of the message to dispatch. |
-header.topic.value | string | the value content of the topic to dispatch. |
-header.services |  array<service> | array of service hosts to dispatch the message to a set of specific targets | 
+header.topic.value | string | the actual content of the topic of the message to dispatch. |
+header.services |  array<service> | array of specific clients that should receive the message. | 
 content | object | the message content. |
-content.json | string | Jsonized string of the message to dispatch. |
+content.json | string | Json string of the message to dispatch. |
 
 ***Response***
 Status code | Type | Context |
 --- | --- | --- |
-201 | CreatedResult object | When everything goes well. |
-400 | BadRequestResult | When a validation or something not related to the authorization part fails. |
-401 | UnauthorizedResult | When an operation fails for missing authorization. |
-403 | ForbiddenResult | When an operation fails because not valid in the context. |
+201 | CreatedResult object | When the request is successfully processed. |
+400 | BadRequestResult | When a validation or something not related to the authorization process fails. |
+401 | UnauthorizedResult | When an operation fails due to missing authorization. |
+403 | ForbiddenResult | When an operation fails because it is not allowed in the context. |
 
 **Consume**
 
-This endpoint says to Felis that a service has consumed a message. It is used to keep track of the operations.
+This endpoint informs Felis when a client successfully consumes a message. It is used to keep track of the operations (ACK).
 
 ```
 curl --location 'https://localhost:7103/consume' \
@@ -100,28 +100,27 @@ curl --location 'https://localhost:7103/consume' \
 Property | Type | Context |
 --- | --- | --- |
 message | object | The message entity used by Felis system. |
-message.header | object | the message header, containing the metadata of the message |
-message.header.topic | object | value object containing the topic of the message consumed. |
-message.header.topic.value | string | the value content of the topic of the message consumed. |
-message.header.services | array<service> | array of service used to dispatch the message to a set of specific targets | 
+message.header | object | the message header, containing the metadata of the message. |
+message.header.topic | object | value object containing the topic of the consumed message. |
+message.header.topic.value | string | the actual value of the topic of the consumed message. |
 message.content | object | the message content. |
-message.content.json | string | Jsonized string of the message consumed. |
-service | object | The service entity that represent the identity of the consumer. |
-service.name | string | The service entity name of the consumer. |
-service.host | string | The service entity host of the consumer. |
-service.isPublic | boolean | Says if the consumer is configured to be discovered by other services or not. |
+message.content.json | string | Json string of the consumed message. |
+service | object | The service entity that represents the client identity. |
+service.name | string | The name property of the client. |
+service.host | string | The host property of the client. |
+service.isPublic | boolean | This property states whether the client is configured to be discovered by other clients or not. |
 
 ***Response***
 Status code | Type | Context |
 --- | --- | --- |
-201 | CreatedResult object | When everything goes well. |
-400 | BadRequestResult | When a validation or something not related to the authorization part fails. |
-401 | UnauthorizedResult | When an operation fails for missing authorization. |
-403 | ForbiddenResult | When an operation fails because not valid in the context. |
+201 | CreatedResult object | When the request is successfully processed. |
+400 | BadRequestResult | When a validation or something not related to the authorization process fails. |
+401 | UnauthorizedResult | When an operation fails due to missing authorization. |
+403 | ForbiddenResult | When an operation fails because it is not allowed in the context. |
 
 **Error**
 
-This endpoint says to Felis that a Consumer has encontered and error consuming a message. It is used to keep track of the operations.
+This endpoint informs Felis when a client encounters errors while consuming a message. It is used to keep track of the operations (ACK).
 
 ```
 curl --location 'https://localhost:7103/error' \

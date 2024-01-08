@@ -374,6 +374,7 @@ Though there is room for further improvement, the project is fit for becoming a 
 - Code refactoring.
 - Unit testing.
 - Stress testing.
+- Clusterization design.
 
   
 

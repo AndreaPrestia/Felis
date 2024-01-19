@@ -16,4 +16,6 @@ internal interface IFelisRouterService
 
     Task<List<Service>> GetConnectedServices(CancellationToken cancellationToken = default);
     Task<bool> Purge(Topic? topic, CancellationToken cancellationToken = default);
+    
+    Task<List<Service>> Consumers(Topic? topic, CancellationToken cancellationToken = default);
 }

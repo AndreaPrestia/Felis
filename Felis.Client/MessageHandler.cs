@@ -220,6 +220,8 @@ public sealed class MessageHandler : IAsyncDisposable
                 await _hubConnection?.StartAsync(cancellationToken)!;
             }
 
+            _currentService.Topics = GetTopicsFromCurrentInstance();
+            
             await _hubConnection?.InvokeAsync("SetConnectionId", _currentService, cancellationToken)!;
         }
         catch (Exception ex)
@@ -410,6 +412,21 @@ public sealed class MessageHandler : IAsyncDisposable
         var found = _cache.TryGetValue(topic, out ConsumerSearchResult? result);
 
         return !found ? default : result;
+    }
+    
+     private List<Topic> GetTopicsFromCurrentInstance()
+    {
+        var topics = AppDomain.CurrentDomain.GetAssemblies()
+            .First(x => x.GetName().Name == AppDomain.CurrentDomain.FriendlyName).GetTypes().Where(t =>
+                t.BaseType?.FullName != null
+                && t.BaseType.FullName.Contains("Felis.Client.Consume") && t is { IsInterface: false, IsAbstract: false }).SelectMany(t => t.GetCustomAttributes<TopicAttribute>().Select(x => new Topic(x.Value))).ToList();
+
+        if (topics == null)
+        {
+            throw new InvalidOperationException("Not found implementation of Consumer for any topic");
+        }
+
+        return topics;
     }
 
     private class ConsumerSearchResult

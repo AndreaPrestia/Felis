@@ -15,15 +15,16 @@ This repository provides two examples of usage:
 
 **Felis.Router.Test**
 
-An ASP-NET minimal API application, containing the five endpoints exposed by Felis.
+An ASP-NET minimal API application, containing the six endpoints exposed by Felis.
 
-The five endpoints are:
+The six endpoints are:
 
 - dispatch
 - consume
 - error
 - services
 - purge
+- consumers
 
 These endpoints are documented in the following page:
 
@@ -91,7 +92,8 @@ curl --location 'https://localhost:7103/consume' \
     "service": {
         "name": "string",
         "host": "string",
-        "isPublic": true
+        "isPublic": true,
+	"topics": []
     },
 }'
 ```
@@ -109,6 +111,7 @@ service | object | The service entity that represents the client identity. |
 service.name | string | The name property of the client. |
 service.host | string | The host property of the client. |
 service.isPublic | boolean | This property tells the router whether the client is configured to be discovered by other clients or not. |
+service.topics | array<Topic> | This property contains the array of topics subscribed by a client. |
 
 ***Response***
 Status code | Type | Context |
@@ -140,7 +143,8 @@ curl --location 'https://localhost:7103/error' \
     "service": {
         "name": "string",
         "host": "string",
-        "isPublic": true
+        "isPublic": true,
+	"topics": []
     },
     "exception": {
         "targetSite": {
@@ -179,6 +183,7 @@ service | object | The service entity that represents the client identity. |
 service.name | string | The name property of the client. |
 service.host | string | The host property of the client. |
 service.isPublic | boolean | This property tells the router whether the client is configured to be discovered by other clients or not. |
+service.topics | array<Topic> | This property contains the array of topics subscribed by a client. |
 exception | object | The .NET exception object that contains the occurred error. |
 
 ***Response***
@@ -201,11 +206,16 @@ curl --location 'https://localhost:7103/services'
 
 ```
 [
-    {
-        "name": "name",
-        "host": "host",
-        "isPublic": true
-    }
+   {
+      "name":"name",
+      "host":"host",
+      "isPublic":true,
+      "topics":[
+         {
+            "value":"topic"
+         }
+      ]
+   }
 ]
 ```
 This endpoint returns an array of clients.
@@ -215,6 +225,7 @@ Property | Type | Context |
 name | string | The name property of the client. |
 host | string | The host property of the client. |
 isPublic | boolean | This property tells the router whether the client is configured to be discovered by other clients or not. |
+topics | array<Topic> | This property contains the array of topics subscribed by a client. |
 
 **Purge**
 
@@ -245,6 +256,39 @@ Status code | Type | Context |
 400 | BadRequestResult | When a validation or something not related to the authorization process fails. |
 401 | UnauthorizedResult | When an operation fails due to missing authorization. |
 403 | ForbiddenResult | When an operation fails because it is not allowed in the context. |
+
+**Consumers**
+
+This endpoint provides a list of the clients connected to Felis that consume a specific topic. It exposes only the clients that are configured with the property **IsPublic** to **true**, which makes the clients discoverable.
+
+```
+curl --location 'https://localhost:7103/services'
+```
+
+***Response***
+
+```
+[
+   {
+      "name":"name",
+      "host":"host",
+      "isPublic":true,
+      "topics":[
+         {
+            "value":"topic"
+         }
+      ]
+   }
+]
+```
+This endpoint returns an array of clients.
+
+Property | Type | Context |
+--- | --- | --- |
+name | string | The name property of the client. |
+host | string | The host property of the client. |
+isPublic | boolean | This property tells the router whether the client is configured to be discovered by other clients or not. |
+topics | array<Topic> | This property contains the array of topics subscribed by a client. |
 
 **Configuration**
 

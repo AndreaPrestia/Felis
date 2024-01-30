@@ -28,8 +28,6 @@ public static class Extensions
 				throw new ArgumentNullException($"No Router:Endpoint configuration provided");
 			}
 
-			serviceCollection.AddMemoryCache();
-			
 			serviceCollection.AddSignalR();
 			
 			serviceCollection.AddResponseCompression(opts =>
@@ -53,6 +51,7 @@ public static class Extensions
 
 			serviceCollection.RegisterConsumers();
 
+			serviceCollection.AddSingleton<ConsumerResolver>();
 			serviceCollection.AddSingleton<MessageHandler>();
 
 			serviceCollection.AddHttpClient<MessageHandler>("felisClient", (_, client) =>
@@ -68,7 +67,7 @@ public static class Extensions
 
 			var messageHandler = serviceProvider.GetService<MessageHandler>();
 
-			messageHandler?.Subscribe().Wait();
+			messageHandler?.SubscribeAsync().Wait();
 		});
 	}
 	

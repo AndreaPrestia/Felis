@@ -300,12 +300,6 @@ Add this section to appsettings.json.
       "TimeToLiveMinutes": 5,
       "MinutesForEveryClean": 2,
       "MinutesForEveryRequeue": 2
-    },
-    "StorageConfiguration": {
-      "Strategy": "InMemory",
-      "Configurations": {
-        "abc": "def"
-      }
     }
   }
 ```
@@ -317,9 +311,6 @@ MessageConfiguration | object | The message configuration. |
 MessageConfiguration.TimeToLiveMinutes | int | The TTL for a message in the router queue. |
 MessageConfiguration.MinutesForEveryClean | int | It makes the queue cleaner run every N minutes. |
 MessageConfiguration.MinutesForEveryRequeue | int | It makes the re-queue service run every N minutes. |
-StorageConfiguration | object | The storage configuration. |
-StorageConfiguration.TimeToLiveMinutes | string | The storage strategy. The available values are **InMemory** and **Persistent**. If the field is left empty or not provided, **InMemory** will be used by default. |
-StorageConfiguration.Configurations | Dictionary<string,string> | Dictionary for storage configuration, to be used upon choosing **Persistent**. |
 
 **Program.cs**
 
@@ -350,11 +341,6 @@ Just add this section to appsettings.json.
      },
      "RetryPolicy" : {
 	"Attempts": 5
-     },
-     "Cache": {
-      "SlidingExpiration": 3600,
-      "AbsoluteExpiration": 3600,
-      "MaxSizeBytes": 3000
      }
   }
 ```
@@ -370,10 +356,6 @@ Service.Host | string | The client host. Paired with **name**, it provides its u
 Service.IsPublic | boolean | This property tells the router whether the client is configured to be discovered by other clients or not. |
 RetryPolicy | object | The retry policy configuration. |
 RetryPolicy.Attempts | int | It tells the router the maximum number of attempts that should be made to resend a message in the error queue, according to the configured retry policy. All the attempts are logged in the router. |
-Cache | object | The cache configuration. The cache applies to all the client consumers. |
-Cache.SlidingExpiration | double | The SlidingExpiration for IMemoryCacheOptions. |
-Cache.AbsoluteExpiration | double | The AbsoluteExpiration for IMemoryCacheOptions.|
-Cache.MaxSizeBytes | long | The MaxSizeBytes that can reach the cache, used for IMemoryCacheOptions. |
 
 **Program.cs**
 

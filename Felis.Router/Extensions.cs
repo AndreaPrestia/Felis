@@ -3,7 +3,6 @@ using Felis.Router.Hubs;
 using Felis.Router.Interfaces;
 using Felis.Router.Managers;
 using Felis.Router.Services;
-using Felis.Router.Storage;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
@@ -29,11 +28,6 @@ public static class Extensions
                 throw new ApplicationException("FelisRouter:MessageConfiguration not provided");
             }
 
-            if (configuration.StorageConfiguration == null)
-            {
-                throw new ApplicationException("FelisRouter:StorageConfiguration not provided");
-            }
-
             services.Configure<JsonOptions>(options =>
             {
                 options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
@@ -50,20 +44,7 @@ public static class Extensions
     private static void AddServices(IServiceCollection serviceCollection, FelisRouterConfiguration? configuration)
     {
         serviceCollection.AddSingleton<IFelisConnectionManager, FelisConnectionManager>();
-
-        if (string.Equals(KnownStorageStrategies.Persistent, configuration?.StorageConfiguration?.Strategy))
-        {
-            var concreteType = GetStorageSourceConcreteTypeNotInMemory() ?? throw new ApplicationException(
-                $"No concrete type different than FelisRouterStorage implemented for StorageConfiguration:Strategy {KnownStorageStrategies.Persistent}.");
-
-            //TODO review this terrible code!
-            serviceCollection.AddSingleton<IFelisRouterStorage>((IFelisRouterStorage)concreteType);
-        }
-        else
-        {
-            serviceCollection.AddSingleton<IFelisRouterStorage, FelisRouterStorage>();
-        }
-
+        
         serviceCollection.AddSingleton<IFelisRouterService, FelisRouterService>();
         serviceCollection.AddSingleton<FelisRouterHub>();
     }
@@ -116,12 +97,5 @@ public static class Extensions
 
                 instance.Init(app);
             });
-    }
-
-    private static Type? GetStorageSourceConcreteTypeNotInMemory()
-    {
-       return AppDomain.CurrentDomain.GetAssemblies().First(x => x.GetName().Name == AppDomain.CurrentDomain.FriendlyName)
-            .GetTypes().FirstOrDefault(t =>
-                t.IsSubclassOf(typeof(IFelisRouterStorage)) && t is { IsInterface: false, IsAbstract: false } && t != typeof(FelisRouterStorage));
     }
 }

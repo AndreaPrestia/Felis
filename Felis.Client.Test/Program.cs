@@ -10,9 +10,9 @@ var app = builder.Build();
 
 app.MapGet("/", () => "Felis client is up and running!");
 
-app.MapPost("/dispatch", async (MessageHandler messageHandler, [FromBody] TestModel model, [FromQuery] string topic) =>
+app.MapPost("/dispatch/{topic}", async (MessageHandler messageHandler, [FromBody] TestModel model, [FromRoute] string topic) =>
 {
-    await messageHandler.Publish(model, topic);
+    await messageHandler.PublishAsync(model, topic);
     return Results.Created("/dispatch", model);
 });
 

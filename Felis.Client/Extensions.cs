@@ -51,13 +51,49 @@ public static class Extensions
 				.WithAutomaticReconnect()
 				.Build());
 
+			serviceCollection.RegisterConsumers();
+
 			serviceCollection.AddSingleton<MessageHandler>();
 
+			serviceCollection.AddHttpClient<MessageHandler>("felisClient", (_, client) =>
+				{
+					client.BaseAddress = new Uri(configuration.Router?.Endpoint!);
+				}).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler()
+				{
+					PooledConnectionLifetime = TimeSpan.FromMinutes(configuration.Router!.PooledConnectionLifetimeMinutes)
+				})
+				.SetHandlerLifetime(Timeout.InfiniteTimeSpan);
+			
 			var serviceProvider = serviceCollection.BuildServiceProvider();
 
 			var messageHandler = serviceProvider.GetService<MessageHandler>();
 
 			messageHandler?.Subscribe().Wait();
 		});
+	}
+	
+	private static void RegisterConsumers(this IServiceCollection serviceCollection)
+	{
+		var consumersTypes = GetConsumersTypesFromCurrentInstance();
+
+		foreach (var consumerType in consumersTypes)
+		{
+			serviceCollection.AddSingleton(typeof(Consume<>), consumerType);
+		}
+	}
+
+	private static List<Type> GetConsumersTypesFromCurrentInstance()
+	{
+		var types = AppDomain.CurrentDomain.GetAssemblies()
+			.Where(x => x.GetName().Name == AppDomain.CurrentDomain.FriendlyName).Select(t => t.GetType()).Where(t =>
+				t.BaseType?.FullName != null
+				&& t.BaseType.FullName.Contains("Felis.Client.Consume") &&
+				t is { IsInterface: false, IsAbstract: false }
+				&& t.GetCustomAttributes(typeof(TopicAttribute), false).Any()
+				&& t.GetMethods().Any(x => x.Name == "Process"
+				                           && x.GetParameters().Count() ==
+				                           1)).ToList();
+
+		return types;
 	}
 }

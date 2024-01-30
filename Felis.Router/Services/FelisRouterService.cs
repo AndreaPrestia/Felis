@@ -12,7 +12,6 @@ internal sealed class FelisRouterService : IFelisRouterService
     private readonly IHubContext<FelisRouterHub> _hubContext;
     private readonly ILogger<FelisRouterService> _logger;
     private readonly IFelisRouterStorage _storage;
-    private readonly string _topic = "NewDispatchedMethod";
     private readonly IFelisConnectionManager _felisConnectionManager;
 
     public FelisRouterService(IHubContext<FelisRouterHub> hubContext, ILogger<FelisRouterService> logger,
@@ -38,7 +37,9 @@ internal sealed class FelisRouterService : IFelisRouterService
                 throw new ArgumentNullException($"No Topic provided in Header");
             }
 
-            if (string.IsNullOrWhiteSpace(message.Header?.Topic?.Value))
+            var topic = message.Header?.Topic?.Value;
+
+            if (string.IsNullOrWhiteSpace(topic))
             {
                 throw new ArgumentNullException($"No Topic Value provided in Header");
             }
@@ -80,14 +81,14 @@ internal sealed class FelisRouterService : IFelisRouterService
 
                     foreach (var connectionId in connectionIds)
                     {
-                        await _hubContext.Clients.Client(connectionId).SendAsync(_topic, message, cancellationToken)
+                        await _hubContext.Clients.Client(connectionId).SendAsync(topic, message, cancellationToken)
                             .ConfigureAwait(false);
                     }
                 }
             }
             else
             {
-                await _hubContext.Clients.All.SendAsync(_topic, message, cancellationToken).ConfigureAwait(false);
+                await _hubContext.Clients.All.SendAsync(topic, message, cancellationToken).ConfigureAwait(false);
             }
 
             return result;

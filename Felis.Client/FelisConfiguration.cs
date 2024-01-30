@@ -16,6 +16,7 @@ public record FelisConfiguration
 public record FelisConfigurationRouter
 {
     public string? Endpoint { get; set; }
+    public int PooledConnectionLifetimeMinutes { get; set; }
 }
 
 public record FelisCacheConfiguration

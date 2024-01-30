@@ -27,6 +27,9 @@ public class FelisRouterStorage : IFelisRouterStorage
 
         _consumedMessages = new ConcurrentQueue<ConsumedMessage?>(_consumedMessages.Append(consumedMessage));
 
+        _messages = new ConcurrentQueue<Message?>(_messages.Where(x =>
+            x?.Id != consumedMessage?.Message?.Id));
+
         return true;
     }
 

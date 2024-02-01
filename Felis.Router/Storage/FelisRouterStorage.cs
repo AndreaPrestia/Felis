@@ -6,7 +6,7 @@ using Felis.Router.Interfaces;
 namespace Felis.Router.Storage;
 
 /// <summary>
-/// This is an in-memory storage implementation of IFelisRouterStorage. Just for academic purposes. We must use it at most as cache :) 
+/// This is an in-memory storage implementation of IFelisRouterStorage.
 /// </summary>
 public class FelisRouterStorage : IFelisRouterStorage
 {

@@ -35,13 +35,13 @@ public static class Extensions
 
             services.AddSignalR();
 
-            AddServices(services, configuration);
+            AddServices(services);
 
             AddSwagger(services);
         });
     }
 
-    private static void AddServices(IServiceCollection serviceCollection, FelisRouterConfiguration? configuration)
+    private static void AddServices(IServiceCollection serviceCollection)
     {
         serviceCollection.AddSingleton<IFelisConnectionManager, FelisConnectionManager>();
         

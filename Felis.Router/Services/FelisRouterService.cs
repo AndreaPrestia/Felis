@@ -81,7 +81,12 @@ internal sealed class FelisRouterService : IFelisRouterService
 
                     foreach (var connectionId in connectionIds)
                     {
-                        await _hubContext.Clients.Client(connectionId).SendAsync(topic, message, cancellationToken)
+                        if (string.IsNullOrWhiteSpace(connectionId.Value))
+                        {
+                            continue;
+                        }
+                        
+                        await _hubContext.Clients.Client(connectionId.Value).SendAsync(topic, message, cancellationToken)
                             .ConfigureAwait(false);
                     }
                 }

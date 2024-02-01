@@ -16,7 +16,7 @@ public class FelisRouterStorage : IFelisRouterStorage
 
     public bool ConsumedMessageAdd(ConsumedMessage? consumedMessage)
     {
-        if (_consumedMessages.Any(cm => cm?.Service == consumedMessage?.Service
+        if (_consumedMessages.Any(cm => cm?.ConnectionId.Value == consumedMessage?.ConnectionId.Value
                                         && string.Equals(cm?.Message?.Header?.Topic?.Value,
                                             consumedMessage?.Message?.Header?.Topic?.Value,
                                             StringComparison.InvariantCultureIgnoreCase)
@@ -48,9 +48,9 @@ public class FelisRouterStorage : IFelisRouterStorage
             .ToList();
     }
 
-    public List<ConsumedMessage?> ConsumedMessageList(Service service)
+    public List<ConsumedMessage?> ConsumedMessageList(ConnectionId connectionId)
     {
-        return _consumedMessages.Where(cm => cm?.Service?.Host == service.Host && cm?.Service?.Name == service.Name)
+        return _consumedMessages.Where(cm => cm?.ConnectionId.Value == connectionId.Value)
             .ToList();
     }
 

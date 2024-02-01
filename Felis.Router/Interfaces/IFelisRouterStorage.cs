@@ -12,7 +12,7 @@ public interface IFelisRouterStorage
     bool ErrorMessageAdd(ErrorMessage message);
 	List<Message?> MessageList(Topic? topic = null);
 	List<ErrorMessage> ErrorMessageList(Topic? topic = null, long? start = null, long? end = null);
-	List<ConsumedMessage?> ConsumedMessageList(Service service);
+	List<ConsumedMessage?> ConsumedMessageList(ConnectionId connectionId);
     List<ConsumedMessage?> ConsumedMessageList(Topic topic);
     List<ErrorMessage> ListMessagesToRequeue();
 }

@@ -12,7 +12,7 @@ public sealed class MessageHandler : IAsyncDisposable
 {
     private readonly HubConnection? _hubConnection;
     private readonly ILogger<MessageHandler> _logger;
-    private readonly Service _currentService;
+    private List<Topic>? _topics;
     private readonly HttpClient _httpClient;
     private readonly RetryPolicy? _retryPolicy;
     private readonly ConsumerResolver _consumerResolver;
@@ -24,15 +24,7 @@ public sealed class MessageHandler : IAsyncDisposable
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _consumerResolver = consumerResolver ?? throw new ArgumentNullException(nameof(consumerResolver));
-
         _retryPolicy = configuration.CurrentValue.RetryPolicy ?? throw new ArgumentNullException($"No RetryPolicy configuration provided");
-
-        if (configuration.CurrentValue.Service == null)
-        {
-            throw new ArgumentNullException(nameof(configuration.CurrentValue.Service));
-        }
-        
-        _currentService = new Service(configuration.CurrentValue.Service.Name, configuration.CurrentValue.Service.Host, configuration.CurrentValue.Service.IsPublic, new List<Topic>());
     }
 
     public async Task PublishAsync<T>(T payload, string? topic, CancellationToken cancellationToken = default)
@@ -74,7 +66,7 @@ public sealed class MessageHandler : IAsyncDisposable
 
         var topicsTypes = _consumerResolver.GetTypesForTopics();
 
-        _currentService.Topics = topicsTypes.Select(x => x.Key).ToList();
+        _topics = topicsTypes.Select(x => x.Key).ToList();
 
         foreach (var topicType in topicsTypes)
         {
@@ -117,7 +109,7 @@ public sealed class MessageHandler : IAsyncDisposable
                     
                     var responseMessage = await _httpClient.PostAsJsonAsync($"/consume",
                         new ConsumedMessage(messageIncoming,
-                            _currentService),
+                            new ConnectionId(_hubConnection.ConnectionId)),
                         cancellationToken: cancellationToken).ConfigureAwait(false);
 
                     responseMessage.EnsureSuccessStatusCode();
@@ -139,7 +131,7 @@ public sealed class MessageHandler : IAsyncDisposable
     {
         if (_hubConnection != null)
         {
-            await _hubConnection?.InvokeAsync("RemoveConnectionIds", _currentService)!;
+            await _hubConnection?.InvokeAsync("RemoveConnectionId", new ConnectionId(_hubConnection?.ConnectionId))!;
             await _hubConnection.DisposeAsync().ConfigureAwait(false);
         }
     }
@@ -160,7 +152,7 @@ public sealed class MessageHandler : IAsyncDisposable
                 await _hubConnection?.StartAsync(cancellationToken)!;
             }
 
-            await _hubConnection?.InvokeAsync("SetConnectionId", _currentService, cancellationToken)!;
+            await _hubConnection?.InvokeAsync("SetConnectionId", _topics, cancellationToken)!;
         }
         catch (Exception ex)
         {
@@ -174,7 +166,7 @@ public sealed class MessageHandler : IAsyncDisposable
         {
             var responseMessage = await _httpClient.PostAsJsonAsync("/error",
                 new ErrorMessage(message,
-                    _currentService, exception, _retryPolicy),
+                    new ConnectionId(_hubConnection?.ConnectionId), exception, _retryPolicy),
                 cancellationToken: cancellationToken).ConfigureAwait(false);
 
             responseMessage.EnsureSuccessStatusCode();

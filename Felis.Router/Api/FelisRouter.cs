@@ -13,7 +13,7 @@ internal class FelisRouter : ApiRouter
     {
           app.MapPost("/dispatch", async ([FromServices] IFelisRouterService service, [FromBody] Message message) =>
             {
-                var result = await service.Dispatch(message);
+                var result = await service.Dispatch(message).ConfigureAwait(false);
 
                 return !result ? Results.BadRequest("Failed operation") : Results.Created("/dispatch", message);
             }).WithName("MessageDispatch").Produces<CreatedResult>(StatusCodes.Status201Created)
@@ -24,7 +24,7 @@ internal class FelisRouter : ApiRouter
         app.MapPost("/consume",
                 async ([FromServices] IFelisRouterService service, [FromBody] ConsumedMessage message) =>
                 {
-                    var result = await service.Consume(message);
+                    var result = await service.Consume(message).ConfigureAwait(false);
 
                     return !result ? Results.BadRequest("Failed operation") : Results.Created("/consume", message);
                 }).WithName("MessageConsume").Produces<CreatedResult>(StatusCodes.Status201Created)
@@ -34,7 +34,7 @@ internal class FelisRouter : ApiRouter
 
         app.MapPost("/error", async ([FromServices] IFelisRouterService service, [FromBody] ErrorMessage message) =>
             {
-                var result = await service.Error(message);
+                var result = await service.Error(message).ConfigureAwait(false);
 
                 return !result ? Results.BadRequest("Failed operation") : Results.Created("/error", message);
             }).WithName("ErrorMessageAdd").Produces<CreatedResult>(StatusCodes.Status201Created)
@@ -44,7 +44,7 @@ internal class FelisRouter : ApiRouter
 
         app.MapDelete("/purge/{topic}", async ([FromServices] IFelisRouterService service, [FromRoute] string? topic) =>
             {
-                var result = await service.Purge(new Topic(topic));
+                var result = await service.Purge(new Topic(topic)).ConfigureAwait(false);
 
                 return !result ? Results.BadRequest("Failed operation") : Results.NoContent();
             }).WithName("MessagePurge").Produces<NoContentResult>(StatusCodes.Status204NoContent)
@@ -54,7 +54,7 @@ internal class FelisRouter : ApiRouter
         
         app.MapGet("/consumers/{topic}", async ([FromServices] IFelisRouterService service, [FromRoute] string? topic) =>
             {
-                var result = await service.Consumers(new Topic(topic));
+                var result = await service.Consumers(new Topic(topic)).ConfigureAwait(false);
 
                 return Results.Ok(result);
             }).WithName("ConsumerList").Produces<OkResult>()

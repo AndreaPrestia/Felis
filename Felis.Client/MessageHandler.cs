@@ -45,7 +45,7 @@ public sealed class MessageHandler : IAsyncDisposable
 
         try
         {
-            await CheckHubConnectionStateAndStartIt(cancellationToken);
+            await CheckHubConnectionStateAndStartIt(cancellationToken).ConfigureAwait(false);
 
             //TODO add an authorization token as parameter
 
@@ -55,7 +55,7 @@ public sealed class MessageHandler : IAsyncDisposable
 
             var responseMessage = await _httpClient.PostAsJsonAsync("/dispatch",
                 new Message(new Header(new Topic(topic ?? type), new List<Service>()), new Content(json)),
-                cancellationToken: cancellationToken);
+                cancellationToken: cancellationToken).ConfigureAwait(false);
 
             responseMessage.EnsureSuccessStatusCode();
         }
@@ -118,7 +118,7 @@ public sealed class MessageHandler : IAsyncDisposable
                     var responseMessage = await _httpClient.PostAsJsonAsync($"/consume",
                         new ConsumedMessage(messageIncoming,
                             _currentService),
-                        cancellationToken: cancellationToken);
+                        cancellationToken: cancellationToken).ConfigureAwait(false);
 
                     responseMessage.EnsureSuccessStatusCode();
 
@@ -127,13 +127,13 @@ public sealed class MessageHandler : IAsyncDisposable
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, ex.Message);
-                    await SendError(messageIncoming, ex, cancellationToken);
+                    await SendError(messageIncoming, ex, cancellationToken).ConfigureAwait(false);
                 }
             });
         }
 
 
-        await CheckHubConnectionStateAndStartIt(cancellationToken);
+        await CheckHubConnectionStateAndStartIt(cancellationToken).ConfigureAwait(false);
     }
    
     public async ValueTask DisposeAsync()
@@ -141,7 +141,7 @@ public sealed class MessageHandler : IAsyncDisposable
         if (_hubConnection != null)
         {
             await _hubConnection?.InvokeAsync("RemoveConnectionIds", _currentService)!;
-            await _hubConnection.DisposeAsync();
+            await _hubConnection.DisposeAsync().ConfigureAwait(false);
         }
     }
 
@@ -176,7 +176,7 @@ public sealed class MessageHandler : IAsyncDisposable
             var responseMessage = await _httpClient.PostAsJsonAsync("/error",
                 new ErrorMessage(message,
                     _currentService, exception, _retryPolicy),
-                cancellationToken: cancellationToken);
+                cancellationToken: cancellationToken).ConfigureAwait(false);
 
             responseMessage.EnsureSuccessStatusCode();
         }

@@ -36,7 +36,7 @@ internal class FelisStorageRequeueService : BackgroundService
 
             var timer = new PeriodicTimer(
                 TimeSpan.FromMinutes(minutesForRequeue.Value));
-            while (await timer.WaitForNextTickAsync(stoppingToken))
+            while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false))
             {
                 try
                 {
@@ -53,7 +53,7 @@ internal class FelisStorageRequeueService : BackgroundService
 
                     foreach (var errorMessage in result)
                     {
-                        var dispatchResult = await _felisRouterService.Dispatch(errorMessage.Message, stoppingToken);
+                        var dispatchResult = await _felisRouterService.Dispatch(errorMessage.Message, stoppingToken).ConfigureAwait(false);
                         
                         _logger.LogInformation($"{(dispatchResult ? "Dispatched" : "Not dispatched")} message for Topic {errorMessage.Message?.Header?.Topic}");
                     }

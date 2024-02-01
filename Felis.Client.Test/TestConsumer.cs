@@ -6,9 +6,9 @@ namespace Felis.Client.Test
 	[Topic("Test")]
 	public class TestConsumer : IConsume<TestModel>
 	{
-		public void Process(TestModel entity)
+		public async void Process(TestModel entity)
 		{
-			Console.WriteLine(JsonSerializer.Serialize(entity));
+			Console.WriteLine($"Sync mode {System.Environment.NewLine} {JsonSerializer.Serialize(entity)}");
 		}
 	}
 }

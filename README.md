@@ -15,14 +15,13 @@ This repository provides two examples of usage:
 
 **Felis.Router.Test**
 
-An ASP-NET minimal API application, containing the six endpoints exposed by Felis.
+An ASP-NET minimal API application, containing the five endpoints exposed by Felis.
 
-The six endpoints are:
+The five endpoints are:
 
 - dispatch
 - consume
 - error
-- services
 - purge
 - consumers
 
@@ -194,51 +193,13 @@ Status code | Type | Context |
 401 | UnauthorizedResult | When an operation fails due to missing authorization. |
 403 | ForbiddenResult | When an operation fails because it is not allowed in the context. |
 
-**Services**
-
-This endpoint provides a list of the clients connected to Felis. It exposes only the clients that are configured with the property **IsPublic** to **true**, which makes the clients discoverable.
-
-```
-curl --location 'https://localhost:7103/services'
-```
-
-***Response***
-
-```
-[
-   {
-      "name":"name",
-      "host":"host",
-      "isPublic":true,
-      "topics":[
-         {
-            "value":"topic"
-         }
-      ]
-   }
-]
-```
-This endpoint returns an array of clients.
-
-Property | Type | Context |
---- | --- | --- |
-name | string | The name property of the client. |
-host | string | The host property of the client. |
-isPublic | boolean | This property tells the router whether the client is configured to be discovered by other clients or not. |
-topics | array<Topic> | This property contains the array of topics subscribed by a client. |
-
 **Purge**
 
 This endpoint tells the router to purge the queue for a specific topic. It is irreversible.
 
 ```
-curl --location --request DELETE 'https://localhost:7103/purge' \
---header 'Content-Type: application/json' \
---data '{
-    "topic": {
-        "value": "topic"
-    }
-}'
+curl --location --request DELETE 'https://localhost:7103/purge/topic'
+
 ```
 
 ***Request***
@@ -259,10 +220,10 @@ Status code | Type | Context |
 
 **Consumers**
 
-This endpoint provides a list of the clients connected to Felis that consume a specific topic. It exposes only the clients that are configured with the property **IsPublic** to **true**, which makes the clients discoverable.
+This endpoint provides a list of the clients connected to Felis that consume a specific topic provided in the route. It exposes only the clients that are configured with the property **IsPublic** to **true**, which makes the clients discoverable.
 
 ```
-curl --location 'https://localhost:7103/services'
+curl --location 'https://localhost:7103/consumers/topic'
 ```
 
 ***Response***
@@ -359,18 +320,14 @@ RetryPolicy.Attempts | int | It tells the router the maximum number of attempts 
 
 **Program.cs**
 
-For the ASP-NET core applications, add:
-```
-builder.AddFelisClientWeb();
-```
-For all the other .NET applications, add:
+Just add the following line of code:
 ```
 builder.AddFelisClient();
 ```
 
 **How do I use a consumer?**
 
-It is very simple. Just create a class that implements the Consume<T> abstract one.
+It is very simple. Just create a class that implements the IConsume<T> interface.
 See an example from GitHub here below:
 
 ```
@@ -380,7 +337,7 @@ using System.Text.Json;
 namespace Felis.Client.Test
 {
 	[Topic("Test")]
-	public class TestConsumer : Consume<TestModel>
+	public class TestConsumer : IConsume<TestModel>
 	{
 		public override void Process(TestModel entity)
 		{

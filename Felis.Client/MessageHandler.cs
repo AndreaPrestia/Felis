@@ -132,7 +132,6 @@ public sealed class MessageHandler : IAsyncDisposable
             });
         }
 
-
         await CheckHubConnectionStateAndStartIt(cancellationToken).ConfigureAwait(false);
     }
    

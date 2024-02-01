@@ -8,6 +8,8 @@ public class TestConsumerAsync : IConsume<TestModel>
 {
     public async void Process(TestModel entity)
     {
-        await Task.Run(() => Console.WriteLine($"Async mode {System.Environment.NewLine} {JsonSerializer.Serialize(entity)}"));
+        Console.WriteLine("Async mode");
+        await Task.Run(() =>
+            Console.WriteLine(JsonSerializer.Serialize(entity)));
     }
 }

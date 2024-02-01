@@ -1,6 +1,4 @@
-﻿using System.Text.Json.Serialization;
-
-namespace Felis.Core.Models;
+﻿namespace Felis.Core.Models;
 
 public record Service(string? Name, string? Host, bool IsPublic, List<Topic> Topics)
 {

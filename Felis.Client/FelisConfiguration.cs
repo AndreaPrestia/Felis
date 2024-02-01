@@ -1,5 +1,4 @@
 ﻿using Felis.Core;
-using Felis.Core.Models;
 
 namespace Felis.Client;
 

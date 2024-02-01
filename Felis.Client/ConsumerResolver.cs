@@ -70,7 +70,7 @@ public sealed class ConsumerResolver
         
         var closedGenericType = typeof(IConsume<>).MakeGenericType(parameterType);
 
-        var services = provider.GetServices(closedGenericType)?.ToList();
+        var services = provider.GetServices(closedGenericType).ToList();
 
         if (services == null || !services.Any())
         {

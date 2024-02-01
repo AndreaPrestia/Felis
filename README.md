@@ -92,7 +92,10 @@ curl --location 'https://localhost:7103/consume' \
         "name": "string",
         "host": "string",
         "isPublic": true,
-	"topics": []
+	"topics": [{
+                "value": "test"
+            }
+        ]
     },
 }'
 ```
@@ -143,7 +146,10 @@ curl --location 'https://localhost:7103/error' \
         "name": "string",
         "host": "string",
         "isPublic": true,
-	"topics": []
+	"topics": [{
+                "value": "test"
+            }
+        ]
     },
     "exception": {
         "targetSite": {

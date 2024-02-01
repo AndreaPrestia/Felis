@@ -89,8 +89,8 @@ curl --location 'https://localhost:7103/consume' \
         }
     },
     "service": {
-        "name": "string",
-        "host": "string",
+        "ipAddress": "string",
+        "hostname": "string",
         "isPublic": true,
 	"topics": [{
                 "value": "test"
@@ -110,8 +110,8 @@ message.header.topic.value | string | the actual value of the topic of the consu
 message.content | object | the message content. |
 message.content.json | string | Json string of the consumed message. |
 service | object | The service entity that represents the client identity. |
-service.name | string | The name property of the client. |
-service.host | string | The host property of the client. |
+service.ipAddress | string | The ipAddress property of the client. |
+service.hostname | string | The hostname property of the client. |
 service.isPublic | boolean | This property tells the router whether the client is configured to be discovered by other clients or not. |
 service.topics | array<Topic> | This property contains the array of topics subscribed by a client. |
 
@@ -143,8 +143,8 @@ curl --location 'https://localhost:7103/error' \
         }
     },
     "service": {
-        "name": "string",
-        "host": "string",
+        "ipAddress": "string",
+        "hostname": "string",
         "isPublic": true,
 	"topics": [{
                 "value": "test"
@@ -185,8 +185,8 @@ message.header.topic.value | string | the actual value of the topic of the messa
 message.content | object | the message content. |
 message.content.json | string | Json string of the message that throws an error. |
 service | object | The service entity that represents the client identity. |
-service.name | string | The name property of the client. |
-service.host | string | The host property of the client. |
+service.ipAddress | string | The ipAddress property of the client. |
+service.hostname | string | The hostname property of the client. |
 service.isPublic | boolean | This property tells the router whether the client is configured to be discovered by other clients or not. |
 service.topics | array<Topic> | This property contains the array of topics subscribed by a client. |
 exception | object | The .NET exception object that contains the occurred error. |
@@ -236,8 +236,8 @@ curl --location 'https://localhost:7103/consumers/topic'
 ```
 [
    {
-      "name":"name",
-      "host":"host",
+      "ipAddress":"192.168.1.1",
+      "hostname":"host",
       "isPublic":true,
       "topics":[
          {
@@ -251,8 +251,8 @@ This endpoint returns an array of clients.
 
 Property | Type | Context |
 --- | --- | --- |
-name | string | The name property of the client. |
-host | string | The host property of the client. |
+ipAddress | string | The ipAddress property of the client. |
+hostname | string | The hostname property of the client. |
 isPublic | boolean | This property tells the router whether the client is configured to be discovered by other clients or not. |
 topics | array<Topic> | This property contains the array of topics subscribed by a client. |
 
@@ -299,16 +299,14 @@ Just add this section to appsettings.json.
 
 ```
  "FelisClient": {
-    "RouterEndpoint": "https://localhost:7103",
-    "Service": {
-      	"Name": "name",
-      	"Host": "host",
-      	"IsPublic": true
-     },
-     "RetryPolicy" : {
-	"Attempts": 5
-     }
-  }
+    "Router": {
+        "Endpoint": "https://localhost:7103",
+        "PooledConnectionLifetimeMinutes": 15
+    },
+    "RetryPolicy": {
+        "Attempts": 5
+    }
+}
 ```
 The configuration is made of:
 
@@ -316,10 +314,7 @@ Property | Type | Context |
 --- | --- | --- |
 Router | object | The router configuration object. |
 Router.Endpoint | string | The FelisRouter endpoint that the client must subscribe. |
-Service | object | The client configuration. |
-Service.Name | string | The client name. Paired with **host**, it provides its unique identity to FelisRouter. |
-Service.Host | string | The client host. Paired with **name**, it provides its unique identity to FelisRouter. |
-Service.IsPublic | boolean | This property tells the router whether the client is configured to be discovered by other clients or not. |
+Router.PooledConnectionLifetimeMinutes | int | The internal http client PooledConnectionLifetimeMinutes. |
 RetryPolicy | object | The retry policy configuration. |
 RetryPolicy.Attempts | int | It tells the router the maximum number of attempts that should be made to resend a message in the error queue, according to the configured retry policy. All the attempts are logged in the router. |
 
@@ -333,22 +328,42 @@ builder.AddFelisClient();
 **How do I use a consumer?**
 
 It is very simple. Just create a class that implements the IConsume<T> interface.
-See an example from GitHub here below:
+See two examples from GitHub here below:
 
+***Sync mode***
 ```
 using Felis.Client.Test.Models;
 using System.Text.Json;
 
-namespace Felis.Client.Test
+namespace Felis.Client.Test;
+
+[Topic("Test")]
+public class TestConsumer : IConsume<TestModel>
 {
-	[Topic("Test")]
-	public class TestConsumer : IConsume<TestModel>
+	public async void Process(TestModel entity)
 	{
-		public override void Process(TestModel entity)
-		{
-                     Console.WriteLine(JsonSerializer.Serialize(entity));
-		}
+		Console.WriteLine("Sync mode");
+		Console.WriteLine(JsonSerializer.Serialize(entity));
 	}
+}
+```
+
+***Async mode***
+```
+using System.Text.Json;
+using Felis.Client.Test.Models;
+
+namespace Felis.Client.Test;
+
+[Topic("TestAsync")]
+public class TestConsumerAsync : IConsume<TestModel>
+{
+    public async void Process(TestModel entity)
+    {
+        Console.WriteLine("Async mode");
+        await Task.Run(() =>
+            Console.WriteLine(JsonSerializer.Serialize(entity)));
+    }
 }
 ```
 

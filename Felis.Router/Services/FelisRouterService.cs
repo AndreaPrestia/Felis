@@ -150,19 +150,6 @@ internal sealed class FelisRouterService : IFelisRouterService
         }
     }
 
-    public Task<List<Service>> GetConnectedServices(CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            return Task.FromResult(_felisConnectionManager.GetConnectedServices());
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, ex.Message);
-            return Task.FromResult(new List<Service>());
-        }
-    }
-
     public Task<bool> Purge(Topic? topic, CancellationToken cancellationToken = default)
     {
         try

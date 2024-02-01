@@ -42,16 +42,6 @@ internal class FelisRouter : ApiRouter
             .Produces<UnauthorizedResult>(StatusCodes.Status401Unauthorized)
             .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
 
-        app.MapGet("/services", async ([FromServices] IFelisRouterService service) =>
-            {
-                var result = await service.GetConnectedServices();
-
-                return Results.Ok(result);
-            }).WithName("ServiceList").Produces<OkResult>()
-            .Produces<BadRequestResult>(StatusCodes.Status400BadRequest)
-            .Produces<UnauthorizedResult>(StatusCodes.Status401Unauthorized)
-            .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
-        
         app.MapDelete("/purge/{topic}", async ([FromServices] IFelisRouterService service, [FromRoute] string? topic) =>
             {
                 var result = await service.Purge(new Topic(topic));

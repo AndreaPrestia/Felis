@@ -7,11 +7,11 @@ namespace Felis.Client;
 
 public sealed class ConsumerResolver
 {
-    private readonly IServiceProvider _serviceProvider;
+    private readonly IServiceScopeFactory _scopeFactory;
 
-    public ConsumerResolver(IServiceProvider serviceProvider)
+    public ConsumerResolver(IServiceScopeFactory scopeFactory)
     {
-        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+        _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
     }
 
     public ConsumerResolveResult ResolveConsumerByTopic(KeyValuePair<Topic, Type> topicType, string? messagePayload)
@@ -33,18 +33,13 @@ public sealed class ConsumerResolver
     public Dictionary<Topic, Type> GetTypesForTopics()
     {
         var topicTypes = AppDomain.CurrentDomain.GetAssemblies()
-            .First(x => x.GetName().Name == AppDomain.CurrentDomain.FriendlyName).GetTypes().Where(t =>
-                t.BaseType?.FullName != null
-                && t.BaseType.FullName.Contains("Felis.Client.Consume") &&
-                t is { IsInterface: false, IsAbstract: false }).SelectMany(t =>
+            .SelectMany(assembly => assembly.GetTypes())
+            .Where(type => type.IsClass && !type.IsAbstract &&
+                           type.GetInterfaces().Any(i =>
+                               i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IConsume<>))).SelectMany(t =>
                 t.GetCustomAttributes<TopicAttribute>()
                     .Select(x => new KeyValuePair<Topic, Type>(new Topic(x.Value), t)))
             .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-
-        if (topicTypes == null)
-        {
-            throw new InvalidOperationException("Not found implementation of Consumer for any topic");
-        }
 
         return topicTypes;
     }
@@ -60,17 +55,7 @@ public sealed class ConsumerResolver
         {
             throw new ArgumentNullException(nameof(topicType.Value));
         }
-
-        var scope = _serviceProvider.CreateAsyncScope();
-        var provider = scope.ServiceProvider;
-
-        var service = provider.GetService(topicType.Value);
-
-        if (service == null)
-        {
-            throw new ApplicationException($"No consumer registered for topic {topicType.Key.Value}");
-        }
-
+        
         var processParameterInfo = topicType.Value.GetMethod("Process")?.GetParameters().FirstOrDefault();
 
         if (processParameterInfo == null)
@@ -79,6 +64,20 @@ public sealed class ConsumerResolver
         }
 
         var parameterType = processParameterInfo.ParameterType;
+        
+        using var scope = _scopeFactory.CreateScope();
+        var provider = scope.ServiceProvider;
+        
+        var closedGenericType = typeof(IConsume<>).MakeGenericType(parameterType);
+
+        var services = provider.GetServices(closedGenericType)?.ToList();
+
+        if (services == null || !services.Any())
+        {
+            throw new ApplicationException($"No consumers registered for topic {topicType.Key.Value}");
+        }
+
+        var service = services.FirstOrDefault(e => e != null && e.GetType().FullName == topicType.Value.FullName);
 
         var processMethod = GetProcessMethod(topicType.Value, parameterType);
 

@@ -3,6 +3,7 @@ using Felis.Router.Hubs;
 using Felis.Router.Interfaces;
 using Felis.Router.Managers;
 using Felis.Router.Services;
+using Felis.Router.Storage;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
@@ -44,7 +45,7 @@ public static class Extensions
     private static void AddServices(IServiceCollection serviceCollection)
     {
         serviceCollection.AddSingleton<IFelisConnectionManager, FelisConnectionManager>();
-        
+        serviceCollection.AddSingleton<IFelisRouterStorage, FelisRouterStorage>();
         serviceCollection.AddSingleton<IFelisRouterService, FelisRouterService>();
         serviceCollection.AddSingleton<FelisRouterHub>();
     }

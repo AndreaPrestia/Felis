@@ -23,16 +23,16 @@ public sealed class MessageHandler : IAsyncDisposable
         _hubConnection = hubConnection ?? throw new ArgumentNullException(nameof(hubConnection));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-        _consumerResolver = consumerResolver;
-
-        if (string.IsNullOrWhiteSpace(configuration.CurrentValue.Router?.Endpoint))
-        {
-            throw new ArgumentNullException($"No Router:Endpoint configuration provided");
-        }
+        _consumerResolver = consumerResolver ?? throw new ArgumentNullException(nameof(consumerResolver));
 
         _retryPolicy = configuration.CurrentValue.RetryPolicy ?? throw new ArgumentNullException($"No RetryPolicy configuration provided");
 
-        _currentService = configuration.CurrentValue.Service ?? throw new ArgumentNullException(nameof(configuration.CurrentValue.Service));
+        if (configuration.CurrentValue.Service == null)
+        {
+            throw new ArgumentNullException(nameof(configuration.CurrentValue.Service));
+        }
+        
+        _currentService = new Service(configuration.CurrentValue.Service.Name, configuration.CurrentValue.Service.Host, configuration.CurrentValue.Service.IsPublic, new List<Topic>());
     }
 
     public async Task PublishAsync<T>(T payload, string? topic, CancellationToken cancellationToken = default)

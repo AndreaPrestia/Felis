@@ -73,26 +73,20 @@ public static class Extensions
 	
 	private static void RegisterConsumers(this IServiceCollection serviceCollection)
 	{
-		var consumersTypes = GetConsumersTypesFromCurrentInstance();
+		var genericInterfaceType = typeof(IConsume<>);
 
-		foreach (var consumerType in consumersTypes)
+		var implementationTypes = AppDomain.CurrentDomain.GetAssemblies()
+			.SelectMany(assembly => assembly.GetTypes())
+			.Where(type => type.IsClass && !type.IsAbstract &&
+			               type.GetInterfaces().Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == genericInterfaceType)).ToList();
+
+		foreach (var implementationType in implementationTypes)
 		{
-			serviceCollection.AddSingleton(typeof(Consume<>), consumerType);
+			var closedServiceType = genericInterfaceType.MakeGenericType(implementationType.GetInterfaces()
+				.Single(i => i.IsGenericType && i.GetGenericTypeDefinition() == genericInterfaceType)
+				.GetGenericArguments());
+
+			serviceCollection.AddSingleton(closedServiceType, implementationType);
 		}
-	}
-
-	private static List<Type> GetConsumersTypesFromCurrentInstance()
-	{
-		var types = AppDomain.CurrentDomain.GetAssemblies()
-			.Where(x => x.GetName().Name == AppDomain.CurrentDomain.FriendlyName).Select(t => t.GetType()).Where(t =>
-				t.BaseType?.FullName != null
-				&& t.BaseType.FullName.Contains("Felis.Client.Consume") &&
-				t is { IsInterface: false, IsAbstract: false }
-				&& t.GetCustomAttributes(typeof(TopicAttribute), false).Any()
-				&& t.GetMethods().Any(x => x.Name == "Process"
-				                           && x.GetParameters().Count() ==
-				                           1)).ToList();
-
-		return types;
 	}
 }

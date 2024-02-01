@@ -199,7 +199,6 @@ This endpoint tells the router to purge the queue for a specific topic. It is ir
 
 ```
 curl --location --request DELETE 'https://localhost:7103/purge/topic'
-
 ```
 
 ***Request***
@@ -341,7 +340,7 @@ namespace Felis.Client.Test
 	{
 		public override void Process(TestModel entity)
 		{
-			Console.WriteLine(JsonSerializer.Serialize(entity));
+                     Console.WriteLine(JsonSerializer.Serialize(entity));
 		}
 	}
 }

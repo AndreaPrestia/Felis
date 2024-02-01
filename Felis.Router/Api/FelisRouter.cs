@@ -62,7 +62,7 @@ internal class FelisRouter : ApiRouter
             .Produces<UnauthorizedResult>(StatusCodes.Status401Unauthorized)
             .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
         
-        app.MapGet("/consumers", async ([FromServices] IFelisRouterService service, [FromRoute] string? topic) =>
+        app.MapGet("/consumers/{topic}", async ([FromServices] IFelisRouterService service, [FromRoute] string? topic) =>
             {
                 var result = await service.Consumers(new Topic(topic));
 

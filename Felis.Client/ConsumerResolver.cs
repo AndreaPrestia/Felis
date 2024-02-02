@@ -22,11 +22,7 @@ public sealed class ConsumerResolver
         }
         catch (Exception ex)
         {
-            return new ConsumerResolveResult()
-            {
-                Error = true,
-                Exception = ex
-            };
+            return ConsumerResolveResult.Ko(ex);
         }
     }
     
@@ -89,14 +85,7 @@ public sealed class ConsumerResolver
         
         var entity = Deserialize(messagePayload, parameterType);
 
-        return new ConsumerResolveResult()
-        {
-            Consumer = service,
-            ConsumerType = topicType.Value,
-            MessageType = parameterType,
-            ProcessMethod = processMethod,
-            DeserializedEntity = entity
-        };
+        return ConsumerResolveResult.Ok(service, topicType.Value, parameterType, processMethod, entity);
     }
 
     private MethodInfo? GetProcessMethod(Type? consumerType, Type? entityType)

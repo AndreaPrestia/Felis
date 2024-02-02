@@ -6,11 +6,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.Router", "Felis.Route
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples", "Examples", "{D50C038E-7806-4929-B85A-C602196AA018}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.Client.Test", "Felis.Client.Test\Felis.Client.Test.csproj", "{9EE116A0-3CA5-48BB-BE8F-6247F3CD3CE7}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.Router.Test", "Felis.Router.Test\Felis.Router.Test.csproj", "{6E6ADAE7-77C9-4915-979E-2BB3B9A0B5ED}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.Client", "Felis.Client\Felis.Client.csproj", "{BC1FB777-0CB4-4381-9EF1-0210DD7F9C09}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.Router.Test.csproj", "Examples\Felis.Router.Test\Felis.Router.Test.csproj.user", "{EEB3F583-73B8-4762-905C-E97C6152A783}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.Client.Test.csproj", "Examples\Felis.Client.Test\Felis.Client.Test.csproj.user", "{C29C2422-CD12-4228-A8D5-AED217FB636A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -26,21 +26,13 @@ Global
 		{EF2F82C1-9624-4F20-965C-19DB9018A141}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EF2F82C1-9624-4F20-965C-19DB9018A141}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EF2F82C1-9624-4F20-965C-19DB9018A141}.Release|Any CPU.Build.0 = Release|Any CPU
-		{9EE116A0-3CA5-48BB-BE8F-6247F3CD3CE7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{9EE116A0-3CA5-48BB-BE8F-6247F3CD3CE7}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{9EE116A0-3CA5-48BB-BE8F-6247F3CD3CE7}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{9EE116A0-3CA5-48BB-BE8F-6247F3CD3CE7}.Release|Any CPU.Build.0 = Release|Any CPU
-		{6E6ADAE7-77C9-4915-979E-2BB3B9A0B5ED}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{6E6ADAE7-77C9-4915-979E-2BB3B9A0B5ED}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{6E6ADAE7-77C9-4915-979E-2BB3B9A0B5ED}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{6E6ADAE7-77C9-4915-979E-2BB3B9A0B5ED}.Release|Any CPU.Build.0 = Release|Any CPU
 		{BC1FB777-0CB4-4381-9EF1-0210DD7F9C09}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{BC1FB777-0CB4-4381-9EF1-0210DD7F9C09}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BC1FB777-0CB4-4381-9EF1-0210DD7F9C09}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BC1FB777-0CB4-4381-9EF1-0210DD7F9C09}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{9EE116A0-3CA5-48BB-BE8F-6247F3CD3CE7} = {D50C038E-7806-4929-B85A-C602196AA018}
-		{6E6ADAE7-77C9-4915-979E-2BB3B9A0B5ED} = {D50C038E-7806-4929-B85A-C602196AA018}
+		{EEB3F583-73B8-4762-905C-E97C6152A783} = {D50C038E-7806-4929-B85A-C602196AA018}
+		{C29C2422-CD12-4228-A8D5-AED217FB636A} = {D50C038E-7806-4929-B85A-C602196AA018}
 	EndGlobalSection
 EndGlobal

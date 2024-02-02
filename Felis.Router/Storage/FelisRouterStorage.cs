@@ -96,6 +96,11 @@ public class FelisRouterStorage : IFelisRouterStorage
     {
         var hasValue = _errorMessages.TryGetValue(message, out int retries);
 
+        if (message.RetryPolicy == null)
+        {
+            return hasValue ? _errorMessages.TryUpdate(message, 0, retries) : _errorMessages.TryAdd(message, 0);
+        }
+        
         return hasValue ? _errorMessages.TryUpdate(message, retries + 1, retries) : _errorMessages.TryAdd(message, 1);
     }
 

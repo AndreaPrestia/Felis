@@ -293,37 +293,20 @@ To ease the testing process, I have implemented an ASP-NET minimal API applicati
 
 This application contains a class, called TestConsumer, that implements the Consume<T> abstract class. It contains the Process(T entity) method implemented. It only shows how messages are intercepted.
 
-**Configuration**
-
-Just add this section to appsettings.json. 
-
-```
- "FelisClient": {
-    "Router": {
-        "Endpoint": "https://localhost:7103",
-        "PooledConnectionLifetimeMinutes": 15
-    },
-    "RetryPolicy": {
-        "Attempts": 5
-    }
-}
-```
-The configuration is made of:
-
-Property | Type | Context |
---- | --- | --- |
-Router | object | The router configuration object. |
-Router.Endpoint | string | The FelisRouter endpoint that the client must subscribe. |
-Router.PooledConnectionLifetimeMinutes | int | The internal http client PooledConnectionLifetimeMinutes. |
-RetryPolicy | object | The retry policy configuration. |
-RetryPolicy.Attempts | int | It tells the router the maximum number of attempts that should be made to resend a message in the error queue, according to the configured retry policy. All the attempts are logged in the router. |
-
 **Program.cs**
 
 Just add the following line of code:
 ```
-builder.AddFelisClient();
+builder.AddFelisClient("https://localhost:7103", 15, 5);
 ```
+
+The signature of **AddFelisClient** method is made of:
+
+Parameter | Type | Context                                                                                                                                                                                                                                            |
+--- | --- |----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+routerEndpoint | string | The FelisRouter endpoint that the client must subscribe.                                                                                                                                                                                           |
+pooledConnectionLifetimeMinutes | int | The internal http client PooledConnectionLifetimeMinutes. Not mandatory. Default value is 15.                                                                                                                                                      |
+maxAttempts | int | It tells the router the maximum number of attempts that should be made to resend a message in the error queue, according to the retry policy that you want to apply. All the attempts are logged in the router. Not mandatory, default value is 0. |
 
 **How do I use a consumer?**
 

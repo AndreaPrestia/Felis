@@ -4,7 +4,6 @@ using Felis.Core;
 using Felis.Core.Models;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace Felis.Client;
 
@@ -14,17 +13,15 @@ public sealed class MessageHandler : IAsyncDisposable
     private readonly ILogger<MessageHandler> _logger;
     private List<Topic>? _topics;
     private readonly HttpClient _httpClient;
-    private readonly RetryPolicy? _retryPolicy;
+    private RetryPolicy? _retryPolicy;
     private readonly ConsumerResolver _consumerResolver;
 
-    public MessageHandler(HubConnection? hubConnection, ILogger<MessageHandler> logger,
-        IOptionsMonitor<FelisConfiguration> configuration, HttpClient httpClient, ConsumerResolver consumerResolver)
+    public MessageHandler(HubConnection? hubConnection, ILogger<MessageHandler> logger,HttpClient httpClient, ConsumerResolver consumerResolver)
     {
         _hubConnection = hubConnection ?? throw new ArgumentNullException(nameof(hubConnection));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _consumerResolver = consumerResolver ?? throw new ArgumentNullException(nameof(consumerResolver));
-        _retryPolicy = configuration.CurrentValue.RetryPolicy ?? throw new ArgumentNullException($"No RetryPolicy configuration provided");
     }
 
     public async Task PublishAsync<T>(T payload, string? topic, CancellationToken cancellationToken = default)
@@ -57,13 +54,15 @@ public sealed class MessageHandler : IAsyncDisposable
         }
     }
 
-    public async Task SubscribeAsync(CancellationToken cancellationToken = default)
+    public async Task SubscribeAsync(RetryPolicy? retryPolicy, CancellationToken cancellationToken = default)
     {
         if (_hubConnection == null)
         {
             throw new ArgumentNullException($"Connection to Felis router not correctly initialized");
         }
 
+        _retryPolicy = retryPolicy;
+        
         var topicsTypes = _consumerResolver.GetTypesForTopics();
 
         _topics = topicsTypes.Select(x => x.Key).ToList();

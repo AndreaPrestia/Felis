@@ -1,10 +1,10 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using Felis.Core;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.Http.Connections.Client;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.AspNetCore.SignalR.Client;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -14,20 +14,16 @@ namespace Felis.Client;
 
 public static class Extensions
 {
-	public static void AddFelisClient(this IHostBuilder builder)
+	public static void AddFelisClient(this IHostBuilder builder, string routerEndpoint, int pooledConnectionLifeTimeMinutes = 15, int maxAttempts = 0)
 	{
+		if (string.IsNullOrWhiteSpace(routerEndpoint))
+		{
+			throw new ApplicationException(
+				"No routerEndpoint provided. The subscription to Felis Router cannot be done");
+		}
+		
         builder.ConfigureServices((context, serviceCollection) =>
         {
-            serviceCollection.Configure<FelisConfiguration>(context.Configuration.GetSection(
-                FelisConfiguration.FelisClient));
-
-			var configuration = context.Configuration.GetSection(FelisConfiguration.FelisClient).Get<FelisConfiguration>();
-
-            if (string.IsNullOrWhiteSpace(configuration?.Router?.Endpoint))
-			{
-				throw new ArgumentNullException($"No Router:Endpoint configuration provided");
-			}
-
 			serviceCollection.AddSignalR();
 			
 			serviceCollection.AddResponseCompression(opts =>
@@ -36,15 +32,13 @@ public static class Extensions
 					new[] { "application/octet-stream" });
 			});
 
-			serviceCollection.AddSingleton(configuration);
-
 			var hubConnectionBuilder = new HubConnectionBuilder();
 
 			hubConnectionBuilder.Services.AddSingleton<IConnectionFactory>(
 				new HttpConnectionFactory(Options.Create(new HttpConnectionOptions()), NullLoggerFactory.Instance));
 
 			serviceCollection.AddSingleton(hubConnectionBuilder
-				.WithUrl($"{configuration.Router?.Endpoint}/felis/router",
+				.WithUrl($"{routerEndpoint}/felis/router",
 					options => { options.Transports = HttpTransportType.WebSockets; })
 				.WithAutomaticReconnect()
 				.Build());
@@ -56,10 +50,10 @@ public static class Extensions
 
 			serviceCollection.AddHttpClient<MessageHandler>("felisClient", (_, client) =>
 				{
-					client.BaseAddress = new Uri(configuration.Router?.Endpoint!);
+					client.BaseAddress = new Uri(routerEndpoint);
 				}).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler()
 				{
-					PooledConnectionLifetime = TimeSpan.FromMinutes(configuration.Router!.PooledConnectionLifetimeMinutes)
+					PooledConnectionLifetime = TimeSpan.FromMinutes(pooledConnectionLifeTimeMinutes)
 				})
 				.SetHandlerLifetime(Timeout.InfiniteTimeSpan);
 			
@@ -67,7 +61,7 @@ public static class Extensions
 
 			var messageHandler = serviceProvider.GetService<MessageHandler>();
 
-			messageHandler?.SubscribeAsync().Wait();
+			messageHandler?.SubscribeAsync(maxAttempts > 0 ? new RetryPolicy(maxAttempts) : null).Wait();
 		});
 	}
 	

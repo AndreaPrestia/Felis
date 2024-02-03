@@ -1,6 +1,6 @@
 ﻿namespace Felis.Client;
 
-public abstract class Consume<T> 
+public interface IConsume<in T> 
 {
 	public abstract void Process(T entity);
 }

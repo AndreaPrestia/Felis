@@ -1,13 +1,9 @@
 ﻿using System.Net.Http.Json;
-using System.Reflection;
 using System.Text.Json;
 using Felis.Core;
 using Felis.Core.Models;
 using Microsoft.AspNetCore.SignalR.Client;
-using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace Felis.Client;
 
@@ -15,43 +11,20 @@ public sealed class MessageHandler : IAsyncDisposable
 {
     private readonly HubConnection? _hubConnection;
     private readonly ILogger<MessageHandler> _logger;
-    private readonly FelisConfiguration _configuration;
-    private readonly IServiceProvider _serviceProvider;
-    private readonly string _topic = "NewDispatchedMethod";
-    private readonly Service _currentService;
-    private readonly IMemoryCache _cache;
-    private readonly MemoryCacheEntryOptions _cacheEntryOptions;
+    private List<Topic>? _topics;
+    private readonly HttpClient _httpClient;
+    private RetryPolicy? _retryPolicy;
+    private readonly ConsumerResolver _consumerResolver;
 
-    public MessageHandler(HubConnection? hubConnection, ILogger<MessageHandler> logger,
-        IOptionsMonitor<FelisConfiguration> configuration, IServiceProvider serviceProvider, IMemoryCache cache)
+    public MessageHandler(HubConnection? hubConnection, ILogger<MessageHandler> logger,HttpClient httpClient, ConsumerResolver consumerResolver)
     {
         _hubConnection = hubConnection ?? throw new ArgumentNullException(nameof(hubConnection));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
-        _cache = cache ?? throw new ArgumentNullException(nameof(cache));
-
-        _configuration = configuration.CurrentValue ?? throw new ArgumentNullException(nameof(configuration));
-
-        if (string.IsNullOrWhiteSpace(_configuration.Router?.Endpoint))
-        {
-            throw new ArgumentNullException($"No Router:Endpoint configuration provided");
-        }
-
-        if (_configuration.Cache == null)
-        {
-            throw new ArgumentNullException($"No Cache configuration provided");
-        }
-
-        _cacheEntryOptions = new MemoryCacheEntryOptions()
-            .SetSlidingExpiration(TimeSpan.FromSeconds(_configuration.Cache.SlidingExpiration))
-            .SetAbsoluteExpiration(TimeSpan.FromSeconds(_configuration.Cache.AbsoluteExpiration))
-            .SetSize(_configuration.Cache.MaxSizeBytes)
-            .SetPriority(CacheItemPriority.High);
-        
-        _currentService = _configuration.Service ?? throw new ArgumentNullException(nameof(_configuration.Service));
+        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+        _consumerResolver = consumerResolver ?? throw new ArgumentNullException(nameof(consumerResolver));
     }
 
-    public async Task Publish<T>(T payload, string? topic, CancellationToken cancellationToken = default)
+    public async Task PublishAsync<T>(T payload, string? topic, CancellationToken cancellationToken = default)
         where T : class
     {
         if (payload == null)
@@ -61,7 +34,7 @@ public sealed class MessageHandler : IAsyncDisposable
 
         try
         {
-            await CheckHubConnectionStateAndStartIt(cancellationToken);
+            await CheckHubConnectionStateAndStartIt(cancellationToken).ConfigureAwait(false);
 
             //TODO add an authorization token as parameter
 
@@ -69,10 +42,9 @@ public sealed class MessageHandler : IAsyncDisposable
 
             var json = JsonSerializer.Serialize(payload);
 
-            using var client = new HttpClient();
-            var responseMessage = await client.PostAsJsonAsync($"{_configuration.Router?.Endpoint}/dispatch",
+            var responseMessage = await _httpClient.PostAsJsonAsync("/dispatch",
                 new Message(new Header(new Topic(topic ?? type), new List<Service>()), new Content(json)),
-                cancellationToken: cancellationToken);
+                cancellationToken: cancellationToken).ConfigureAwait(false);
 
             responseMessage.EnsureSuccessStatusCode();
         }
@@ -82,129 +54,88 @@ public sealed class MessageHandler : IAsyncDisposable
         }
     }
 
-    public async Task Publish<T>(T payload, string? topic, List<Service>? services,
-        CancellationToken cancellationToken = default)
-        where T : class
-    {
-        if (payload == null)
-        {
-            throw new ArgumentNullException(nameof(payload));
-        }
-
-        if (services == null || !services.Any())
-        {
-            throw new ArgumentNullException(nameof(services));
-        }
-
-        try
-        {
-            await CheckHubConnectionStateAndStartIt(cancellationToken);
-
-            var connectedServices = await GetConnectedServices(cancellationToken);
-
-            if (connectedServices == null || !connectedServices.Any())
-            {
-                _logger.LogWarning("No connected services to dispatch. The message won't be published");
-                return;
-            }
-
-            if (!connectedServices.Select(x => x).Intersect(services).Any())
-            {
-                _logger.LogWarning(
-                    "No connected services available in the list provided to dispatch. The message won't be published");
-                return;
-            }
-
-            //TODO add an authorization token as parameter
-            var json = JsonSerializer.Serialize(payload);
-
-            using var client = new HttpClient();
-            var responseMessage = await client.PostAsJsonAsync($"{_configuration.Router?.Endpoint}/dispatch",
-                new Message(new Header(new Topic(topic), services), new Content(json)),
-                cancellationToken: cancellationToken);
-
-            responseMessage.EnsureSuccessStatusCode();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, ex.Message);
-        }
-    }
-
-    internal async Task Subscribe(CancellationToken cancellationToken = default)
+    public async Task SubscribeAsync(RetryPolicy? retryPolicy, CancellationToken cancellationToken = default)
     {
         if (_hubConnection == null)
         {
             throw new ArgumentNullException($"Connection to Felis router not correctly initialized");
         }
 
-        _hubConnection.On<Message?>(_topic, async (messageIncoming) =>
+        _retryPolicy = retryPolicy;
+        
+        var topicsTypes = _consumerResolver.GetTypesForTopics();
+
+        _topics = topicsTypes.Select(x => x.Key).ToList();
+
+        foreach (var topicType in topicsTypes)
         {
-            try
+            if (string.IsNullOrWhiteSpace(topicType.Key.Value))
             {
-                if (messageIncoming == null)
-                {
-                    throw new ArgumentNullException(nameof(messageIncoming));
-                }
-
-                if (messageIncoming.Header?.Topic == null ||
-                    string.IsNullOrWhiteSpace(messageIncoming.Header?.Topic?.Value))
-                {
-                    throw new ArgumentNullException($"No Topic provided in Header");
-                }
-
-                if (string.IsNullOrWhiteSpace(_hubConnection?.ConnectionId))
-                {
-                    throw new ArgumentNullException(nameof(_hubConnection.ConnectionId));
-                }
-               
-                var consumerSearchResult = GetConsumer(messageIncoming.Header?.Topic?.Value);
-
-                if (consumerSearchResult.Consumer == null!)
-                {
-                    _logger.LogInformation(
-                        $"Consumer not found for topic {messageIncoming.Header?.Topic?.Value}");
-                    return;
-                }
-
-                var consumer = consumerSearchResult.Consumer;
-
-                var entityType = consumerSearchResult.MessageType;
-                
-                var processMethod = GetProcessMethod(consumer, entityType);
-
-                if (processMethod == null)
-                {
-                    throw new EntryPointNotFoundException(
-                        $"No implementation of method {entityType?.Name} Process({entityType?.Name} entity)");
-                }
-                
-                var entity = Deserialize(messageIncoming.Content?.Json, entityType);
-
-                if (entity == null)
-                {
-                    throw new ArgumentNullException(nameof(entity));
-                }
-
-                using var client = new HttpClient();
-                var responseMessage = await client.PostAsJsonAsync($"{_configuration.Router?.Endpoint}/consume",
-                    new ConsumedMessage(messageIncoming,
-                        _currentService),
-                    cancellationToken: cancellationToken);
-
-                responseMessage.EnsureSuccessStatusCode();
-
-                processMethod.Invoke(consumer, new[] { entity });
+                continue;
             }
-            catch (Exception ex)
+            
+            _hubConnection.On<Message?>(topicType.Key.Value, async (messageIncoming) =>
             {
-                _logger.LogError(ex, ex.Message);
-                await SendError(messageIncoming, ex, cancellationToken);
-            }
-        });
+                try
+                {
+                    if (messageIncoming == null)
+                    {
+                        _logger.LogWarning("No message incoming.");
+                        return;
+                    }
 
-        await CheckHubConnectionStateAndStartIt(cancellationToken);
+                    if (messageIncoming.Header?.Topic == null ||
+                        string.IsNullOrWhiteSpace(messageIncoming.Header?.Topic?.Value))
+                    {
+                        
+                        _logger.LogWarning("No Topic provided in Header.");
+                        return;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(_hubConnection?.ConnectionId))
+                    {
+                        _logger.LogWarning("No connection id found. No message will be processed.");
+                        return;
+                    }
+
+                    var consumerSearchResult = _consumerResolver.ResolveConsumerByTopic(topicType, messageIncoming.Content?.Json);
+
+                    if (consumerSearchResult.Error)
+                    {
+                        _logger.LogError(consumerSearchResult.Exception, consumerSearchResult.Exception?.Message);
+                        return;
+                    }
+                    
+                    var responseMessage = await _httpClient.PostAsJsonAsync($"/consume",
+                        new ConsumedMessage(messageIncoming,
+                            new ConnectionId(_hubConnection.ConnectionId)),
+                        cancellationToken: cancellationToken).ConfigureAwait(false);
+
+                    responseMessage.EnsureSuccessStatusCode();
+
+                    consumerSearchResult.ProcessMethod?.Invoke(consumerSearchResult.Consumer, new[] { consumerSearchResult.DeserializedEntity });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, ex.Message);
+                    await SendError(messageIncoming, ex, cancellationToken).ConfigureAwait(false);
+                }
+            });
+        }
+
+        await CheckHubConnectionStateAndStartIt(cancellationToken).ConfigureAwait(false);
     }
+   
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection != null)
+        {
+            await _hubConnection?.InvokeAsync("RemoveConnectionId", new ConnectionId(_hubConnection?.ConnectionId))!;
+            await _hubConnection.DisposeAsync().ConfigureAwait(false);
+        }
+    }
+
+    #region PrivateMethods
 
     private async Task CheckHubConnectionStateAndStartIt(CancellationToken cancellationToken = default)
     {
@@ -220,142 +151,22 @@ public sealed class MessageHandler : IAsyncDisposable
                 await _hubConnection?.StartAsync(cancellationToken)!;
             }
 
-            _currentService.Topics = GetTopicsFromCurrentInstance();
-            
-            await _hubConnection?.InvokeAsync("SetConnectionId", _currentService, cancellationToken)!;
+            await _hubConnection?.InvokeAsync("SetConnectionId", _topics, cancellationToken)!;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, ex.Message);
         }
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        if (_hubConnection != null)
-        {
-            await _hubConnection?.InvokeAsync("RemoveConnectionIds", _currentService)!;
-            await _hubConnection.DisposeAsync();
-        }
-    }
-
-    #region PrivateMethods
-
-    private ConsumerSearchResult GetConsumer(string? topic)
-    {
-        var consumerSearchResult = GetFromCache(topic);
-
-        if (consumerSearchResult != null)
-        {
-            return consumerSearchResult;
-        }
-        
-        var constructed = AppDomain.CurrentDomain.GetAssemblies()
-            .First(x => x.GetName().Name == AppDomain.CurrentDomain.FriendlyName).GetTypes().FirstOrDefault(t =>
-                t.BaseType?.FullName != null
-                && t.BaseType.FullName.Contains("Felis.Client.Consume") && t is { IsInterface: false, IsAbstract: false } 
-                && t.GetCustomAttributes<TopicAttribute>().Count(x => string.Equals(topic, x.Value, StringComparison.InvariantCultureIgnoreCase)) == 1 
-                && t.GetMethods().Any(x => x.Name == "Process"
-                                           && x.GetParameters().Count() ==
-                                           1));
-
-        if (constructed == null)
-        {
-            throw new InvalidOperationException($"Not found implementation of Consumer for topic {topic}");
-        }
-
-
-        var firstConstructor = constructed.GetConstructors().FirstOrDefault();
-
-        var parameters = new List<object>();
-
-        if (firstConstructor == null)
-        {
-            throw new NotImplementedException($"Constructor not implemented in {constructed.Name}");
-        }
-
-        foreach (var param in firstConstructor.GetParameters())
-        {
-            using var serviceScope = _serviceProvider.CreateScope();
-            var provider = serviceScope.ServiceProvider;
-
-            var service = provider.GetService(param.ParameterType);
-
-            parameters.Add(service!);
-        }
-
-        var processParameterInfo = constructed.GetMethod("Process")?.GetParameters().FirstOrDefault();
-
-        if (processParameterInfo == null)
-        {
-            throw new InvalidOperationException($"Not found parameter of Consumer.Process for topic {topic}");
-        }
-
-        var parameterType = processParameterInfo.ParameterType;
-
-        var instance = Activator.CreateInstance(constructed, parameters.ToArray())!;
-
-        if (instance == null!)
-        {
-            throw new ApplicationException($"Cannot create an instance of {constructed.Name}");
-        }
-
-        consumerSearchResult = new ConsumerSearchResult()
-        {
-            MessageType = parameterType,
-            Consumer = instance
-        };
-        
-        SetInCache(topic, consumerSearchResult);
-        
-        return consumerSearchResult;
-    }
-
-    private MethodInfo? GetProcessMethod(object instance, Type? entityType)
-    {
-        if (instance == null)
-        {
-            throw new ArgumentNullException(nameof(instance));
-        }
-
-        if (entityType == null)
-        {
-            throw new ArgumentNullException(nameof(entityType));
-        }
-
-        return instance.GetType().GetMethods().Where(t => t.Name.Equals("Process")
-                                                          && t.GetParameters().Length == 1 &&
-                                                          t.GetParameters().FirstOrDefault()!.ParameterType
-                                                              .Name.Equals(entityType.Name)
-            ).Select(x => x)
-            .FirstOrDefault();
-    }
-
-    private object? Deserialize(string? content, Type? type)
-    {
-        if (type == null)
-        {
-            throw new ArgumentNullException(nameof(type));
-        }
-        
-        return string.IsNullOrWhiteSpace(content)
-            ? null
-            : JsonSerializer.Deserialize(content, type, new JsonSerializerOptions()
-            {
-                AllowTrailingCommas = true,
-                PropertyNameCaseInsensitive = true
-            });
     }
 
     private async Task SendError(Message? message, Exception exception, CancellationToken cancellationToken = default)
     {
         try
         {
-            using var client = new HttpClient();
-            var responseMessage = await client.PostAsJsonAsync($"{_configuration.Router?.Endpoint}/error",
+            var responseMessage = await _httpClient.PostAsJsonAsync("/error",
                 new ErrorMessage(message,
-                    _currentService, exception, _configuration.RetryPolicy),
-                cancellationToken: cancellationToken);
+                    new ConnectionId(_hubConnection?.ConnectionId), exception, _retryPolicy),
+                cancellationToken: cancellationToken).ConfigureAwait(false);
 
             responseMessage.EnsureSuccessStatusCode();
         }
@@ -363,76 +174,6 @@ public sealed class MessageHandler : IAsyncDisposable
         {
             _logger.LogError(ex, ex.Message);
         }
-    }
-
-    private async Task<List<Service>?> GetConnectedServices(CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            using var client = new HttpClient();
-            var responseMessage = await client
-                .GetAsync($"{_configuration.Router?.Endpoint}/services", cancellationToken)
-                .ConfigureAwait(false);
-
-            responseMessage.EnsureSuccessStatusCode();
-
-            return JsonSerializer.Deserialize<List<Service>>(await responseMessage.Content
-                .ReadAsStringAsync(cancellationToken).ConfigureAwait(false));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, ex.Message);
-            return new List<Service>();
-        }
-    }
-    
-    private void SetInCache(string? topic, ConsumerSearchResult value)
-    {
-        if (string.IsNullOrWhiteSpace(topic))
-        {
-            throw new ArgumentNullException(nameof(topic));
-        }
-
-        if (value == null)
-        {
-            throw new ArgumentNullException(nameof(value));
-        }
-
-        _cache.Remove(topic);
-        _cache.Set(topic, value, _cacheEntryOptions);
-    }
-
-    private ConsumerSearchResult? GetFromCache(string? topic)
-    {
-        if (string.IsNullOrWhiteSpace(topic))
-        {
-            throw new ArgumentNullException(nameof(topic));
-        }
-
-        var found = _cache.TryGetValue(topic, out ConsumerSearchResult? result);
-
-        return !found ? default : result;
-    }
-    
-     private List<Topic> GetTopicsFromCurrentInstance()
-    {
-        var topics = AppDomain.CurrentDomain.GetAssemblies()
-            .First(x => x.GetName().Name == AppDomain.CurrentDomain.FriendlyName).GetTypes().Where(t =>
-                t.BaseType?.FullName != null
-                && t.BaseType.FullName.Contains("Felis.Client.Consume") && t is { IsInterface: false, IsAbstract: false }).SelectMany(t => t.GetCustomAttributes<TopicAttribute>().Select(x => new Topic(x.Value))).ToList();
-
-        if (topics == null)
-        {
-            throw new InvalidOperationException("Not found implementation of Consumer for any topic");
-        }
-
-        return topics;
-    }
-
-    private class ConsumerSearchResult
-    {
-        public object? Consumer { get; init; }
-        public Type? MessageType { get; init; }
     }
 
     #endregion

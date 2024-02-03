@@ -6,7 +6,7 @@ using Felis.Router.Interfaces;
 namespace Felis.Router.Storage;
 
 /// <summary>
-/// This is an in-memory storage implementation of IFelisRouterStorage. Just for academic purposes. We must use it at most as cache :) 
+/// This is an in-memory storage implementation of IFelisRouterStorage.
 /// </summary>
 public class FelisRouterStorage : IFelisRouterStorage
 {
@@ -16,7 +16,7 @@ public class FelisRouterStorage : IFelisRouterStorage
 
     public bool ConsumedMessageAdd(ConsumedMessage? consumedMessage)
     {
-        if (_consumedMessages.Any(cm => cm?.Service == consumedMessage?.Service
+        if (_consumedMessages.Any(cm => cm?.ConnectionId.Value == consumedMessage?.ConnectionId.Value
                                         && string.Equals(cm?.Message?.Header?.Topic?.Value,
                                             consumedMessage?.Message?.Header?.Topic?.Value,
                                             StringComparison.InvariantCultureIgnoreCase)
@@ -26,6 +26,9 @@ public class FelisRouterStorage : IFelisRouterStorage
         }
 
         _consumedMessages = new ConcurrentQueue<ConsumedMessage?>(_consumedMessages.Append(consumedMessage));
+
+        _messages = new ConcurrentQueue<Message?>(_messages.Where(x =>
+            x?.Id != consumedMessage?.Message?.Id));
 
         return true;
     }
@@ -45,9 +48,9 @@ public class FelisRouterStorage : IFelisRouterStorage
             .ToList();
     }
 
-    public List<ConsumedMessage?> ConsumedMessageList(Service service)
+    public List<ConsumedMessage?> ConsumedMessageList(ConnectionId connectionId)
     {
-        return _consumedMessages.Where(cm => cm?.Service?.Host == service.Host && cm?.Service?.Name == service.Name)
+        return _consumedMessages.Where(cm => cm?.ConnectionId.Value == connectionId.Value)
             .ToList();
     }
 
@@ -93,15 +96,17 @@ public class FelisRouterStorage : IFelisRouterStorage
     {
         var hasValue = _errorMessages.TryGetValue(message, out int retries);
 
+        if (message.RetryPolicy == null)
+        {
+            return hasValue ? _errorMessages.TryUpdate(message, 0, retries) : _errorMessages.TryAdd(message, 0);
+        }
+        
         return hasValue ? _errorMessages.TryUpdate(message, retries + 1, retries) : _errorMessages.TryAdd(message, 1);
     }
 
-    public List<ErrorMessage> ErrorMessageList(Topic? topic = null, long? start = null, long? end = null)
+    public List<ErrorMessage> ErrorMessageList(Topic? topic = null)
     {
         return _errorMessages.Select(em => em.Key)
-            .Where(em =>
-                (topic == null || string.Equals(em.Message?.Header?.Topic?.Value, topic.Value,
-                    StringComparison.InvariantCultureIgnoreCase))
-                && ((start == null && end == null) || (em.Timestamp >= start && em.Timestamp <= end))).ToList();
+            .Where(em => topic == null || string.Equals(em.Message?.Header?.Topic?.Value, topic.Value, StringComparison.InvariantCultureIgnoreCase)).ToList();
     }
 }

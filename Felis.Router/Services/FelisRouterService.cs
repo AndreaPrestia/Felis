@@ -12,7 +12,6 @@ internal sealed class FelisRouterService : IFelisRouterService
     private readonly IHubContext<FelisRouterHub> _hubContext;
     private readonly ILogger<FelisRouterService> _logger;
     private readonly IFelisRouterStorage _storage;
-    private readonly string _topic = "NewDispatchedMethod";
     private readonly IFelisConnectionManager _felisConnectionManager;
 
     public FelisRouterService(IHubContext<FelisRouterHub> hubContext, ILogger<FelisRouterService> logger,
@@ -38,7 +37,9 @@ internal sealed class FelisRouterService : IFelisRouterService
                 throw new ArgumentNullException($"No Topic provided in Header");
             }
 
-            if (string.IsNullOrWhiteSpace(message.Header?.Topic?.Value))
+            var topic = message.Header?.Topic?.Value;
+
+            if (string.IsNullOrWhiteSpace(topic))
             {
                 throw new ArgumentNullException($"No Topic Value provided in Header");
             }
@@ -80,14 +81,19 @@ internal sealed class FelisRouterService : IFelisRouterService
 
                     foreach (var connectionId in connectionIds)
                     {
-                        await _hubContext.Clients.Client(connectionId).SendAsync(_topic, message, cancellationToken)
+                        if (string.IsNullOrWhiteSpace(connectionId.Value))
+                        {
+                            continue;
+                        }
+                        
+                        await _hubContext.Clients.Client(connectionId.Value).SendAsync(topic, message, cancellationToken)
                             .ConfigureAwait(false);
                     }
                 }
             }
             else
             {
-                await _hubContext.Clients.All.SendAsync(_topic, message, cancellationToken).ConfigureAwait(false);
+                await _hubContext.Clients.All.SendAsync(topic, message, cancellationToken).ConfigureAwait(false);
             }
 
             return result;
@@ -149,19 +155,6 @@ internal sealed class FelisRouterService : IFelisRouterService
         }
     }
 
-    public Task<List<Service>> GetConnectedServices(CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            return Task.FromResult(_felisConnectionManager.GetConnectedServices());
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, ex.Message);
-            return Task.FromResult(new List<Service>());
-        }
-    }
-
     public Task<bool> Purge(Topic? topic, CancellationToken cancellationToken = default)
     {
         try
@@ -200,6 +193,73 @@ internal sealed class FelisRouterService : IFelisRouterService
         {
             _logger.LogError(ex, ex.Message);
             return Task.FromResult(new List<Service>());
+        }
+    }
+
+    public Task<List<Message?>> MessageList(Topic? topic = null, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (topic == null)
+            {
+                throw new ArgumentNullException(nameof(topic));
+            }
+            
+            return Task.FromResult(_storage.MessageList(topic));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, ex.Message);
+            return Task.FromResult(new List<Message?>());
+        }
+    }
+
+    public Task<List<ErrorMessage>> ErrorMessageList(Topic? topic = null, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return Task.FromResult(_storage.ErrorMessageList(topic));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, ex.Message);
+            return Task.FromResult(new List<ErrorMessage>());
+        }
+    }
+
+    public Task<List<ConsumedMessage?>> ConsumedMessageList(ConnectionId connectionId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (connectionId == null)
+            {
+                throw new ArgumentNullException(nameof(connectionId));
+            }
+            
+            return Task.FromResult(_storage.ConsumedMessageList(connectionId));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, ex.Message);
+            return Task.FromResult(new List<ConsumedMessage?>());
+        }
+    }
+
+    public Task<List<ConsumedMessage?>> ConsumedMessageList(Topic topic, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (topic == null)
+            {
+                throw new ArgumentNullException(nameof(topic));
+            }
+            
+            return Task.FromResult(_storage.ConsumedMessageList(topic));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, ex.Message);
+            return Task.FromResult(new List<ConsumedMessage?>());
         }
     }
 }

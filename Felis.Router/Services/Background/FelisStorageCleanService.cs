@@ -35,7 +35,7 @@ internal class FelisStorageCleanService : BackgroundService
 
             var timer = new PeriodicTimer(
                 TimeSpan.FromMinutes(minutesForClean.Value));
-            while (await timer.WaitForNextTickAsync(stoppingToken))
+            while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false))
             {
                 try
                 {

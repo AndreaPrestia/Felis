@@ -15,24 +15,27 @@ This repository provides two examples of usage:
 
 **Felis.Router.Test**
 
-An ASP-NET minimal API application, containing the six endpoints exposed by Felis.
+An ASP-NET minimal API application, containing the nine endpoints exposed by Felis.
 
-The six endpoints are:
+The nine endpoints are:
 
 - dispatch
 - consume
 - error
-- services
-- purge
-- consumers
-
+- purge/{topic}
+- consumers/{topic}
+- messages/{topic}
+- messages/{topic}/error
+- messages/{topic}/consumed
+- message/consumed
+  
 These endpoints are documented in the following page:
 
 ```
 https://localhost:7103/swagger/index.html
 ```
 
-**Dispatch**
+**dispatch**
 
 This endpoint is used to dispatch a message with whatever contract in the payload, by topic, to every listener connected to Felis.
 
@@ -70,7 +73,7 @@ Status code | Type | Context |
 401 | UnauthorizedResult | When an operation fails due to missing authorization. |
 403 | ForbiddenResult | When an operation fails because it is not allowed in the context. |
 
-**Consume**
+**consume**
 
 This endpoint informs Felis when a client successfully consumes a message. It is used to keep track of the operations (ACK).
 
@@ -90,10 +93,13 @@ curl --location 'https://localhost:7103/consume' \
         }
     },
     "service": {
-        "name": "string",
-        "host": "string",
+        "ipAddress": "string",
+        "hostname": "string",
         "isPublic": true,
-	"topics": []
+	"topics": [{
+                "value": "test"
+            }
+        ]
     },
 }'
 ```
@@ -108,8 +114,8 @@ message.header.topic.value | string | the actual value of the topic of the consu
 message.content | object | the message content. |
 message.content.json | string | Json string of the consumed message. |
 service | object | The service entity that represents the client identity. |
-service.name | string | The name property of the client. |
-service.host | string | The host property of the client. |
+service.ipAddress | string | The ipAddress property of the client. |
+service.hostname | string | The hostname property of the client. |
 service.isPublic | boolean | This property tells the router whether the client is configured to be discovered by other clients or not. |
 service.topics | array<Topic> | This property contains the array of topics subscribed by a client. |
 
@@ -121,7 +127,7 @@ Status code | Type | Context |
 401 | UnauthorizedResult | When an operation fails due to missing authorization. |
 403 | ForbiddenResult | When an operation fails because it is not allowed in the context. |
 
-**Error**
+**error**
 
 This endpoint informs Felis when a client encounters errors while consuming a message. It is used to keep track of the operations (ACK).
 
@@ -141,10 +147,13 @@ curl --location 'https://localhost:7103/error' \
         }
     },
     "service": {
-        "name": "string",
-        "host": "string",
+        "ipAddress": "string",
+        "hostname": "string",
         "isPublic": true,
-	"topics": []
+	"topics": [{
+                "value": "test"
+            }
+        ]
     },
     "exception": {
         "targetSite": {
@@ -180,8 +189,8 @@ message.header.topic.value | string | the actual value of the topic of the messa
 message.content | object | the message content. |
 message.content.json | string | Json string of the message that throws an error. |
 service | object | The service entity that represents the client identity. |
-service.name | string | The name property of the client. |
-service.host | string | The host property of the client. |
+service.ipAddress | string | The ipAddress property of the client. |
+service.hostname | string | The hostname property of the client. |
 service.isPublic | boolean | This property tells the router whether the client is configured to be discovered by other clients or not. |
 service.topics | array<Topic> | This property contains the array of topics subscribed by a client. |
 exception | object | The .NET exception object that contains the occurred error. |
@@ -194,51 +203,12 @@ Status code | Type | Context |
 401 | UnauthorizedResult | When an operation fails due to missing authorization. |
 403 | ForbiddenResult | When an operation fails because it is not allowed in the context. |
 
-**Services**
-
-This endpoint provides a list of the clients connected to Felis. It exposes only the clients that are configured with the property **IsPublic** to **true**, which makes the clients discoverable.
-
-```
-curl --location 'https://localhost:7103/services'
-```
-
-***Response***
-
-```
-[
-   {
-      "name":"name",
-      "host":"host",
-      "isPublic":true,
-      "topics":[
-         {
-            "value":"topic"
-         }
-      ]
-   }
-]
-```
-This endpoint returns an array of clients.
-
-Property | Type | Context |
---- | --- | --- |
-name | string | The name property of the client. |
-host | string | The host property of the client. |
-isPublic | boolean | This property tells the router whether the client is configured to be discovered by other clients or not. |
-topics | array<Topic> | This property contains the array of topics subscribed by a client. |
-
-**Purge**
+**purge/{topic}**
 
 This endpoint tells the router to purge the queue for a specific topic. It is irreversible.
 
 ```
-curl --location --request DELETE 'https://localhost:7103/purge' \
---header 'Content-Type: application/json' \
---data '{
-    "topic": {
-        "value": "topic"
-    }
-}'
+curl --location --request DELETE 'https://localhost:7103/purge/topic'
 ```
 
 ***Request***
@@ -257,12 +227,12 @@ Status code | Type | Context |
 401 | UnauthorizedResult | When an operation fails due to missing authorization. |
 403 | ForbiddenResult | When an operation fails because it is not allowed in the context. |
 
-**Consumers**
+**consumers/{topic}**
 
-This endpoint provides a list of the clients connected to Felis that consume a specific topic. It exposes only the clients that are configured with the property **IsPublic** to **true**, which makes the clients discoverable.
+This endpoint provides a list of the clients connected to Felis that consume a specific topic provided in the route. It exposes only the clients that are configured with the property **IsPublic** to **true**, which makes the clients discoverable.
 
 ```
-curl --location 'https://localhost:7103/services'
+curl --location 'https://localhost:7103/consumers/topic'
 ```
 
 ***Response***
@@ -270,8 +240,8 @@ curl --location 'https://localhost:7103/services'
 ```
 [
    {
-      "name":"name",
-      "host":"host",
+      "ipAddress":"192.168.1.1",
+      "hostname":"host",
       "isPublic":true,
       "topics":[
          {
@@ -285,10 +255,259 @@ This endpoint returns an array of clients.
 
 Property | Type | Context |
 --- | --- | --- |
-name | string | The name property of the client. |
-host | string | The host property of the client. |
+ipAddress | string | The ipAddress property of the client. |
+hostname | string | The hostname property of the client. |
 isPublic | boolean | This property tells the router whether the client is configured to be discovered by other clients or not. |
 topics | array<Topic> | This property contains the array of topics subscribed by a client. |
+
+**message/{topic}**
+
+This endpoint provides a list of the message ready to sent in Felis for a specific topic provided in the route.
+
+```
+curl --location 'https://localhost:7103/messages/topic'
+```
+
+***Response***
+
+```
+[
+  {
+    "header": {
+      "topic": {
+        "value": "string"
+      },
+      "services": [
+        {
+          "hostname": "string",
+          "ipAddress": "string",
+          "topics": [
+            {
+              "value": "string"
+            }
+          ]
+        }
+      ],
+      "timestamp": 0
+    },
+    "content": {
+      "json": "string"
+    },
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+  }
+]
+```
+This endpoint returns an array of message.
+
+Property | Type | Context |
+--- | --- | --- |
+id | guid | the message global unique identifier. |
+header | object | the message header, containing the metadata of the message. |
+header.topic | object | value object containing the topic of the message that throws an error. |
+header.topic.value | string | the actual value of the topic of the message that throws an error. |
+content | object | the message content. |
+content.json | string | Json string of the message that throws an error. |
+services | array<Service> | The service array that contains the destinations of the message. |
+
+**messages/{topic}/error**
+
+This endpoint provides a list of the message that are gone in the error queue for a specific topic provided in the route.
+
+```
+curl --location 'https://localhost:7103/messages/topic/error'
+```
+
+***Response***
+
+```
+[
+    {
+        "connectionId": {
+            "value": "string"
+        },
+        "exception": {
+            "helpLink": "string",
+            "hResult": 0,
+            "innerException": "string",
+            "source": "string",
+            "targetSite": {
+                "attributes": 0,
+                "callingConvention": 1,
+                "declaringType": "string",
+                "memberType": 1,
+                "methodHandle": {
+                    "value": {}
+                },
+                "methodImplementationFlags": 0,
+                "module": {
+                    "assembly": "string",
+                    "moduleHandle": {}
+                },
+                "reflectedType": "string"
+            }
+        },
+        "message": {
+            "content": {
+                "json": "string"
+            },
+            "header": {
+                "services": [
+                    {
+                        "hostname": "string",
+                        "ipAddress": "string",
+                        "topics": [
+                            {
+                                "value": "string"
+                            }
+                        ]
+                    }
+                ],
+                "timestamp": 0,
+                "topic": {
+                    "value": "string"
+                }
+            },
+            "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+        }
+    }
+]
+```
+This endpoint returns an array of messages with related exception and connection id where the error happened.
+
+Property | Type | Context |
+--- | --- | --- |
+message | object | The message entity used by Felis system. |
+message.id | guid | the message global unique identifier. |
+message.header | object | the message header, containing the metadata of the message. |
+message.header.topic | object | value object containing the topic of the message that throws an error. |
+message.header.topic.value | string | the actual value of the topic of the message that throws an error. |
+message.content | object | the message content. |
+message.content.json | string | Json string of the message that throws an error. |
+message.services | array<Service> | The service array that contains the destinations of the message. |
+connectionId | object | the actual value of the connectionId of the message that throws an error.   |
+connectionId.value | string | The hostname property of the client. |
+exception | object | The .NET exception object that contains the occurred error. |
+
+**messages/{topic}/consumed**
+
+This endpoint provides a list of the message that are been consumed for a specific topic provided in the route.
+
+```
+curl --location 'https://localhost:7103/messages/topic/consumed'
+```
+
+***Response***
+
+```
+[
+    {
+        "connectionId": {
+            "value": "string"
+        },
+        "message": {
+            "content": {
+                "json": "string"
+            },
+            "header": {
+                "services": [
+                    {
+                        "hostname": "string",
+                        "ipAddress": "string",
+                        "topics": [
+                            {
+                                "value": "string"
+                            }
+                        ]
+                    }
+                ],
+                "timestamp": 0,
+                "topic": {
+                    "value": "string"
+                }
+            },
+            "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+        },
+	"timestamp": 0
+    }
+]
+```
+This endpoint returns an array of messages that are consumed, with related connection id and timestamp.
+
+Property | Type | Context |
+--- | --- | --- |
+message | object | The message entity used by Felis system. |
+message.id | guid | the message global unique identifier. |
+message.header | object | the message header, containing the metadata of the message. |
+message.header.topic | object | value object containing the topic of the message that throws an error. |
+message.header.topic.value | string | the actual value of the topic of the message that throws an error. |
+message.content | object | the message content. |
+message.content.json | string | Json string of the message that throws an error. |
+message.services | array<Service> | The service array that contains the destinations of the message. |
+connectionId | object | the actual value of the connectionId of the message that throws an error.   |
+connectionId.value | string | The hostname property of the client. |
+timestamp | long | The unix time in milliseconds that provides the consume time. |
+
+**messages/consumed**
+
+This endpoint provides a list of the message that are been consumed for the current connection id, specificied as header.
+
+```
+curl -X 'GET' \
+  'https://localhost:7103/messages/consumed' \
+  -H 'accept: application/json' \
+  -H 'connection-id: AYhRMfzMA62BvJn3paMczQ'
+```
+
+***Response***
+
+```
+[
+    {
+        "connectionId": {
+            "value": "string"
+        },
+        "message": {
+            "content": {
+                "json": "string"
+            },
+            "header": {
+                "services": [
+                    {
+                        "hostname": "string",
+                        "ipAddress": "string",
+                        "topics": [
+                            {
+                                "value": "string"
+                            }
+                        ]
+                    }
+                ],
+                "timestamp": 0,
+                "topic": {
+                    "value": "string"
+                }
+            },
+            "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+        },
+	"timestamp": 0
+    }
+]
+```
+This endpoint returns an array of messages that are consumed, with related connection id and timestamp.
+
+Property | Type | Context |
+--- | --- | --- |
+message | object | The message entity used by Felis system. |
+message.id | guid | the message global unique identifier. |
+message.header | object | the message header, containing the metadata of the message. |
+message.header.topic | object | value object containing the topic of the message that throws an error. |
+message.header.topic.value | string | the actual value of the topic of the message that throws an error. |
+message.content | object | the message content. |
+message.content.json | string | Json string of the message that throws an error. |
+message.services | array<Service> | The service array that contains the destinations of the message. |
+connectionId | object | the actual value of the connectionId of the message that throws an error.   |
+connectionId.value | string | The hostname property of the client. |
+timestamp | long | The unix time in milliseconds that provides the consume time. |
 
 **Configuration**
 
@@ -300,12 +519,6 @@ Add this section to appsettings.json.
       "TimeToLiveMinutes": 5,
       "MinutesForEveryClean": 2,
       "MinutesForEveryRequeue": 2
-    },
-    "StorageConfiguration": {
-      "Strategy": "InMemory",
-      "Configurations": {
-        "abc": "def"
-      }
     }
   }
 ```
@@ -317,9 +530,6 @@ MessageConfiguration | object | The message configuration. |
 MessageConfiguration.TimeToLiveMinutes | int | The TTL for a message in the router queue. |
 MessageConfiguration.MinutesForEveryClean | int | It makes the queue cleaner run every N minutes. |
 MessageConfiguration.MinutesForEveryRequeue | int | It makes the re-queue service run every N minutes. |
-StorageConfiguration | object | The storage configuration. |
-StorageConfiguration.TimeToLiveMinutes | string | The storage strategy. The available values are **InMemory** and **Persistent**. If the field is left empty or not provided, **InMemory** will be used by default. |
-StorageConfiguration.Configurations | Dictionary<string,string> | Dictionary for storage configuration, to be used upon choosing **Persistent**. |
 
 **Program.cs**
 
@@ -336,75 +546,60 @@ To ease the testing process, I have implemented an ASP-NET minimal API applicati
 
 This application contains a class, called TestConsumer, that implements the Consume<T> abstract class. It contains the Process(T entity) method implemented. It only shows how messages are intercepted.
 
-**Configuration**
-
-Just add this section to appsettings.json. 
-
-```
- "FelisClient": {
-    "RouterEndpoint": "https://localhost:7103",
-    "Service": {
-      	"Name": "name",
-      	"Host": "host",
-      	"IsPublic": true
-     },
-     "RetryPolicy" : {
-	"Attempts": 5
-     },
-     "Cache": {
-      "SlidingExpiration": 3600,
-      "AbsoluteExpiration": 3600,
-      "MaxSizeBytes": 3000
-     }
-  }
-```
-The configuration is made of:
-
-Property | Type | Context |
---- | --- | --- |
-Router | object | The router configuration object. |
-Router.Endpoint | string | The FelisRouter endpoint that the client must subscribe. |
-Service | object | The client configuration. |
-Service.Name | string | The client name. Paired with **host**, it provides its unique identity to FelisRouter. |
-Service.Host | string | The client host. Paired with **name**, it provides its unique identity to FelisRouter. |
-Service.IsPublic | boolean | This property tells the router whether the client is configured to be discovered by other clients or not. |
-RetryPolicy | object | The retry policy configuration. |
-RetryPolicy.Attempts | int | It tells the router the maximum number of attempts that should be made to resend a message in the error queue, according to the configured retry policy. All the attempts are logged in the router. |
-Cache | object | The cache configuration. The cache applies to all the client consumers. |
-Cache.SlidingExpiration | double | The SlidingExpiration for IMemoryCacheOptions. |
-Cache.AbsoluteExpiration | double | The AbsoluteExpiration for IMemoryCacheOptions.|
-Cache.MaxSizeBytes | long | The MaxSizeBytes that can reach the cache, used for IMemoryCacheOptions. |
-
 **Program.cs**
 
-For the ASP-NET core applications, add:
+Just add the following line of code:
 ```
-builder.AddFelisClientWeb();
+builder.AddFelisClient("https://localhost:7103", 15, 5);
 ```
-For all the other .NET applications, add:
-```
-builder.AddFelisClient();
-```
+
+The signature of **AddFelisClient** method is made of:
+
+Parameter | Type | Context                                                                                                                                                                                                                                            |
+--- | --- |----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+routerEndpoint | string | The FelisRouter endpoint that the client must subscribe.                                                                                                                                                                                           |
+pooledConnectionLifetimeMinutes | int | The internal http client PooledConnectionLifetimeMinutes. Not mandatory. Default value is 15.                                                                                                                                                      |
+maxAttempts | int | It tells the router the maximum number of attempts that should be made to resend a message in the error queue, according to the retry policy that you want to apply. All the attempts are logged in the router. Not mandatory, default value is 0. |
 
 **How do I use a consumer?**
 
-It is very simple. Just create a class that implements the Consume<T> abstract one.
-See an example from GitHub here below:
+It is very simple. Just create a class that implements the IConsume<T> interface.
+See two examples from GitHub here below:
 
+***Sync mode***
 ```
 using Felis.Client.Test.Models;
 using System.Text.Json;
 
-namespace Felis.Client.Test
+namespace Felis.Client.Test;
+
+[Topic("Test")]
+public class TestConsumer : IConsume<TestModel>
 {
-	[Topic("Test")]
-	public class TestConsumer : Consume<TestModel>
+	public async void Process(TestModel entity)
 	{
-		public override void Process(TestModel entity)
-		{
-			Console.WriteLine(JsonSerializer.Serialize(entity));
-		}
+		Console.WriteLine("Sync mode");
+		Console.WriteLine(JsonSerializer.Serialize(entity));
 	}
+}
+```
+
+***Async mode***
+```
+using System.Text.Json;
+using Felis.Client.Test.Models;
+
+namespace Felis.Client.Test;
+
+[Topic("TestAsync")]
+public class TestConsumerAsync : IConsume<TestModel>
+{
+    public async void Process(TestModel entity)
+    {
+        Console.WriteLine("Async mode");
+        await Task.Run(() =>
+            Console.WriteLine(JsonSerializer.Serialize(entity)));
+    }
 }
 ```
 

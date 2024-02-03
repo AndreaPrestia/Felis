@@ -14,8 +14,12 @@ internal interface IFelisRouterService
     
     Task<bool> Error(ErrorMessage? errorMessage, CancellationToken cancellationToken = default);
 
-    Task<List<Service>> GetConnectedServices(CancellationToken cancellationToken = default);
     Task<bool> Purge(Topic? topic, CancellationToken cancellationToken = default);
     
     Task<List<Service>> Consumers(Topic? topic, CancellationToken cancellationToken = default);
+    
+    Task<List<Message?>> MessageList(Topic? topic = null, CancellationToken cancellationToken = default);
+    Task<List<ErrorMessage>> ErrorMessageList(Topic? topic = null, CancellationToken cancellationToken = default);
+    Task<List<ConsumedMessage?>> ConsumedMessageList(ConnectionId connectionId, CancellationToken cancellationToken = default);
+    Task<List<ConsumedMessage?>> ConsumedMessageList(Topic topic, CancellationToken cancellationToken = default);
 }

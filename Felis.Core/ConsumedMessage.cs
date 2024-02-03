@@ -1,8 +1,6 @@
-﻿using Felis.Core.Models;
+﻿namespace Felis.Core;
 
-namespace Felis.Core;
-
-public record ConsumedMessage(Message? Message, Service? Service)
+public record ConsumedMessage(Message? Message, ConnectionId ConnectionId)
 {
     public long Timestamp { get; } = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
 }

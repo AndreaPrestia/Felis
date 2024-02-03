@@ -29,11 +29,6 @@ public static class Extensions
                 throw new ApplicationException("FelisRouter:MessageConfiguration not provided");
             }
 
-            if (configuration.StorageConfiguration == null)
-            {
-                throw new ApplicationException("FelisRouter:StorageConfiguration not provided");
-            }
-
             services.Configure<JsonOptions>(options =>
             {
                 options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
@@ -41,29 +36,16 @@ public static class Extensions
 
             services.AddSignalR();
 
-            AddServices(services, configuration);
+            AddServices(services);
 
             AddSwagger(services);
         });
     }
 
-    private static void AddServices(IServiceCollection serviceCollection, FelisRouterConfiguration? configuration)
+    private static void AddServices(IServiceCollection serviceCollection)
     {
         serviceCollection.AddSingleton<IFelisConnectionManager, FelisConnectionManager>();
-
-        if (string.Equals(KnownStorageStrategies.Persistent, configuration?.StorageConfiguration?.Strategy))
-        {
-            var concreteType = GetStorageSourceConcreteTypeNotInMemory() ?? throw new ApplicationException(
-                $"No concrete type different than FelisRouterStorage implemented for StorageConfiguration:Strategy {KnownStorageStrategies.Persistent}.");
-
-            //TODO review this terrible code!
-            serviceCollection.AddSingleton<IFelisRouterStorage>((IFelisRouterStorage)concreteType);
-        }
-        else
-        {
-            serviceCollection.AddSingleton<IFelisRouterStorage, FelisRouterStorage>();
-        }
-
+        serviceCollection.AddSingleton<IFelisRouterStorage, FelisRouterStorage>();
         serviceCollection.AddSingleton<IFelisRouterService, FelisRouterService>();
         serviceCollection.AddSingleton<FelisRouterHub>();
     }
@@ -82,13 +64,13 @@ public static class Extensions
                 Contact = new OpenApiContact
                 {
                     Name = "Andrea Prestia",
-                    Email = string.Empty,
+                    Email = "andrea@prestia.dev",
                     Url = new Uri("https://www.linkedin.com/in/andrea-prestia-5212a2166/"),
                 }
             });
         });
     }
-
+    
     public static void UseFelisRouter(this WebApplication app)
     {
         app.MapHub<FelisRouterHub>("/felis/router");
@@ -116,12 +98,5 @@ public static class Extensions
 
                 instance.Init(app);
             });
-    }
-
-    private static Type? GetStorageSourceConcreteTypeNotInMemory()
-    {
-       return AppDomain.CurrentDomain.GetAssemblies().First(x => x.GetName().Name == AppDomain.CurrentDomain.FriendlyName)
-            .GetTypes().FirstOrDefault(t =>
-                t.IsSubclassOf(typeof(IFelisRouterStorage)) && t is { IsInterface: false, IsAbstract: false } && t != typeof(FelisRouterStorage));
     }
 }

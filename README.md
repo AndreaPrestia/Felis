@@ -155,26 +155,9 @@ curl --location 'https://localhost:7103/error' \
             }
         ]
     },
-    "exception": {
-        "targetSite": {
-            "memberType": 1,
-            "declaringType": "string",
-            "reflectedType": "string",
-            "module": {
-                "assembly": "string",
-                "moduleHandle": {}
-            },
-            "attributes": 0,
-            "methodImplementationFlags": 0,
-            "callingConvention": 1,
-            "methodHandle": {
-                "value": {}
-            }
-        },
-        "innerException": "string",
-        "helpLink": "string",
-        "source": "string",
-        "hResult": 0
+    "error": {
+        "title": "string",
+        "detail": "string"
     }
 }'
 ```
@@ -193,7 +176,9 @@ service.ipAddress | string | The ipAddress property of the client. |
 service.hostname | string | The hostname property of the client. |
 service.isPublic | boolean | This property tells the router whether the client is configured to be discovered by other clients or not. |
 service.topics | array<Topic> | This property contains the array of topics subscribed by a client. |
-exception | object | The .NET exception object that contains the occurred error. |
+error | object | The object containing the error occurred. |
+error.title | string | The .NET exception message. |
+error.detail | string | The .NET exception stacktrace. |
 
 ***Response***
 Status code | Type | Context |
@@ -325,26 +310,9 @@ curl --location 'https://localhost:7103/messages/topic/error'
         "connectionId": {
             "value": "string"
         },
-        "exception": {
-            "helpLink": "string",
-            "hResult": 0,
-            "innerException": "string",
-            "source": "string",
-            "targetSite": {
-                "attributes": 0,
-                "callingConvention": 1,
-                "declaringType": "string",
-                "memberType": 1,
-                "methodHandle": {
-                    "value": {}
-                },
-                "methodImplementationFlags": 0,
-                "module": {
-                    "assembly": "string",
-                    "moduleHandle": {}
-                },
-                "reflectedType": "string"
-            }
+        "error": {
+            "title": "string",
+            "detail": "string"
         },
         "message": {
             "content": {
@@ -372,7 +340,7 @@ curl --location 'https://localhost:7103/messages/topic/error'
     }
 ]
 ```
-This endpoint returns an array of messages with related exception and connection id where the error happened.
+This endpoint returns an array of messages with related error and connection id where the error happened.
 
 Property | Type | Context |
 --- | --- | --- |
@@ -386,7 +354,9 @@ message.content.json | string | Json string of the message that throws an error.
 message.services | array<Service> | The service array that contains the destinations of the message. |
 connectionId | object | the actual value of the connectionId of the message that throws an error.   |
 connectionId.value | string | The hostname property of the client. |
-exception | object | The .NET exception object that contains the occurred error. |
+error | object | The object containing the error occurred. |
+error.title | string | The .NET exception message. |
+error.detail | string | The .NET exception stacktrace. |
 
 **messages/{topic}/consumed**
 

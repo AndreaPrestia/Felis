@@ -165,7 +165,7 @@ public sealed class MessageHandler : IAsyncDisposable
         {
             var responseMessage = await _httpClient.PostAsJsonAsync("/error",
                 new ErrorMessage(message,
-                    new ConnectionId(_hubConnection?.ConnectionId), exception, _retryPolicy),
+                    new ConnectionId(_hubConnection?.ConnectionId), new ErrorDetail(exception.Message, exception.StackTrace), _retryPolicy),
                 cancellationToken: cancellationToken).ConfigureAwait(false);
 
             responseMessage.EnsureSuccessStatusCode();

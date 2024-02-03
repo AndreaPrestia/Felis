@@ -5,7 +5,7 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Host.AddFelisClient("https://localhost:7103", 15, 5);
+builder.Host.AddFelisClient("https://localhost:7110", 15, 5);
 
 builder.Services.AddEndpointsApiExplorer();
 
@@ -32,7 +32,7 @@ app.UseSwagger();
 app.UseSwaggerUI(options => options.SwaggerEndpoint("/swagger/v1/swagger.json",
     $"Felis Router v1"));
 
-app.MapGet("/", () => "Felis client is up and running!");
+app.MapGet("/", () => "Felis client is up and running!").ExcludeFromDescription();
 
 app.MapPost("/dispatch", async (MessageHandler messageHandler, [FromBody] TestModel model, [FromQuery] string topic) =>
 {

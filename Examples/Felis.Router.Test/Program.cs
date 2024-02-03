@@ -8,6 +8,6 @@ var app = builder.Build();
 
 app.UseFelisRouter();
 
-app.MapGet("/", () => "Hello World!");
+app.MapGet("/", () => "Felis Router is up and running!").ExcludeFromDescription();
 
 app.Run();

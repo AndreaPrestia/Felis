@@ -195,4 +195,71 @@ internal sealed class FelisRouterService : IFelisRouterService
             return Task.FromResult(new List<Service>());
         }
     }
+
+    public Task<List<Message?>> MessageList(Topic? topic = null, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (topic == null)
+            {
+                throw new ArgumentNullException(nameof(topic));
+            }
+            
+            return Task.FromResult(_storage.MessageList(topic));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, ex.Message);
+            return Task.FromResult(new List<Message?>());
+        }
+    }
+
+    public Task<List<ErrorMessage>> ErrorMessageList(Topic? topic = null, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return Task.FromResult(_storage.ErrorMessageList(topic));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, ex.Message);
+            return Task.FromResult(new List<ErrorMessage>());
+        }
+    }
+
+    public Task<List<ConsumedMessage?>> ConsumedMessageList(ConnectionId connectionId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (connectionId == null)
+            {
+                throw new ArgumentNullException(nameof(connectionId));
+            }
+            
+            return Task.FromResult(_storage.ConsumedMessageList(connectionId));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, ex.Message);
+            return Task.FromResult(new List<ConsumedMessage?>());
+        }
+    }
+
+    public Task<List<ConsumedMessage?>> ConsumedMessageList(Topic topic, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (topic == null)
+            {
+                throw new ArgumentNullException(nameof(topic));
+            }
+            
+            return Task.FromResult(_storage.ConsumedMessageList(topic));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, ex.Message);
+            return Task.FromResult(new List<ConsumedMessage?>());
+        }
+    }
 }

@@ -104,12 +104,9 @@ public class FelisRouterStorage : IFelisRouterStorage
         return hasValue ? _errorMessages.TryUpdate(message, retries + 1, retries) : _errorMessages.TryAdd(message, 1);
     }
 
-    public List<ErrorMessage> ErrorMessageList(Topic? topic = null, long? start = null, long? end = null)
+    public List<ErrorMessage> ErrorMessageList(Topic? topic = null)
     {
         return _errorMessages.Select(em => em.Key)
-            .Where(em =>
-                (topic == null || string.Equals(em.Message?.Header?.Topic?.Value, topic.Value,
-                    StringComparison.InvariantCultureIgnoreCase))
-                && ((start == null && end == null) || (em.Timestamp >= start && em.Timestamp <= end))).ToList();
+            .Where(em => topic == null || string.Equals(em.Message?.Header?.Topic?.Value, topic.Value, StringComparison.InvariantCultureIgnoreCase)).ToList();
     }
 }

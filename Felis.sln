@@ -4,13 +4,13 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.Core", "Felis.Core\Fe
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.Router", "Felis.Router\Felis.Router.csproj", "{EF2F82C1-9624-4F20-965C-19DB9018A141}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples", "Examples", "{D50C038E-7806-4929-B85A-C602196AA018}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.Client", "Felis.Client\Felis.Client.csproj", "{BC1FB777-0CB4-4381-9EF1-0210DD7F9C09}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.Router.Test.csproj", "Examples\Felis.Router.Test\Felis.Router.Test.csproj.user", "{EEB3F583-73B8-4762-905C-E97C6152A783}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples", "Examples", "{FE976AE8-F03F-4F08-9A08-29B02AEA49B1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.Client.Test.csproj", "Examples\Felis.Client.Test\Felis.Client.Test.csproj.user", "{C29C2422-CD12-4228-A8D5-AED217FB636A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.Router.Test", "Examples\Felis.Router.Test\Felis.Router.Test.csproj", "{BB7DFBE8-1065-4EF2-83EB-B7CED1B0A3EB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.Client.Test", "Examples\Felis.Client.Test\Felis.Client.Test.csproj", "{F3874C95-AC03-48FC-9ED7-EC430A213EFF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -30,9 +30,17 @@ Global
 		{BC1FB777-0CB4-4381-9EF1-0210DD7F9C09}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BC1FB777-0CB4-4381-9EF1-0210DD7F9C09}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BC1FB777-0CB4-4381-9EF1-0210DD7F9C09}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BB7DFBE8-1065-4EF2-83EB-B7CED1B0A3EB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BB7DFBE8-1065-4EF2-83EB-B7CED1B0A3EB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BB7DFBE8-1065-4EF2-83EB-B7CED1B0A3EB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BB7DFBE8-1065-4EF2-83EB-B7CED1B0A3EB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F3874C95-AC03-48FC-9ED7-EC430A213EFF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F3874C95-AC03-48FC-9ED7-EC430A213EFF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F3874C95-AC03-48FC-9ED7-EC430A213EFF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F3874C95-AC03-48FC-9ED7-EC430A213EFF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{EEB3F583-73B8-4762-905C-E97C6152A783} = {D50C038E-7806-4929-B85A-C602196AA018}
-		{C29C2422-CD12-4228-A8D5-AED217FB636A} = {D50C038E-7806-4929-B85A-C602196AA018}
+		{BB7DFBE8-1065-4EF2-83EB-B7CED1B0A3EB} = {FE976AE8-F03F-4F08-9A08-29B02AEA49B1}
+		{F3874C95-AC03-48FC-9ED7-EC430A213EFF} = {FE976AE8-F03F-4F08-9A08-29B02AEA49B1}
 	EndGlobalSection
 EndGlobal

@@ -64,13 +64,13 @@ public static class Extensions
                 Contact = new OpenApiContact
                 {
                     Name = "Andrea Prestia",
-                    Email = string.Empty,
+                    Email = "andrea@prestia.dev",
                     Url = new Uri("https://www.linkedin.com/in/andrea-prestia-5212a2166/"),
                 }
             });
         });
     }
-
+    
     public static void UseFelisRouter(this WebApplication app)
     {
         app.MapHub<FelisRouterHub>("/felis/router");

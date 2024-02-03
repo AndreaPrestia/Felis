@@ -11,7 +11,7 @@ public interface IFelisRouterStorage
     bool MessagePurge(int? timeToLiveMinutes);
     bool ErrorMessageAdd(ErrorMessage message);
 	List<Message?> MessageList(Topic? topic = null);
-	List<ErrorMessage> ErrorMessageList(Topic? topic = null, long? start = null, long? end = null);
+	List<ErrorMessage> ErrorMessageList(Topic? topic = null);
 	List<ConsumedMessage?> ConsumedMessageList(ConnectionId connectionId);
     List<ConsumedMessage?> ConsumedMessageList(Topic topic);
     List<ErrorMessage> ListMessagesToRequeue();

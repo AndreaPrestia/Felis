@@ -1,7 +1,7 @@
 ﻿using System.Text.Json;
 using Felis.Client.Test.Models;
 
-namespace Felis.Client.Test;
+namespace Felis.Client.Test.Consumers;
 
 [Topic("TestAsync")]
 public class TestConsumerAsync : IConsume<TestModel>

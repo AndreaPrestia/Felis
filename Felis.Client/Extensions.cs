@@ -22,7 +22,7 @@ public static class Extensions
 				"No routerEndpoint provided. The subscription to Felis Router cannot be done");
 		}
 		
-        builder.ConfigureServices((context, serviceCollection) =>
+        builder.ConfigureServices((_, serviceCollection) =>
         {
 			serviceCollection.AddSignalR();
 			
@@ -71,7 +71,7 @@ public static class Extensions
 
 		var implementationTypes = AppDomain.CurrentDomain.GetAssemblies()
 			.SelectMany(assembly => assembly.GetTypes())
-			.Where(type => type.IsClass && !type.IsAbstract &&
+			.Where(type => type is { IsClass: true, IsAbstract: false } &&
 			               type.GetInterfaces().Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == genericInterfaceType)).ToList();
 
 		foreach (var implementationType in implementationTypes)

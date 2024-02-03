@@ -15,23 +15,27 @@ This repository provides two examples of usage:
 
 **Felis.Router.Test**
 
-An ASP-NET minimal API application, containing the five endpoints exposed by Felis.
+An ASP-NET minimal API application, containing the nine endpoints exposed by Felis.
 
-The five endpoints are:
+The nine endpoints are:
 
 - dispatch
 - consume
 - error
-- purge
-- consumers
-
+- purge/{topic}
+- consumers/{topic}
+- messages/{topic}
+- messages/{topic}/error
+- messages/{topic}/consumed
+- message/consumed
+  
 These endpoints are documented in the following page:
 
 ```
 https://localhost:7103/swagger/index.html
 ```
 
-**Dispatch**
+**dispatch**
 
 This endpoint is used to dispatch a message with whatever contract in the payload, by topic, to every listener connected to Felis.
 
@@ -69,7 +73,7 @@ Status code | Type | Context |
 401 | UnauthorizedResult | When an operation fails due to missing authorization. |
 403 | ForbiddenResult | When an operation fails because it is not allowed in the context. |
 
-**Consume**
+**consume**
 
 This endpoint informs Felis when a client successfully consumes a message. It is used to keep track of the operations (ACK).
 
@@ -123,7 +127,7 @@ Status code | Type | Context |
 401 | UnauthorizedResult | When an operation fails due to missing authorization. |
 403 | ForbiddenResult | When an operation fails because it is not allowed in the context. |
 
-**Error**
+**error**
 
 This endpoint informs Felis when a client encounters errors while consuming a message. It is used to keep track of the operations (ACK).
 
@@ -199,7 +203,7 @@ Status code | Type | Context |
 401 | UnauthorizedResult | When an operation fails due to missing authorization. |
 403 | ForbiddenResult | When an operation fails because it is not allowed in the context. |
 
-**Purge**
+**purge/{topic}**
 
 This endpoint tells the router to purge the queue for a specific topic. It is irreversible.
 
@@ -223,7 +227,7 @@ Status code | Type | Context |
 401 | UnauthorizedResult | When an operation fails due to missing authorization. |
 403 | ForbiddenResult | When an operation fails because it is not allowed in the context. |
 
-**Consumers**
+**consumers/{topic}**
 
 This endpoint provides a list of the clients connected to Felis that consume a specific topic provided in the route. It exposes only the clients that are configured with the property **IsPublic** to **true**, which makes the clients discoverable.
 
@@ -255,6 +259,255 @@ ipAddress | string | The ipAddress property of the client. |
 hostname | string | The hostname property of the client. |
 isPublic | boolean | This property tells the router whether the client is configured to be discovered by other clients or not. |
 topics | array<Topic> | This property contains the array of topics subscribed by a client. |
+
+**message/{topic}**
+
+This endpoint provides a list of the message ready to sent in Felis for a specific topic provided in the route.
+
+```
+curl --location 'https://localhost:7103/messages/topic'
+```
+
+***Response***
+
+```
+[
+  {
+    "header": {
+      "topic": {
+        "value": "string"
+      },
+      "services": [
+        {
+          "hostname": "string",
+          "ipAddress": "string",
+          "topics": [
+            {
+              "value": "string"
+            }
+          ]
+        }
+      ],
+      "timestamp": 0
+    },
+    "content": {
+      "json": "string"
+    },
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+  }
+]
+```
+This endpoint returns an array of message.
+
+Property | Type | Context |
+--- | --- | --- |
+id | guid | the message global unique identifier. |
+header | object | the message header, containing the metadata of the message. |
+header.topic | object | value object containing the topic of the message that throws an error. |
+header.topic.value | string | the actual value of the topic of the message that throws an error. |
+content | object | the message content. |
+content.json | string | Json string of the message that throws an error. |
+services | array<Service> | The service array that contains the destinations of the message. |
+
+**messages/{topic}/error**
+
+This endpoint provides a list of the message that are gone in the error queue for a specific topic provided in the route.
+
+```
+curl --location 'https://localhost:7103/messages/topic/error'
+```
+
+***Response***
+
+```
+[
+    {
+        "connectionId": {
+            "value": "string"
+        },
+        "exception": {
+            "helpLink": "string",
+            "hResult": 0,
+            "innerException": "string",
+            "source": "string",
+            "targetSite": {
+                "attributes": 0,
+                "callingConvention": 1,
+                "declaringType": "string",
+                "memberType": 1,
+                "methodHandle": {
+                    "value": {}
+                },
+                "methodImplementationFlags": 0,
+                "module": {
+                    "assembly": "string",
+                    "moduleHandle": {}
+                },
+                "reflectedType": "string"
+            }
+        },
+        "message": {
+            "content": {
+                "json": "string"
+            },
+            "header": {
+                "services": [
+                    {
+                        "hostname": "string",
+                        "ipAddress": "string",
+                        "topics": [
+                            {
+                                "value": "string"
+                            }
+                        ]
+                    }
+                ],
+                "timestamp": 0,
+                "topic": {
+                    "value": "string"
+                }
+            },
+            "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+        }
+    }
+]
+```
+This endpoint returns an array of messages with related exception and connection id where the error happened.
+
+Property | Type | Context |
+--- | --- | --- |
+message | object | The message entity used by Felis system. |
+message.id | guid | the message global unique identifier. |
+message.header | object | the message header, containing the metadata of the message. |
+message.header.topic | object | value object containing the topic of the message that throws an error. |
+message.header.topic.value | string | the actual value of the topic of the message that throws an error. |
+message.content | object | the message content. |
+message.content.json | string | Json string of the message that throws an error. |
+message.services | array<Service> | The service array that contains the destinations of the message. |
+connectionId | object | the actual value of the connectionId of the message that throws an error.   |
+connectionId.value | string | The hostname property of the client. |
+exception | object | The .NET exception object that contains the occurred error. |
+
+**messages/{topic}/consumed**
+
+This endpoint provides a list of the message that are been consumed for a specific topic provided in the route.
+
+```
+curl --location 'https://localhost:7103/messages/topic/consumed'
+```
+
+***Response***
+
+```
+[
+    {
+        "connectionId": {
+            "value": "string"
+        },
+        "message": {
+            "content": {
+                "json": "string"
+            },
+            "header": {
+                "services": [
+                    {
+                        "hostname": "string",
+                        "ipAddress": "string",
+                        "topics": [
+                            {
+                                "value": "string"
+                            }
+                        ]
+                    }
+                ],
+                "timestamp": 0,
+                "topic": {
+                    "value": "string"
+                }
+            },
+            "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+        },
+	"timestamp": 0
+    }
+]
+```
+This endpoint returns an array of messages that are consumed, with related connection id and timestamp.
+
+Property | Type | Context |
+--- | --- | --- |
+message | object | The message entity used by Felis system. |
+message.id | guid | the message global unique identifier. |
+message.header | object | the message header, containing the metadata of the message. |
+message.header.topic | object | value object containing the topic of the message that throws an error. |
+message.header.topic.value | string | the actual value of the topic of the message that throws an error. |
+message.content | object | the message content. |
+message.content.json | string | Json string of the message that throws an error. |
+message.services | array<Service> | The service array that contains the destinations of the message. |
+connectionId | object | the actual value of the connectionId of the message that throws an error.   |
+connectionId.value | string | The hostname property of the client. |
+timestamp | long | The unix time in milliseconds that provides the consume time. |
+
+**messages/consumed**
+
+This endpoint provides a list of the message that are been consumed for the current connection id, specificied as header.
+
+```
+curl -X 'GET' \
+  'https://localhost:7103/messages/consumed' \
+  -H 'accept: application/json' \
+  -H 'connection-id: AYhRMfzMA62BvJn3paMczQ'
+```
+
+***Response***
+
+```
+[
+    {
+        "connectionId": {
+            "value": "string"
+        },
+        "message": {
+            "content": {
+                "json": "string"
+            },
+            "header": {
+                "services": [
+                    {
+                        "hostname": "string",
+                        "ipAddress": "string",
+                        "topics": [
+                            {
+                                "value": "string"
+                            }
+                        ]
+                    }
+                ],
+                "timestamp": 0,
+                "topic": {
+                    "value": "string"
+                }
+            },
+            "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+        },
+	"timestamp": 0
+    }
+]
+```
+This endpoint returns an array of messages that are consumed, with related connection id and timestamp.
+
+Property | Type | Context |
+--- | --- | --- |
+message | object | The message entity used by Felis system. |
+message.id | guid | the message global unique identifier. |
+message.header | object | the message header, containing the metadata of the message. |
+message.header.topic | object | value object containing the topic of the message that throws an error. |
+message.header.topic.value | string | the actual value of the topic of the message that throws an error. |
+message.content | object | the message content. |
+message.content.json | string | Json string of the message that throws an error. |
+message.services | array<Service> | The service array that contains the destinations of the message. |
+connectionId | object | the actual value of the connectionId of the message that throws an error.   |
+connectionId.value | string | The hostname property of the client. |
+timestamp | long | The unix time in milliseconds that provides the consume time. |
 
 **Configuration**
 

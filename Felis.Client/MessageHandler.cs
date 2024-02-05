@@ -125,8 +125,8 @@ public sealed class MessageHandler : IAsyncDisposable
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogError(ex, ex.Message);
-                            await SendError(messageIncoming, ex, cancellationToken).ConfigureAwait(false);
+                            _logger.LogError(ex.InnerException, ex.InnerException?.Message);
+                            await SendError(messageIncoming, ex.InnerException, cancellationToken).ConfigureAwait(false);
                         }
                     }, cancellationToken);
                 }

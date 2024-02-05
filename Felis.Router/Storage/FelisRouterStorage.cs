@@ -65,7 +65,7 @@ public class FelisRouterStorage : IFelisRouterStorage
 
     public List<ErrorMessage> ListMessagesToRequeue()
     {
-        return _errorMessages.Where(em => em.Key.RetryPolicy?.Attempts <= em.Value).Select(em => em.Key).ToList();
+        return _errorMessages.Where(em => em.Key.RetryPolicy?.Attempts >= em.Value).Select(em => em.Key).ToList();
     }
 
     public bool MessagePurge(Topic? topic)

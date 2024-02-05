@@ -115,7 +115,20 @@ public sealed class MessageHandler : IAsyncDisposable
 
                     responseMessage.EnsureSuccessStatusCode();
 
-                    consumerSearchResult.ProcessMethod?.Invoke(consumerSearchResult.Consumer, new[] { consumerSearchResult.DeserializedEntity });
+#pragma warning disable CS4014
+                    Task.Run(async () =>
+#pragma warning restore CS4014
+                    {
+                        try
+                        {
+                            consumerSearchResult.ProcessMethod?.Invoke(consumerSearchResult.Consumer, new[] { consumerSearchResult.DeserializedEntity });
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, ex.Message);
+                            await SendError(messageIncoming, ex, cancellationToken).ConfigureAwait(false);
+                        }
+                    }, cancellationToken);
                 }
                 catch (Exception ex)
                 {
@@ -133,7 +146,7 @@ public sealed class MessageHandler : IAsyncDisposable
         if (_hubConnection != null)
         {
             await _hubConnection?.InvokeAsync("RemoveConnectionId", new ConnectionId(_hubConnection?.ConnectionId))!;
-            await _hubConnection.DisposeAsync().ConfigureAwait(false);
+            await _hubConnection!.DisposeAsync().ConfigureAwait(false);
         }
     }
 

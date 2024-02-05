@@ -93,6 +93,7 @@ curl --location 'https://localhost:7103/consume' \
         }
     },
     "service": {
+        "friendlyName": "string",
         "ipAddress": "string",
         "hostname": "string",
         "isPublic": true,
@@ -114,6 +115,7 @@ message.header.topic.value | string | the actual value of the topic of the consu
 message.content | object | the message content. |
 message.content.json | string | Json string of the consumed message. |
 service | object | The service entity that represents the client identity. |
+service.friendlyName | string | The friendly name of the service, set at the startup. |
 service.ipAddress | string | The ipAddress property of the client. |
 service.hostname | string | The hostname property of the client. |
 service.isPublic | boolean | This property tells the router whether the client is configured to be discovered by other clients or not. |
@@ -147,6 +149,7 @@ curl --location 'https://localhost:7103/error' \
         }
     },
     "service": {
+        "friendlyName: "string",
         "ipAddress": "string",
         "hostname": "string",
         "isPublic": true,
@@ -172,6 +175,7 @@ message.header.topic.value | string | the actual value of the topic of the messa
 message.content | object | the message content. |
 message.content.json | string | Json string of the message that throws an error. |
 service | object | The service entity that represents the client identity. |
+service.friendlyName | string | The friendly name of the service, set at the startup. |
 service.ipAddress | string | The ipAddress property of the client. |
 service.hostname | string | The hostname property of the client. |
 service.isPublic | boolean | This property tells the router whether the client is configured to be discovered by other clients or not. |
@@ -264,6 +268,7 @@ curl --location 'https://localhost:7103/messages/topic'
       },
       "services": [
         {
+          "friendlyName" : "string",
           "hostname": "string",
           "ipAddress": "string",
           "topics": [
@@ -321,6 +326,7 @@ curl --location 'https://localhost:7103/messages/topic/error'
             "header": {
                 "services": [
                     {
+                        "friendlyName" : "string",
                         "hostname": "string",
                         "ipAddress": "string",
                         "topics": [
@@ -381,6 +387,7 @@ curl --location 'https://localhost:7103/messages/topic/consumed'
             "header": {
                 "services": [
                     {
+                        "friendlyName": "string",
                         "hostname": "string",
                         "ipAddress": "string",
                         "topics": [
@@ -443,6 +450,7 @@ curl -X 'GET' \
             "header": {
                 "services": [
                     {
+                        "friendlyName": "string",
                         "hostname": "string",
                         "ipAddress": "string",
                         "topics": [

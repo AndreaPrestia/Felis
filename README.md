@@ -82,6 +82,7 @@ curl --location 'https://localhost:7103/consume' \
 --header 'Content-Type: application/json' \
 --data '{
     "message": {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
         "header": {
             "topic": {
                 "value": "test"
@@ -109,6 +110,7 @@ curl --location 'https://localhost:7103/consume' \
 Property | Type | Context |
 --- | --- | --- |
 message | object | The message entity used by Felis system. |
+message.id | guid | the message global unique identifier. |
 message.header | object | the message header, containing the metadata of the message. |
 message.header.topic | object | value object containing the topic of the consumed message. |
 message.header.topic.value | string | the actual value of the topic of the consumed message. |
@@ -138,6 +140,7 @@ curl --location 'https://localhost:7103/error' \
 --header 'Content-Type: application/json' \
 --data '{
     "message": {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
         "header": {
             "topic": {
                 "value": "test"
@@ -169,6 +172,7 @@ curl --location 'https://localhost:7103/error' \
 Property | Type | Context |
 --- | --- | --- |
 message | object | The message entity used by Felis system. |
+message.id | guid | the message global unique identifier. |
 message.header | object | the message header, containing the metadata of the message. |
 message.header.topic | object | value object containing the topic of the message that throws an error. |
 message.header.topic.value | string | the actual value of the topic of the message that throws an error. |

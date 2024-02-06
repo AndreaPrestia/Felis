@@ -1,7 +1,8 @@
 ﻿using System.Net;
 using Felis.Core;
 using Felis.Core.Models;
-using Felis.Router.Interfaces;
+using Felis.Router.Managers;
+using Felis.Router.Storage;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
@@ -12,12 +13,12 @@ namespace Felis.Router.Hubs;
 internal sealed class FelisRouterHub : Hub
 {
     private readonly ILogger<FelisRouterHub> _logger;
-    private readonly IFelisRouterStorage _felisRouterStorage;
-    private readonly IFelisConnectionManager _felisConnectionManager;
+    private readonly FelisRouterStorage _felisRouterStorage;
+    private readonly FelisConnectionManager _felisConnectionManager;
     private readonly string _topic = "NewDispatchedMethod";
 
-    public FelisRouterHub(ILogger<FelisRouterHub> logger, IFelisRouterStorage felisRouterStorage,
-        IFelisConnectionManager felisConnectionManager)
+    public FelisRouterHub(ILogger<FelisRouterHub> logger, FelisRouterStorage felisRouterStorage,
+        FelisConnectionManager felisConnectionManager)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _felisRouterStorage = felisRouterStorage ?? throw new ArgumentNullException(nameof(felisRouterStorage));

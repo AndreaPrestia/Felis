@@ -1,5 +1,6 @@
 ﻿using System.Reflection;
 using System.Text.Json;
+using Felis.Core;
 using Felis.Core.Models;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -30,7 +31,7 @@ public sealed class ConsumerResolver
     {
         var topicTypes = AppDomain.CurrentDomain.GetAssemblies()
             .SelectMany(assembly => assembly.GetTypes())
-            .Where(type => type.IsClass && !type.IsAbstract &&
+            .Where(type => type is { IsClass: true, IsAbstract: false } &&
                            type.GetInterfaces().Any(i =>
                                i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IConsume<>))).SelectMany(t =>
                 t.GetCustomAttributes<TopicAttribute>()

@@ -108,7 +108,7 @@ public sealed class MessageHandler : IAsyncDisposable
                         return;
                     }
                     
-                    var responseMessage = await _httpClient.PostAsJsonAsync($"/messages/{messageIncoming?.Id}/consume",
+                    var responseMessage = await _httpClient.PostAsJsonAsync($"/messages/{messageIncoming.Id}/consume",
                         new ConsumedMessage(messageIncoming,
                             new ConnectionId(_hubConnection.ConnectionId)),
                         cancellationToken: cancellationToken).ConfigureAwait(false);
@@ -130,7 +130,7 @@ public sealed class MessageHandler : IAsyncDisposable
                         }
                     }, cancellationToken);
                 }
-                catch (Exception ex)
+                catch (Exception? ex)
                 {
                     _logger.LogError(ex, ex.Message);
                     await SendError(messageIncoming, ex, cancellationToken).ConfigureAwait(false);
@@ -174,13 +174,13 @@ public sealed class MessageHandler : IAsyncDisposable
         }
     }
 
-    private async Task SendError(Message? message, Exception exception, CancellationToken cancellationToken = default)
+    private async Task SendError(Message? message, Exception? exception, CancellationToken cancellationToken = default)
     {
         try
         {
             var responseMessage = await _httpClient.PostAsJsonAsync($"/messages/{message?.Id}/error",
                 new ErrorMessage(message,
-                    new ConnectionId(_hubConnection?.ConnectionId), new ErrorDetail(exception.Message, exception.StackTrace), _retryPolicy),
+                    new ConnectionId(_hubConnection?.ConnectionId), new ErrorDetail(exception?.Message, exception?.StackTrace), _retryPolicy),
                 cancellationToken: cancellationToken).ConfigureAwait(false);
 
             responseMessage.EnsureSuccessStatusCode();

@@ -1,10 +1,9 @@
 ﻿using Felis.Core;
 using Felis.Core.Models;
-using Felis.Router.Interfaces;
 
 namespace Felis.Router.Managers
 {
-	internal class FelisConnectionManager : IFelisConnectionManager
+	internal sealed class FelisConnectionManager 
 	{
 		private static readonly Dictionary<Service, List<ConnectionId>> FelisConnectionMap = new();
 		private static readonly string UserConnectionMapLocker = string.Empty;

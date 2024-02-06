@@ -43,7 +43,7 @@ public sealed class MessageHandler : IAsyncDisposable
 
             var json = JsonSerializer.Serialize(payload);
 
-            var responseMessage = await _httpClient.PostAsJsonAsync("/dispatch",
+            var responseMessage = await _httpClient.PostAsJsonAsync($"/messages/{topic ?? type}/dispatch",
                 new Message(Guid.NewGuid(), new Header(new Topic(topic ?? type), new List<Service>()), new Content(json)),
                 cancellationToken: cancellationToken).ConfigureAwait(false);
 
@@ -108,7 +108,7 @@ public sealed class MessageHandler : IAsyncDisposable
                         return;
                     }
                     
-                    var responseMessage = await _httpClient.PostAsJsonAsync($"/consume",
+                    var responseMessage = await _httpClient.PostAsJsonAsync($"/messages/{messageIncoming?.Id}/consume",
                         new ConsumedMessage(messageIncoming,
                             new ConnectionId(_hubConnection.ConnectionId)),
                         cancellationToken: cancellationToken).ConfigureAwait(false);
@@ -178,7 +178,7 @@ public sealed class MessageHandler : IAsyncDisposable
     {
         try
         {
-            var responseMessage = await _httpClient.PostAsJsonAsync("/error",
+            var responseMessage = await _httpClient.PostAsJsonAsync($"/messages/{message?.Id}/error",
                 new ErrorMessage(message,
                     new ConnectionId(_hubConnection?.ConnectionId), new ErrorDetail(exception.Message, exception.StackTrace), _retryPolicy),
                 cancellationToken: cancellationToken).ConfigureAwait(false);

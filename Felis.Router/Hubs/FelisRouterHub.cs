@@ -114,7 +114,7 @@ internal sealed class FelisRouterHub : Hub
         }
     }
 
-    public string SetConnectionId(List<Topic> topics)
+    public string SetConnectionId(List<Topic> topics, string friendlyName)
     {
         try
         {
@@ -127,7 +127,7 @@ internal sealed class FelisRouterHub : Hub
 
             var clientHostname = Dns.GetHostEntry(clientIp).HostName;
 
-            _felisConnectionManager.KeepServiceConnection(new Service(clientHostname, clientIp.ToString(), topics),
+            _felisConnectionManager.KeepServiceConnection(new Service(friendlyName, clientHostname, clientIp.ToString(), topics),
                 new ConnectionId(Context.ConnectionId));
             return Context.ConnectionId;
         }

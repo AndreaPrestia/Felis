@@ -62,10 +62,16 @@ public class FelisRouterStorage : IFelisRouterStorage
                     StringComparison.InvariantCultureIgnoreCase))
             .ToList();
     }
+    
+    public List<ConsumedMessage?> ConsumedMessageList(ConnectionId connectionId, Topic topic)
+    {
+        return _consumedMessages.Where(cm => cm?.ConnectionId.Value == connectionId.Value && string.Equals(cm?.Message?.Header?.Topic?.Value, topic.Value, StringComparison.InvariantCultureIgnoreCase))
+            .ToList();
+    }
 
     public List<ErrorMessage> ListMessagesToRequeue()
     {
-        return _errorMessages.Where(em => em.Key.RetryPolicy?.Attempts <= em.Value).Select(em => em.Key).ToList();
+        return _errorMessages.Where(em => em.Key.RetryPolicy?.Attempts >= em.Value).Select(em => em.Key).ToList();
     }
 
     public bool MessagePurge(Topic? topic)
@@ -94,14 +100,20 @@ public class FelisRouterStorage : IFelisRouterStorage
 
     public bool ErrorMessageAdd(ErrorMessage message)
     {
-        var hasValue = _errorMessages.TryGetValue(message, out int retries);
+        var errorMessageFound = _errorMessages.FirstOrDefault(em =>
+            em.Key?.Message?.Id == message.Message?.Id && em.Key?.ConnectionId?.Value == message.ConnectionId?.Value);
+
+        if (errorMessageFound.Equals(default(KeyValuePair<ErrorMessage, int>)))
+        {
+            return _errorMessages.TryAdd(message, message.RetryPolicy == null ? 0 : 1);
+        }
 
         if (message.RetryPolicy == null)
         {
-            return hasValue ? _errorMessages.TryUpdate(message, 0, retries) : _errorMessages.TryAdd(message, 0);
+            return _errorMessages.TryUpdate(errorMessageFound.Key, 0, errorMessageFound.Value);
         }
         
-        return hasValue ? _errorMessages.TryUpdate(message, retries + 1, retries) : _errorMessages.TryAdd(message, 1);
+        return _errorMessages.TryUpdate(errorMessageFound.Key, errorMessageFound.Value + 1, errorMessageFound.Value);
     }
 
     public List<ErrorMessage> ErrorMessageList(Topic? topic = null)

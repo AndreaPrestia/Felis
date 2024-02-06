@@ -8,11 +8,11 @@ namespace Felis.Router.Interfaces;
 /// </summary>
 internal interface IFelisRouterService
 {
-    Task<bool> Dispatch(Message? message, CancellationToken cancellationToken = default);
+    Task<bool> Dispatch(Topic topic, Message? message, CancellationToken cancellationToken = default);
 
-    Task<bool> Consume(ConsumedMessage? consumedMessage, CancellationToken cancellationToken = default);
+    Task<bool> Consume(Guid id, ConsumedMessage? consumedMessage, CancellationToken cancellationToken = default);
     
-    Task<bool> Error(ErrorMessage? errorMessage, CancellationToken cancellationToken = default);
+    Task<bool> Error(Guid id, ErrorMessage? errorMessage, CancellationToken cancellationToken = default);
 
     Task<bool> Purge(Topic? topic, CancellationToken cancellationToken = default);
     
@@ -21,5 +21,6 @@ internal interface IFelisRouterService
     Task<List<Message?>> MessageList(Topic? topic = null, CancellationToken cancellationToken = default);
     Task<List<ErrorMessage>> ErrorMessageList(Topic? topic = null, CancellationToken cancellationToken = default);
     Task<List<ConsumedMessage?>> ConsumedMessageList(ConnectionId connectionId, CancellationToken cancellationToken = default);
+    Task<List<ConsumedMessage?>> ConsumedMessageList(ConnectionId connectionId, Topic topic, CancellationToken cancellationToken = default);
     Task<List<ConsumedMessage?>> ConsumedMessageList(Topic topic, CancellationToken cancellationToken = default);
 }

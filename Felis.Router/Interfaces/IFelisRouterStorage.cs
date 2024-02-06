@@ -14,5 +14,6 @@ public interface IFelisRouterStorage
 	List<ErrorMessage> ErrorMessageList(Topic? topic = null);
 	List<ConsumedMessage?> ConsumedMessageList(ConnectionId connectionId);
     List<ConsumedMessage?> ConsumedMessageList(Topic topic);
+    List<ConsumedMessage?> ConsumedMessageList(ConnectionId connectionId, Topic topic);
     List<ErrorMessage> ListMessagesToRequeue();
 }

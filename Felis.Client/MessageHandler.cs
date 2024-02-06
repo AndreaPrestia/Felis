@@ -14,6 +14,7 @@ public sealed class MessageHandler : IAsyncDisposable
     private List<Topic>? _topics;
     private readonly HttpClient _httpClient;
     private RetryPolicy? _retryPolicy;
+    private string? _friendlyName;
     private readonly ConsumerResolver _consumerResolver;
 
     public MessageHandler(HubConnection? hubConnection, ILogger<MessageHandler> logger,HttpClient httpClient, ConsumerResolver consumerResolver)
@@ -42,8 +43,8 @@ public sealed class MessageHandler : IAsyncDisposable
 
             var json = JsonSerializer.Serialize(payload);
 
-            var responseMessage = await _httpClient.PostAsJsonAsync("/dispatch",
-                new Message(new Header(new Topic(topic ?? type), new List<Service>()), new Content(json)),
+            var responseMessage = await _httpClient.PostAsJsonAsync($"/messages/{topic ?? type}/dispatch",
+                new Message(Guid.NewGuid(), new Header(new Topic(topic ?? type), new List<Service>()), new Content(json)),
                 cancellationToken: cancellationToken).ConfigureAwait(false);
 
             responseMessage.EnsureSuccessStatusCode();
@@ -54,7 +55,7 @@ public sealed class MessageHandler : IAsyncDisposable
         }
     }
 
-    public async Task SubscribeAsync(RetryPolicy? retryPolicy, CancellationToken cancellationToken = default)
+    public async Task SubscribeAsync(string friendlyName, RetryPolicy? retryPolicy, CancellationToken cancellationToken = default)
     {
         if (_hubConnection == null)
         {
@@ -62,6 +63,7 @@ public sealed class MessageHandler : IAsyncDisposable
         }
 
         _retryPolicy = retryPolicy;
+        _friendlyName = friendlyName;
         
         var topicsTypes = _consumerResolver.GetTypesForTopics();
 
@@ -106,14 +108,27 @@ public sealed class MessageHandler : IAsyncDisposable
                         return;
                     }
                     
-                    var responseMessage = await _httpClient.PostAsJsonAsync($"/consume",
+                    var responseMessage = await _httpClient.PostAsJsonAsync($"/messages/{messageIncoming?.Id}/consume",
                         new ConsumedMessage(messageIncoming,
                             new ConnectionId(_hubConnection.ConnectionId)),
                         cancellationToken: cancellationToken).ConfigureAwait(false);
 
                     responseMessage.EnsureSuccessStatusCode();
 
-                    consumerSearchResult.ProcessMethod?.Invoke(consumerSearchResult.Consumer, new[] { consumerSearchResult.DeserializedEntity });
+#pragma warning disable CS4014
+                    Task.Run(async () =>
+#pragma warning restore CS4014
+                    {
+                        try
+                        {
+                            consumerSearchResult.ProcessMethod?.Invoke(consumerSearchResult.Consumer, new[] { consumerSearchResult.DeserializedEntity });
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex.InnerException, ex.InnerException?.Message);
+                            await SendError(messageIncoming, ex.InnerException, cancellationToken).ConfigureAwait(false);
+                        }
+                    }, cancellationToken);
                 }
                 catch (Exception ex)
                 {
@@ -131,7 +146,7 @@ public sealed class MessageHandler : IAsyncDisposable
         if (_hubConnection != null)
         {
             await _hubConnection?.InvokeAsync("RemoveConnectionId", new ConnectionId(_hubConnection?.ConnectionId))!;
-            await _hubConnection.DisposeAsync().ConfigureAwait(false);
+            await _hubConnection!.DisposeAsync().ConfigureAwait(false);
         }
     }
 
@@ -151,7 +166,7 @@ public sealed class MessageHandler : IAsyncDisposable
                 await _hubConnection?.StartAsync(cancellationToken)!;
             }
 
-            await _hubConnection?.InvokeAsync("SetConnectionId", _topics, cancellationToken)!;
+            await _hubConnection?.InvokeAsync("SetConnectionId", _topics, _friendlyName, cancellationToken)!;
         }
         catch (Exception ex)
         {
@@ -163,7 +178,7 @@ public sealed class MessageHandler : IAsyncDisposable
     {
         try
         {
-            var responseMessage = await _httpClient.PostAsJsonAsync("/error",
+            var responseMessage = await _httpClient.PostAsJsonAsync($"/messages/{message?.Id}/error",
                 new ErrorMessage(message,
                     new ConnectionId(_hubConnection?.ConnectionId), new ErrorDetail(exception.Message, exception.StackTrace), _retryPolicy),
                 cancellationToken: cancellationToken).ConfigureAwait(false);

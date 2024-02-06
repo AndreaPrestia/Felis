@@ -15,34 +15,38 @@ This repository provides two examples of usage:
 
 **Felis.Router.Test**
 
-An ASP-NET minimal API application, containing the nine endpoints exposed by Felis.
+An ASP-NET minimal API application, containing the ten endpoints exposed by Felis.
 
-The nine endpoints are:
+The ten endpoints are:
 
-- dispatch
-- consume
-- error
-- purge/{topic}
-- consumers/{topic}
+- messages/{topic}/dispatch
+- messages/{id}/consume
+- messages/{id}/error
+- messages/{topic}/purge
+- messages/{topic}/consumers
 - messages/{topic}
 - messages/{topic}/error
 - messages/{topic}/consumed
-- message/consumed
-  
+- consumers/{connectionId}/messages
+- consumers/{connectionId}/messages/{topic}
+
 These endpoints are documented in the following page:
 
 ```
 https://localhost:7103/swagger/index.html
 ```
 
-**dispatch**
+**messages/{topic}/dispatch**
 
 This endpoint is used to dispatch a message with whatever contract in the payload, by topic, to every listener connected to Felis.
 
 ```
-curl --location 'https://localhost:7103/dispatch' \
---header 'Content-Type: application/json' \
---data '{
+curl -X 'POST' \
+  'https://localhost:7110/messages/topic/dispatch' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
     "header": {
         "topic": {
             "value": "test"
@@ -58,6 +62,7 @@ curl --location 'https://localhost:7103/dispatch' \
 ***Request***
 Property | Type | Context |
 --- | --- | --- |
+id | guid | the message global unique identifier. |
 header | object | the message header, containing the metadata of the message. |
 header.topic | object | value object containing the topic of the message to dispatch. |
 header.topic.value | string | the actual content of the topic of the message to dispatch. |
@@ -73,15 +78,18 @@ Status code | Type | Context |
 401 | UnauthorizedResult | When an operation fails due to missing authorization. |
 403 | ForbiddenResult | When an operation fails because it is not allowed in the context. |
 
-**consume**
+**messages/{id}/consume**
 
 This endpoint informs Felis when a client successfully consumes a message. It is used to keep track of the operations (ACK).
 
 ```
-curl --location 'https://localhost:7103/consume' \
---header 'Content-Type: application/json' \
---data '{
+curl -X 'POST' \
+  'https://localhost:7110/messages/3fa85f64-5717-4562-b3fc-2c963f66afa6/consume' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
     "message": {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
         "header": {
             "topic": {
                 "value": "test"
@@ -93,6 +101,7 @@ curl --location 'https://localhost:7103/consume' \
         }
     },
     "service": {
+        "friendlyName": "string",
         "ipAddress": "string",
         "hostname": "string",
         "isPublic": true,
@@ -108,12 +117,14 @@ curl --location 'https://localhost:7103/consume' \
 Property | Type | Context |
 --- | --- | --- |
 message | object | The message entity used by Felis system. |
+message.id | guid | the message global unique identifier. |
 message.header | object | the message header, containing the metadata of the message. |
 message.header.topic | object | value object containing the topic of the consumed message. |
 message.header.topic.value | string | the actual value of the topic of the consumed message. |
 message.content | object | the message content. |
 message.content.json | string | Json string of the consumed message. |
 service | object | The service entity that represents the client identity. |
+service.friendlyName | string | The friendly name of the service, set at the startup. |
 service.ipAddress | string | The ipAddress property of the client. |
 service.hostname | string | The hostname property of the client. |
 service.isPublic | boolean | This property tells the router whether the client is configured to be discovered by other clients or not. |
@@ -127,15 +138,18 @@ Status code | Type | Context |
 401 | UnauthorizedResult | When an operation fails due to missing authorization. |
 403 | ForbiddenResult | When an operation fails because it is not allowed in the context. |
 
-**error**
+**messages/{id}/error**
 
 This endpoint informs Felis when a client encounters errors while consuming a message. It is used to keep track of the operations (ACK).
 
 ```
-curl --location 'https://localhost:7103/error' \
---header 'Content-Type: application/json' \
---data '{
+curl -X 'POST' \
+  'https://localhost:7110/messages/3fa85f64-5717-4562-b3fc-2c963f66afa6/error' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
     "message": {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
         "header": {
             "topic": {
                 "value": "test"
@@ -147,6 +161,7 @@ curl --location 'https://localhost:7103/error' \
         }
     },
     "service": {
+        "friendlyName: "string",
         "ipAddress": "string",
         "hostname": "string",
         "isPublic": true,
@@ -166,12 +181,14 @@ curl --location 'https://localhost:7103/error' \
 Property | Type | Context |
 --- | --- | --- |
 message | object | The message entity used by Felis system. |
+message.id | guid | the message global unique identifier. |
 message.header | object | the message header, containing the metadata of the message. |
 message.header.topic | object | value object containing the topic of the message that throws an error. |
 message.header.topic.value | string | the actual value of the topic of the message that throws an error. |
 message.content | object | the message content. |
 message.content.json | string | Json string of the message that throws an error. |
 service | object | The service entity that represents the client identity. |
+service.friendlyName | string | The friendly name of the service, set at the startup. |
 service.ipAddress | string | The ipAddress property of the client. |
 service.hostname | string | The hostname property of the client. |
 service.isPublic | boolean | This property tells the router whether the client is configured to be discovered by other clients or not. |
@@ -188,13 +205,15 @@ Status code | Type | Context |
 401 | UnauthorizedResult | When an operation fails due to missing authorization. |
 403 | ForbiddenResult | When an operation fails because it is not allowed in the context. |
 
-**purge/{topic}**
+**messages/{topic}/purge**
 
 This endpoint tells the router to purge the queue for a specific topic. It is irreversible.
 
 ```
-curl --location --request DELETE 'https://localhost:7103/purge/topic'
-```
+curl -X 'DELETE' \
+  'https://localhost:7110/messages/topic/purge' \
+  -H 'accept: application/json'
+  ```
 
 ***Request***
 
@@ -212,12 +231,14 @@ Status code | Type | Context |
 401 | UnauthorizedResult | When an operation fails due to missing authorization. |
 403 | ForbiddenResult | When an operation fails because it is not allowed in the context. |
 
-**consumers/{topic}**
+**messages/{topic}/consumers**
 
 This endpoint provides a list of the clients connected to Felis that consume a specific topic provided in the route. It exposes only the clients that are configured with the property **IsPublic** to **true**, which makes the clients discoverable.
 
 ```
-curl --location 'https://localhost:7103/consumers/topic'
+curl -X 'GET' \
+  'https://localhost:7110/messages/topic/consumers' \
+  -H 'accept: application/json'
 ```
 
 ***Response***
@@ -250,7 +271,9 @@ topics | array<Topic> | This property contains the array of topics subscribed by
 This endpoint provides a list of the message ready to sent in Felis for a specific topic provided in the route.
 
 ```
-curl --location 'https://localhost:7103/messages/topic'
+curl -X 'GET' \
+  'https://localhost:7110/messages/topic' \
+  -H 'accept: application/json'
 ```
 
 ***Response***
@@ -264,6 +287,7 @@ curl --location 'https://localhost:7103/messages/topic'
       },
       "services": [
         {
+          "friendlyName" : "string",
           "hostname": "string",
           "ipAddress": "string",
           "topics": [
@@ -299,7 +323,9 @@ services | array<Service> | The service array that contains the destinations of 
 This endpoint provides a list of the message that are gone in the error queue for a specific topic provided in the route.
 
 ```
-curl --location 'https://localhost:7103/messages/topic/error'
+curl -X 'GET' \
+  'https://localhost:7110/messages/topic/error' \
+  -H 'accept: application/json'
 ```
 
 ***Response***
@@ -321,6 +347,7 @@ curl --location 'https://localhost:7103/messages/topic/error'
             "header": {
                 "services": [
                     {
+                        "friendlyName" : "string",
                         "hostname": "string",
                         "ipAddress": "string",
                         "topics": [
@@ -363,7 +390,9 @@ error.detail | string | The .NET exception stacktrace. |
 This endpoint provides a list of the message that are been consumed for a specific topic provided in the route.
 
 ```
-curl --location 'https://localhost:7103/messages/topic/consumed'
+curl -X 'GET' \
+  'https://localhost:7110/messages/topic/consumed' \
+  -H 'accept: application/json'
 ```
 
 ***Response***
@@ -381,6 +410,7 @@ curl --location 'https://localhost:7103/messages/topic/consumed'
             "header": {
                 "services": [
                     {
+                        "friendlyName": "string",
                         "hostname": "string",
                         "ipAddress": "string",
                         "topics": [
@@ -417,15 +447,14 @@ connectionId | object | the actual value of the connectionId of the message that
 connectionId.value | string | The hostname property of the client. |
 timestamp | long | The unix time in milliseconds that provides the consume time. |
 
-**messages/consumed**
+**consumers/{connectionId}/messages**
 
-This endpoint provides a list of the message that are been consumed for the current connection id, specificied as header.
+This endpoint provides a list of the message that are been consumed for the connection id provided in route.
 
 ```
 curl -X 'GET' \
-  'https://localhost:7103/messages/consumed' \
-  -H 'accept: application/json' \
-  -H 'connection-id: AYhRMfzMA62BvJn3paMczQ'
+  'https://localhost:7110/consumers/AYhRMfzMA62BvJn3paMczQ/messages' \
+  -H 'accept: application/json'
 ```
 
 ***Response***
@@ -443,6 +472,7 @@ curl -X 'GET' \
             "header": {
                 "services": [
                     {
+                        "friendlyName": "string",
                         "hostname": "string",
                         "ipAddress": "string",
                         "topics": [
@@ -478,6 +508,69 @@ message.services | array<Service> | The service array that contains the destinat
 connectionId | object | the actual value of the connectionId of the message that throws an error.   |
 connectionId.value | string | The hostname property of the client. |
 timestamp | long | The unix time in milliseconds that provides the consume time. |
+
+**consumers/{connectionId}/messages/{topic}**
+
+This endpoint provides a list of the message that are been consumed for the connection id provided in route and for a specific topic.
+
+```
+curl -X 'GET' \
+  'https://localhost:7110/consumers/AYhRMfzMA62BvJn3paMczQ/messages/topic' \
+  -H 'accept: application/json'
+  ```
+
+***Response***
+
+```
+[
+    {
+        "connectionId": {
+            "value": "string"
+        },
+        "message": {
+            "content": {
+                "json": "string"
+            },
+            "header": {
+                "services": [
+                    {
+                        "friendlyName": "string",
+                        "hostname": "string",
+                        "ipAddress": "string",
+                        "topics": [
+                            {
+                                "value": "string"
+                            }
+                        ]
+                    }
+                ],
+                "timestamp": 0,
+                "topic": {
+                    "value": "string"
+                }
+            },
+            "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+        },
+	"timestamp": 0
+    }
+]
+```
+This endpoint returns an array of messages that are consumed, with related connection id and timestamp.
+
+Property | Type | Context |
+--- | --- | --- |
+message | object | The message entity used by Felis system. |
+message.id | guid | the message global unique identifier. |
+message.header | object | the message header, containing the metadata of the message. |
+message.header.topic | object | value object containing the topic of the message that throws an error. |
+message.header.topic.value | string | the actual value of the topic of the message that throws an error. |
+message.content | object | the message content. |
+message.content.json | string | Json string of the message that throws an error. |
+message.services | array<Service> | The service array that contains the destinations of the message. |
+connectionId | object | the actual value of the connectionId of the message that throws an error.   |
+connectionId.value | string | The hostname property of the client. |
+timestamp | long | The unix time in milliseconds that provides the consume time. |
+
 
 **Configuration**
 

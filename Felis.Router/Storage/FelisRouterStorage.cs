@@ -62,6 +62,12 @@ public class FelisRouterStorage : IFelisRouterStorage
                     StringComparison.InvariantCultureIgnoreCase))
             .ToList();
     }
+    
+    public List<ConsumedMessage?> ConsumedMessageList(ConnectionId connectionId, Topic topic)
+    {
+        return _consumedMessages.Where(cm => cm?.ConnectionId.Value == connectionId.Value && string.Equals(cm?.Message?.Header?.Topic?.Value, topic.Value, StringComparison.InvariantCultureIgnoreCase))
+            .ToList();
+    }
 
     public List<ErrorMessage> ListMessagesToRequeue()
     {

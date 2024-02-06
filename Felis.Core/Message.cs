@@ -2,10 +2,7 @@
 
 namespace Felis.Core;
 
-public record Message(Header? Header, Content? Content)
-{
-    public Guid Id { get; } = Guid.NewGuid();
-}
+public record Message(Guid Id, Header? Header, Content? Content);
 
 public record Header(Topic? Topic, List<Service>? Services)
 { 

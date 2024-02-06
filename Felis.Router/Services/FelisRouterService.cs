@@ -23,7 +23,7 @@ internal sealed class FelisRouterService : IFelisRouterService
         _felisConnectionManager = felisConnectionManager;
     }
 
-    public async Task<bool> Dispatch(Message? message, CancellationToken cancellationToken = default)
+    public async Task<bool> Dispatch(Topic topic, Message? message, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -37,11 +37,16 @@ internal sealed class FelisRouterService : IFelisRouterService
                 throw new ArgumentNullException($"No Topic provided in Header");
             }
 
-            var topic = message.Header?.Topic?.Value;
+            var topicValue = message.Header?.Topic?.Value;
 
-            if (string.IsNullOrWhiteSpace(topic))
+            if (string.IsNullOrWhiteSpace(topicValue))
             {
                 throw new ArgumentNullException($"No Topic Value provided in Header");
+            }
+
+            if (!string.Equals(topicValue, topic.Value, StringComparison.InvariantCultureIgnoreCase))
+            {
+                throw new InvalidOperationException("The topic provided in message and route are not matching");
             }
 
             var result = _storage.MessageAdd(message);
@@ -86,14 +91,14 @@ internal sealed class FelisRouterService : IFelisRouterService
                             continue;
                         }
                         
-                        await _hubContext.Clients.Client(connectionId.Value).SendAsync(topic, message, cancellationToken)
+                        await _hubContext.Clients.Client(connectionId.Value).SendAsync(topicValue, message, cancellationToken)
                             .ConfigureAwait(false);
                     }
                 }
             }
             else
             {
-                await _hubContext.Clients.All.SendAsync(topic, message, cancellationToken).ConfigureAwait(false);
+                await _hubContext.Clients.All.SendAsync(topicValue, message, cancellationToken).ConfigureAwait(false);
             }
 
             return result;
@@ -105,13 +110,18 @@ internal sealed class FelisRouterService : IFelisRouterService
         }
     }
 
-    public Task<bool> Consume(ConsumedMessage? consumedMessage, CancellationToken cancellationToken = default)
+    public Task<bool> Consume(Guid id, ConsumedMessage? consumedMessage, CancellationToken cancellationToken = default)
     {
         try
         {
             if (consumedMessage == null)
             {
                 throw new ArgumentNullException(nameof(consumedMessage));
+            }
+            
+            if (consumedMessage.Message?.Id != id)
+            {
+                throw new InvalidOperationException("The id provided in message and route are not matching");
             }
 
             var result = _storage.ConsumedMessageAdd(consumedMessage);
@@ -130,7 +140,7 @@ internal sealed class FelisRouterService : IFelisRouterService
         }
     }
 
-    public Task<bool> Error(ErrorMessage? errorMessage, CancellationToken cancellationToken = default)
+    public Task<bool> Error(Guid id, ErrorMessage? errorMessage, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -139,6 +149,11 @@ internal sealed class FelisRouterService : IFelisRouterService
                 throw new ArgumentNullException(nameof(errorMessage));
             }
 
+            if (errorMessage.Message?.Id != id)
+            {
+                throw new InvalidOperationException("The id provided in message and route are not matching");
+            }
+            
             var result = _storage.ErrorMessageAdd(errorMessage);
 
             if (!result)
@@ -262,4 +277,28 @@ internal sealed class FelisRouterService : IFelisRouterService
             return Task.FromResult(new List<ConsumedMessage?>());
         }
     }
+    
+    public Task<List<ConsumedMessage?>> ConsumedMessageList(ConnectionId connectionId, Topic topic, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (connectionId == null)
+            {
+                throw new ArgumentNullException(nameof(connectionId));
+            }
+            
+            if (topic == null)
+            {
+                throw new ArgumentNullException(nameof(topic));
+            }
+            
+            return Task.FromResult(_storage.ConsumedMessageList(connectionId, topic));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, ex.Message);
+            return Task.FromResult(new List<ConsumedMessage?>());
+        }
+    }
+
 }

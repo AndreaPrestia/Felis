@@ -49,11 +49,12 @@ internal class FelisStorageRequeueService : BackgroundService
                     if (!result.Any())
                     {
                         _logger.LogWarning("ListMessagesToRequeue returned empty list. No messages will be requeued.");
+                        return;
                     }
 
                     foreach (var errorMessage in result)
                     {
-                        var dispatchResult = await _felisRouterService.Dispatch(errorMessage.Message, stoppingToken).ConfigureAwait(false);
+                        var dispatchResult = await _felisRouterService.Dispatch(errorMessage.Message?.Header?.Topic, errorMessage.Message, stoppingToken).ConfigureAwait(false);
                         
                         _logger.LogInformation($"{(dispatchResult ? "Dispatched" : "Not dispatched")} message for Topic {errorMessage.Message?.Header?.Topic}");
                     }

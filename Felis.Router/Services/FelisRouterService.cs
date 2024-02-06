@@ -76,26 +76,27 @@ internal sealed class FelisRouterService
                     return false;
                 }
 
-                foreach (var service in message.Header.Services)
+                await Parallel.ForEachAsync(message.Header.Services, cancellationToken, async (service, _) =>
                 {
                     var connectionIds = _felisConnectionManager.GetServiceConnections(service);
 
                     if (!connectionIds.Any())
                     {
-                        continue;
+                        return;
                     }
 
-                    foreach (var connectionId in connectionIds)
+                    await Parallel.ForEachAsync(connectionIds, cancellationToken, async (connectionId, _) =>
                     {
                         if (string.IsNullOrWhiteSpace(connectionId.Value))
                         {
-                            continue;
+                            return;
                         }
-                        
-                        await _hubContext.Clients.Client(connectionId.Value).SendAsync(topicValue, message, cancellationToken)
+
+                        await _hubContext.Clients.Client(connectionId.Value)
+                            .SendAsync(topicValue, message, cancellationToken)
                             .ConfigureAwait(false);
-                    }
-                }
+                    }).ConfigureAwait(false);
+                }).ConfigureAwait(false);
             }
             else
             {

@@ -46,6 +46,7 @@ curl -X 'POST' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
   -d '{
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
     "header": {
         "topic": {
             "value": "test"
@@ -61,6 +62,7 @@ curl -X 'POST' \
 ***Request***
 Property | Type | Context |
 --- | --- | --- |
+id | guid | the message global unique identifier. |
 header | object | the message header, containing the metadata of the message. |
 header.topic | object | value object containing the topic of the message to dispatch. |
 header.topic.value | string | the actual content of the topic of the message to dispatch. |

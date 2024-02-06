@@ -302,5 +302,4 @@ internal sealed class FelisRouterService
             return Task.FromResult(new List<ConsumedMessage?>());
         }
     }
-
 }

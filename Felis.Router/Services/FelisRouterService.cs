@@ -1,5 +1,4 @@
-﻿using Felis.Core;
-using Felis.Core.Models;
+﻿using Felis.Core.Models;
 using Felis.Router.Hubs;
 using Felis.Router.Managers;
 using Felis.Router.Storage;

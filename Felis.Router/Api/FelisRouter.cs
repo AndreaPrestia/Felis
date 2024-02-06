@@ -57,7 +57,7 @@ internal class FelisRouter : ApiRouter
                 var result = await service.Consumers(new Topic(topic)).ConfigureAwait(false);
 
                 return Results.Ok(result);
-            }).WithName("ConsumerList").Produces<List<Service>>()
+            }).WithName("ConsumerList").Produces<List<Consumer>>()
             .Produces<BadRequestResult>(StatusCodes.Status400BadRequest)
             .Produces<UnauthorizedResult>(StatusCodes.Status401Unauthorized)
             .Produces<ForbidResult>(StatusCodes.Status403Forbidden);

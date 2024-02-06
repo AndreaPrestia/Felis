@@ -33,7 +33,7 @@ internal sealed class FelisRouterHub : Hub
 
             var clientHostname = Dns.GetHostEntry(clientIp).HostName;
 
-            _felisConnectionManager.KeepServiceConnection(new Service(friendlyName, clientHostname, clientIp.ToString(), topics),
+            _felisConnectionManager.KeepConsumerConnection(new Consumer(friendlyName, clientHostname, clientIp.ToString(), topics),
                 new ConnectionId(Context.ConnectionId));
             return Context.ConnectionId;
         }
@@ -48,7 +48,7 @@ internal sealed class FelisRouterHub : Hub
     {
         try
         {
-            _felisConnectionManager.RemoveServiceConnections(connectionId);
+            _felisConnectionManager.RemoveConsumerConnections(connectionId);
         }
         catch (Exception ex)
         {

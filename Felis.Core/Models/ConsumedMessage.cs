@@ -1,4 +1,4 @@
-﻿namespace Felis.Core;
+﻿namespace Felis.Core.Models;
 
 public record ConsumedMessage(Message? Message, ConnectionId ConnectionId)
 {

@@ -2,5 +2,5 @@
 
 public interface IConsume<in T> 
 {
-	public abstract void Process(T entity);
+	public void Process(T entity);
 }

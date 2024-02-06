@@ -27,7 +27,7 @@ public sealed class FelisRouterStorage
         _consumedMessages = new ConcurrentQueue<ConsumedMessage?>(_consumedMessages.Append(consumedMessage));
 
         _messages = new ConcurrentQueue<Message?>(_messages.Where(x =>
-            x?.Id != consumedMessage?.Message?.Id));
+            x?.Header?.Id != consumedMessage?.Message?.Header?.Id));
 
         return true;
     }
@@ -100,7 +100,7 @@ public sealed class FelisRouterStorage
     public bool ErrorMessageAdd(ErrorMessage message)
     {
         var errorMessageFound = _errorMessages.FirstOrDefault(em =>
-            em.Key.Message?.Id == message.Message?.Id && em.Key.ConnectionId?.Value == message.ConnectionId?.Value);
+            em.Key.Message?.Header?.Id == message.Message?.Header?.Id && em.Key.ConnectionId?.Value == message.ConnectionId?.Value);
 
         if (errorMessageFound.Equals(default(KeyValuePair<ErrorMessage, int>)))
         {

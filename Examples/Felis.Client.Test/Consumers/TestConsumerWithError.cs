@@ -1,4 +1,5 @@
-﻿using Felis.Client.Test.Models;
+﻿using Felis.Client.Attributes;
+using Felis.Client.Test.Models;
 using Felis.Core;
 
 namespace Felis.Client.Test.Consumers;

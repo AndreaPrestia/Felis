@@ -1,4 +1,6 @@
-﻿using Felis.Core;
+﻿using Felis.Client.Resolvers;
+using Felis.Core;
+using Felis.Core.Models;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Http.Connections;

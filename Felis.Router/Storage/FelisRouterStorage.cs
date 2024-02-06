@@ -1,5 +1,4 @@
 ﻿using System.Collections.Concurrent;
-using Felis.Core;
 using Felis.Core.Models;
 
 namespace Felis.Router.Storage;
@@ -7,7 +6,7 @@ namespace Felis.Router.Storage;
 /// <summary>
 /// This is an in-memory storage implementation of FelisStorage.
 /// </summary>
-public sealed class FelisRouterStorage
+internal sealed class FelisRouterStorage
 {
     private ConcurrentQueue<Message?> _messages = new();
     private ConcurrentQueue<ConsumedMessage?> _consumedMessages = new();

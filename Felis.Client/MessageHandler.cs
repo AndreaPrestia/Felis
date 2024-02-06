@@ -1,7 +1,6 @@
 ﻿using System.Net.Http.Json;
 using System.Text.Json;
 using Felis.Client.Resolvers;
-using Felis.Core;
 using Felis.Core.Models;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
@@ -37,18 +36,21 @@ public sealed class MessageHandler : IAsyncDisposable
             throw new ArgumentNullException(nameof(payload));
         }
 
+        if (string.IsNullOrWhiteSpace(topic))
+        {
+            throw new ArgumentNullException(nameof(topic));
+        }
+
         try
         {
             await CheckHubConnectionStateAndStartIt(cancellationToken).ConfigureAwait(false);
 
             //TODO add an authorization token as parameter
 
-            var type = payload.GetType().FullName;
-
             var json = JsonSerializer.Serialize(payload);
 
-            var responseMessage = await _httpClient.PostAsJsonAsync($"/messages/{topic ?? type}/dispatch",
-                new Message(new Header(Guid.NewGuid(), new Topic(topic ?? type)), new Content(json)),
+            var responseMessage = await _httpClient.PostAsJsonAsync($"/messages/{topic}/dispatch",
+                new Message(new Header(Guid.NewGuid(), new Topic(topic)), new Content(json)),
                 cancellationToken: cancellationToken).ConfigureAwait(false);
 
             responseMessage.EnsureSuccessStatusCode();

@@ -274,10 +274,10 @@ Property | Type | Context |
 --- | --- | --- |
 header | object | the message header, containing the metadata of the message. |
 header.id | guid | the message global unique identifier. |
-header.topic | object | value object containing the topic of the message that throws an error. |
-header.topic.value | string | the actual value of the topic of the message that throws an error. |
+header.topic | object | value object containing the topic of the message ready to be sent. |
+header.topic.value | string | the actual value of the topic of the message ready to be sent. |
 content | object | the message content. |
-content.json | string | Json string of the message that throws an error. |
+content.json | string | Json string of the message ready to be sent. |
 
 **messages/{topic}/error**
 
@@ -379,7 +379,7 @@ message.header.topic.value | string | the actual value of the topic of the messa
 message.content | object | the message content.                                                            |
 message.content.json | string | Json string of the message consumed.                                            |
 connectionId | object | the connectionId value object.    |
-connectionId.value | string | the actual value of the connectionId of the message that throws an error. |
+connectionId.value | string | the actual value of the connectionId of the message consumed. |
 timestamp | long | The unix time in milliseconds that provides the consume time.                   |
 
 **consumers/{connectionId}/messages**
@@ -423,12 +423,12 @@ Property | Type | Context |
 message | object | The message entity used by Felis system. |
 message.header | object | the message header, containing the metadata of the message. |
 message.header.id | guid | the message global unique identifier. |
-message.header.topic | object | value object containing the topic of the message that throws an error. |
-message.header.topic.value | string | the actual value of the topic of the message that throws an error. |
+message.header.topic | object | value object containing the topic of the message consumed. |
+message.header.topic.value | string | the actual value of the topic of the message consumed. |
 message.content | object | the message content. |
-message.content.json | string | Json string of the message that throws an error. |
+message.content.json | string | Json string of the message consumed. |
 connectionId | object | the connectionId value object.    |
-connectionId.value | string | the actual value of the connectionId of the message that throws an error. |
+connectionId.value | string | the actual value of the connectionId of the message consumed. |
 timestamp | long | The unix time in milliseconds that provides the consume time. |
 
 **consumers/{connectionId}/messages/{topic}**
@@ -472,12 +472,12 @@ Property | Type | Context |
 message | object | The message entity used by Felis system. |
 message.id | guid | the message global unique identifier. |
 message.header | object | the message header, containing the metadata of the message. |
-message.header.topic | object | value object containing the topic of the message that throws an error. |
-message.header.topic.value | string | the actual value of the topic of the message that throws an error. |
+message.header.topic | object | value object containing the topic of the message consumed. |
+message.header.topic.value | string | the actual value of the topic of the message consumed. |
 message.content | object | the message content. |
-message.content.json | string | Json string of the message that throws an error. |
+message.content.json | string | Json string of the message consumed. |
 connectionId | object | the connectionId value object.    |
-connectionId.value | string | the actual value of the connectionId of the message that throws an error. |
+connectionId.value | string | the actual value of the connectionId of the message consumed. |
 timestamp | long | The unix time in milliseconds that provides the consume time. |
 
 

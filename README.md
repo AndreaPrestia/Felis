@@ -46,12 +46,11 @@ curl -X 'POST' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
   -d '{
-    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
     "header": {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
         "topic": {
             "value": "test"
-        },
-        "services": []
+        }
     },
     "content": {
         "json": "{\"description\":\"Test\"}"
@@ -62,11 +61,10 @@ curl -X 'POST' \
 ***Request***
 Property | Type | Context |
 --- | --- | --- |
-id | guid | the message global unique identifier. |
 header | object | the message header, containing the metadata of the message. |
+header.id | guid | the message global unique identifier. |
 header.topic | object | value object containing the topic of the message to dispatch. |
 header.topic.value | string | the actual content of the topic of the message to dispatch. |
-header.services |  array<service> | array of specific clients that should receive the message. | 
 content | object | the message content. |
 content.json | string | Json string of the message to dispatch. |
 
@@ -89,27 +87,19 @@ curl -X 'POST' \
   -H 'Content-Type: application/json' \
   -d '{
     "message": {
-        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
         "header": {
+            "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
             "topic": {
                 "value": "test"
-            },
-            "services": []
+            }
         },
         "content": {
             "json": "{\"description\":\"Test\"}"
         }
     },
-    "service": {
-        "friendlyName": "string",
-        "ipAddress": "string",
-        "hostname": "string",
-        "isPublic": true,
-	"topics": [{
-                "value": "test"
-            }
-        ]
-    },
+    "connectionId": {
+        "value": "AYhRMfzMA62BvJn3paMczQ"
+    }
 }'
 ```
 
@@ -117,18 +107,14 @@ curl -X 'POST' \
 Property | Type | Context |
 --- | --- | --- |
 message | object | The message entity used by Felis system. |
-message.id | guid | the message global unique identifier. |
 message.header | object | the message header, containing the metadata of the message. |
+message.header.id | guid | the message global unique identifier. |
 message.header.topic | object | value object containing the topic of the consumed message. |
 message.header.topic.value | string | the actual value of the topic of the consumed message. |
 message.content | object | the message content. |
 message.content.json | string | Json string of the consumed message. |
-service | object | The service entity that represents the client identity. |
-service.friendlyName | string | The friendly name of the service, set at the startup. |
-service.ipAddress | string | The ipAddress property of the client. |
-service.hostname | string | The hostname property of the client. |
-service.isPublic | boolean | This property tells the router whether the client is configured to be discovered by other clients or not. |
-service.topics | array<Topic> | This property contains the array of topics subscribed by a client. |
+connectionId | object | the connectionId value object.    |
+connectionId.value | string | the actual value of the connectionId of the message that throws an error. |
 
 ***Response***
 Status code | Type | Context |
@@ -149,26 +135,18 @@ curl -X 'POST' \
   -H 'Content-Type: application/json' \
   -d '{
     "message": {
-        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
         "header": {
+            "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
             "topic": {
                 "value": "test"
             },
-            "services": []
         },
         "content": {
             "json": "{\"description\":\"Test\"}"
         }
     },
-    "service": {
-        "friendlyName: "string",
-        "ipAddress": "string",
-        "hostname": "string",
-        "isPublic": true,
-	"topics": [{
-                "value": "test"
-            }
-        ]
+    "connectionId": {
+        "value": "AYhRMfzMA62BvJn3paMczQ"
     },
     "error": {
         "title": "string",
@@ -181,18 +159,14 @@ curl -X 'POST' \
 Property | Type | Context |
 --- | --- | --- |
 message | object | The message entity used by Felis system. |
-message.id | guid | the message global unique identifier. |
 message.header | object | the message header, containing the metadata of the message. |
+message.header.id | guid | the message global unique identifier. |
 message.header.topic | object | value object containing the topic of the message that throws an error. |
 message.header.topic.value | string | the actual value of the topic of the message that throws an error. |
 message.content | object | the message content. |
 message.content.json | string | Json string of the message that throws an error. |
-service | object | The service entity that represents the client identity. |
-service.friendlyName | string | The friendly name of the service, set at the startup. |
-service.ipAddress | string | The ipAddress property of the client. |
-service.hostname | string | The hostname property of the client. |
-service.isPublic | boolean | This property tells the router whether the client is configured to be discovered by other clients or not. |
-service.topics | array<Topic> | This property contains the array of topics subscribed by a client. |
+connectionId | object | the connectionId value object.    |
+connectionId.value | string | the actual value of the connectionId of the message that throws an error. |
 error | object | The object containing the error occurred. |
 error.title | string | The .NET exception message. |
 error.detail | string | The .NET exception stacktrace. |
@@ -259,12 +233,12 @@ curl -X 'GET' \
 ```
 This endpoint returns an array of clients.
 
-Property | Type | Context |
---- | --- | --- |
-ipAddress | string | The ipAddress property of the client. |
-hostname | string | The hostname property of the client. |
-isPublic | boolean | This property tells the router whether the client is configured to be discovered by other clients or not. |
-topics | array<Topic> | This property contains the array of topics subscribed by a client. |
+Property | Type | Context                                                                                                     |
+--- | --- |-------------------------------------------------------------------------------------------------------------|
+ipAddress | string | The ipAddress property of the consumer.                                                                     |
+hostname | string | The hostname property of the consumer.                                                                      |
+isPublic | boolean | This property tells the router whether the consumer is configured to be discovered by other clients or not. |
+topics | array<Topic> | This property contains the array of topics subscribed by the consumer.                                      |
 
 **message/{topic}**
 
@@ -282,27 +256,15 @@ curl -X 'GET' \
 [
   {
     "header": {
+      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
       "topic": {
         "value": "string"
       },
-      "services": [
-        {
-          "friendlyName" : "string",
-          "hostname": "string",
-          "ipAddress": "string",
-          "topics": [
-            {
-              "value": "string"
-            }
-          ]
-        }
-      ],
       "timestamp": 0
     },
     "content": {
       "json": "string"
-    },
-    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+    }
   }
 ]
 ```
@@ -310,13 +272,12 @@ This endpoint returns an array of message.
 
 Property | Type | Context |
 --- | --- | --- |
-id | guid | the message global unique identifier. |
 header | object | the message header, containing the metadata of the message. |
+header.id | guid | the message global unique identifier. |
 header.topic | object | value object containing the topic of the message that throws an error. |
 header.topic.value | string | the actual value of the topic of the message that throws an error. |
 content | object | the message content. |
 content.json | string | Json string of the message that throws an error. |
-services | array<Service> | The service array that contains the destinations of the message. |
 
 **messages/{topic}/error**
 
@@ -333,57 +294,44 @@ curl -X 'GET' \
 ```
 [
     {
-        "connectionId": {
-            "value": "string"
-        },
-        "error": {
-            "title": "string",
-            "detail": "string"
-        },
         "message": {
             "content": {
                 "json": "string"
             },
             "header": {
-                "services": [
-                    {
-                        "friendlyName" : "string",
-                        "hostname": "string",
-                        "ipAddress": "string",
-                        "topics": [
-                            {
-                                "value": "string"
-                            }
-                        ]
-                    }
-                ],
+                "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
                 "timestamp": 0,
                 "topic": {
                     "value": "string"
                 }
-            },
-            "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+            }
+        },
+        "connectionId": {
+            "value": "AYhRMfzMA62BvJn3paMczQ"
+        },
+        "error": {
+            "title": "string",
+            "detail": "string"
         }
     }
 ]
 ```
 This endpoint returns an array of messages with related error and connection id where the error happened.
 
-Property | Type | Context |
---- | --- | --- |
-message | object | The message entity used by Felis system. |
-message.id | guid | the message global unique identifier. |
-message.header | object | the message header, containing the metadata of the message. |
-message.header.topic | object | value object containing the topic of the message that throws an error. |
-message.header.topic.value | string | the actual value of the topic of the message that throws an error. |
-message.content | object | the message content. |
-message.content.json | string | Json string of the message that throws an error. |
-message.services | array<Service> | The service array that contains the destinations of the message. |
-connectionId | object | the actual value of the connectionId of the message that throws an error.   |
-connectionId.value | string | The hostname property of the client. |
-error | object | The object containing the error occurred. |
-error.title | string | The .NET exception message. |
-error.detail | string | The .NET exception stacktrace. |
+Property | Type | Context                                                                  |
+--- | --- |--------------------------------------------------------------------------|
+message | object | The message entity used by Felis system.                                 |
+message.header | object | the message header, containing the metadata of the message.              |
+message.header.id | guid | the message global unique identifier.                                    |
+message.header.topic | object | value object containing the topic of the message that throws an error.   |
+message.header.topic.value | string | the actual value of the topic of the message that throws an error.       |
+message.content | object | the message content.                                                     |
+message.content.json | string | Json string of the message that throws an error.                         |
+connectionId | object | the connectionId value object.    |
+connectionId.value | string | the actual value of the connectionId of the message that throws an error. |
+error | object | The object containing the error occurred.                                |
+error.title | string | The .NET exception message.                                              |
+error.detail | string | The .NET exception stacktrace.                                           |
 
 **messages/{topic}/consumed**
 
@@ -400,52 +348,39 @@ curl -X 'GET' \
 ```
 [
     {
-        "connectionId": {
-            "value": "string"
-        },
         "message": {
             "content": {
                 "json": "string"
             },
             "header": {
-                "services": [
-                    {
-                        "friendlyName": "string",
-                        "hostname": "string",
-                        "ipAddress": "string",
-                        "topics": [
-                            {
-                                "value": "string"
-                            }
-                        ]
-                    }
-                ],
+                "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
                 "timestamp": 0,
                 "topic": {
                     "value": "string"
                 }
-            },
-            "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+            }
         },
-	"timestamp": 0
+        "connectionId": {
+            "value": "AYhRMfzMA62BvJn3paMczQ"
+        },
+        "timestamp": 0
     }
 ]
 ```
 This endpoint returns an array of messages that are consumed, with related connection id and timestamp.
 
-Property | Type | Context |
---- | --- | --- |
-message | object | The message entity used by Felis system. |
-message.id | guid | the message global unique identifier. |
-message.header | object | the message header, containing the metadata of the message. |
-message.header.topic | object | value object containing the topic of the message that throws an error. |
-message.header.topic.value | string | the actual value of the topic of the message that throws an error. |
-message.content | object | the message content. |
-message.content.json | string | Json string of the message that throws an error. |
-message.services | array<Service> | The service array that contains the destinations of the message. |
-connectionId | object | the actual value of the connectionId of the message that throws an error.   |
-connectionId.value | string | The hostname property of the client. |
-timestamp | long | The unix time in milliseconds that provides the consume time. |
+Property | Type | Context                                                                         |
+--- | --- |---------------------------------------------------------------------------------|
+message | object | The message entity used by Felis system.                                        |
+message.header | object | the message header, containing the metadata of the message.                     |
+message.header.id | guid | the message global unique identifier.                                           |
+message.header.topic | object | value object containing the topic of the message consumed.          |
+message.header.topic.value | string | the actual value of the topic of the message consumed.                          |
+message.content | object | the message content.                                                            |
+message.content.json | string | Json string of the message consumed.                                            |
+connectionId | object | the connectionId value object.    |
+connectionId.value | string | the actual value of the connectionId of the message that throws an error. |
+timestamp | long | The unix time in milliseconds that provides the consume time.                   |
 
 **consumers/{connectionId}/messages**
 
@@ -462,32 +397,20 @@ curl -X 'GET' \
 ```
 [
     {
-        "connectionId": {
-            "value": "string"
-        },
         "message": {
             "content": {
                 "json": "string"
             },
             "header": {
-                "services": [
-                    {
-                        "friendlyName": "string",
-                        "hostname": "string",
-                        "ipAddress": "string",
-                        "topics": [
-                            {
-                                "value": "string"
-                            }
-                        ]
-                    }
-                ],
+                "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
                 "timestamp": 0,
                 "topic": {
                     "value": "string"
                 }
-            },
-            "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+            }
+        },
+        "connectionId": {
+            "value": "AYhRMfzMA62BvJn3paMczQ"
         },
 	"timestamp": 0
     }
@@ -498,15 +421,14 @@ This endpoint returns an array of messages that are consumed, with related conne
 Property | Type | Context |
 --- | --- | --- |
 message | object | The message entity used by Felis system. |
-message.id | guid | the message global unique identifier. |
 message.header | object | the message header, containing the metadata of the message. |
+message.header.id | guid | the message global unique identifier. |
 message.header.topic | object | value object containing the topic of the message that throws an error. |
 message.header.topic.value | string | the actual value of the topic of the message that throws an error. |
 message.content | object | the message content. |
 message.content.json | string | Json string of the message that throws an error. |
-message.services | array<Service> | The service array that contains the destinations of the message. |
-connectionId | object | the actual value of the connectionId of the message that throws an error.   |
-connectionId.value | string | The hostname property of the client. |
+connectionId | object | the connectionId value object.    |
+connectionId.value | string | the actual value of the connectionId of the message that throws an error. |
 timestamp | long | The unix time in milliseconds that provides the consume time. |
 
 **consumers/{connectionId}/messages/{topic}**
@@ -524,32 +446,20 @@ curl -X 'GET' \
 ```
 [
     {
-        "connectionId": {
-            "value": "string"
-        },
-        "message": {
+       "message": {
             "content": {
                 "json": "string"
             },
             "header": {
-                "services": [
-                    {
-                        "friendlyName": "string",
-                        "hostname": "string",
-                        "ipAddress": "string",
-                        "topics": [
-                            {
-                                "value": "string"
-                            }
-                        ]
-                    }
-                ],
+                "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
                 "timestamp": 0,
                 "topic": {
                     "value": "string"
                 }
-            },
-            "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+            }
+        },
+        "connectionId": {
+            "value": "AYhRMfzMA62BvJn3paMczQ"
         },
 	"timestamp": 0
     }
@@ -566,9 +476,8 @@ message.header.topic | object | value object containing the topic of the message
 message.header.topic.value | string | the actual value of the topic of the message that throws an error. |
 message.content | object | the message content. |
 message.content.json | string | Json string of the message that throws an error. |
-message.services | array<Service> | The service array that contains the destinations of the message. |
-connectionId | object | the actual value of the connectionId of the message that throws an error.   |
-connectionId.value | string | The hostname property of the client. |
+connectionId | object | the connectionId value object.    |
+connectionId.value | string | the actual value of the connectionId of the message that throws an error. |
 timestamp | long | The unix time in milliseconds that provides the consume time. |
 
 

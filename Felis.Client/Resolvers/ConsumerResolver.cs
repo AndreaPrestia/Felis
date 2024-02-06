@@ -1,11 +1,13 @@
 ﻿using System.Reflection;
 using System.Text.Json;
+using Felis.Client.Attributes;
+using Felis.Core;
 using Felis.Core.Models;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Felis.Client;
+namespace Felis.Client.Resolvers;
 
-public sealed class ConsumerResolver
+internal sealed class ConsumerResolver
 {
     private readonly IServiceScopeFactory _scopeFactory;
 
@@ -14,7 +16,7 @@ public sealed class ConsumerResolver
         _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
     }
 
-    public ConsumerResolveResult ResolveConsumerByTopic(KeyValuePair<Topic, Type> topicType, string? messagePayload)
+    internal ConsumerResolveResult ResolveConsumerByTopic(KeyValuePair<Topic, Type> topicType, string? messagePayload)
     {
         try
         {
@@ -26,11 +28,11 @@ public sealed class ConsumerResolver
         }
     }
     
-    public Dictionary<Topic, Type> GetTypesForTopics()
+    internal Dictionary<Topic, Type> GetTypesForTopics()
     {
         var topicTypes = AppDomain.CurrentDomain.GetAssemblies()
             .SelectMany(assembly => assembly.GetTypes())
-            .Where(type => type.IsClass && !type.IsAbstract &&
+            .Where(type => type is { IsClass: true, IsAbstract: false } &&
                            type.GetInterfaces().Any(i =>
                                i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IConsume<>))).SelectMany(t =>
                 t.GetCustomAttributes<TopicAttribute>()

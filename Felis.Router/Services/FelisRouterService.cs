@@ -1,21 +1,22 @@
 ﻿using Felis.Core;
 using Felis.Core.Models;
 using Felis.Router.Hubs;
-using Felis.Router.Interfaces;
+using Felis.Router.Managers;
+using Felis.Router.Storage;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 
 namespace Felis.Router.Services;
 
-internal sealed class FelisRouterService : IFelisRouterService
+internal sealed class FelisRouterService
 {
     private readonly IHubContext<FelisRouterHub> _hubContext;
     private readonly ILogger<FelisRouterService> _logger;
-    private readonly IFelisRouterStorage _storage;
-    private readonly IFelisConnectionManager _felisConnectionManager;
+    private readonly FelisRouterStorage _storage;
+    private readonly FelisConnectionManager _felisConnectionManager;
 
     public FelisRouterService(IHubContext<FelisRouterHub> hubContext, ILogger<FelisRouterService> logger,
-        IFelisRouterStorage storage, IFelisConnectionManager felisConnectionManager)
+        FelisRouterStorage storage, FelisConnectionManager felisConnectionManager)
     {
         _hubContext = hubContext;
         _logger = logger;
@@ -23,7 +24,7 @@ internal sealed class FelisRouterService : IFelisRouterService
         _felisConnectionManager = felisConnectionManager;
     }
 
-    public async Task<bool> Dispatch(Topic topic, Message? message, CancellationToken cancellationToken = default)
+    public async Task<bool> Dispatch(Topic? topic, Message? message, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -44,7 +45,7 @@ internal sealed class FelisRouterService : IFelisRouterService
                 throw new ArgumentNullException($"No Topic Value provided in Header");
             }
 
-            if (!string.Equals(topicValue, topic.Value, StringComparison.InvariantCultureIgnoreCase))
+            if (!string.Equals(topicValue, topic?.Value, StringComparison.InvariantCultureIgnoreCase))
             {
                 throw new InvalidOperationException("The topic provided in message and route are not matching");
             }
@@ -58,48 +59,7 @@ internal sealed class FelisRouterService : IFelisRouterService
             }
 
             //dispatch it
-            if (message.Header?.Services != null && message.Header.Services.Any())
-            {
-                var connectedServices = _felisConnectionManager.GetConnectedServices();
-
-                if (!connectedServices.Any())
-                {
-                    _logger.LogWarning("No connected services to dispatch. The message won't be published");
-                    return false;
-                }
-
-                if (!connectedServices.Intersect(message.Header.Services).Any())
-                {
-                    _logger.LogWarning(
-                        "No connected services available in the list provided to dispatch. The message won't be published");
-                    return false;
-                }
-
-                foreach (var service in message.Header.Services)
-                {
-                    var connectionIds = _felisConnectionManager.GetServiceConnections(service);
-
-                    if (!connectionIds.Any())
-                    {
-                        continue;
-                    }
-
-                    foreach (var connectionId in connectionIds)
-                    {
-                        if (string.IsNullOrWhiteSpace(connectionId.Value))
-                        {
-                            continue;
-                        }
-                        
-                        await _hubContext.Clients.Client(connectionId.Value).SendAsync(topicValue, message, cancellationToken)
-                            .ConfigureAwait(false);
-                    }
-                }
-            }
-            else
-            {
-                await _hubContext.Clients.All.SendAsync(topicValue, message, cancellationToken).ConfigureAwait(false);
-            }
+            await _hubContext.Clients.All.SendAsync(topicValue, message, cancellationToken).ConfigureAwait(false);
 
             return result;
         }
@@ -119,7 +79,7 @@ internal sealed class FelisRouterService : IFelisRouterService
                 throw new ArgumentNullException(nameof(consumedMessage));
             }
             
-            if (consumedMessage.Message?.Id != id)
+            if (consumedMessage.Message?.Header?.Id != id)
             {
                 throw new InvalidOperationException("The id provided in message and route are not matching");
             }
@@ -149,7 +109,7 @@ internal sealed class FelisRouterService : IFelisRouterService
                 throw new ArgumentNullException(nameof(errorMessage));
             }
 
-            if (errorMessage.Message?.Id != id)
+            if (errorMessage.Message?.Header?.Id != id)
             {
                 throw new InvalidOperationException("The id provided in message and route are not matching");
             }
@@ -193,7 +153,7 @@ internal sealed class FelisRouterService : IFelisRouterService
         }
     }
 
-    public Task<List<Service>> Consumers(Topic? topic, CancellationToken cancellationToken = default)
+    public Task<List<Consumer>> Consumers(Topic? topic, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -202,12 +162,12 @@ internal sealed class FelisRouterService : IFelisRouterService
                 throw new ArgumentNullException(nameof(topic));
             }
             
-            return Task.FromResult(_felisConnectionManager.GetConnectedServices().Where(x => x.Topics.Select(t => t.Value).ToList().Contains(topic.Value)).ToList());
+            return Task.FromResult(_felisConnectionManager.GetConnectedConsumers().Where(x => x.Topics.Select(t => t.Value).ToList().Contains(topic.Value)).ToList());
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, ex.Message);
-            return Task.FromResult(new List<Service>());
+            return Task.FromResult(new List<Consumer>());
         }
     }
 
@@ -300,5 +260,4 @@ internal sealed class FelisRouterService : IFelisRouterService
             return Task.FromResult(new List<ConsumedMessage?>());
         }
     }
-
 }

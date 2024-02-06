@@ -1,6 +1,5 @@
 ﻿using Felis.Router.Configurations;
 using Felis.Router.Hubs;
-using Felis.Router.Interfaces;
 using Felis.Router.Managers;
 using Felis.Router.Services;
 using Felis.Router.Services.Background;
@@ -47,9 +46,9 @@ public static class Extensions
     {
         serviceCollection.AddHostedService<FelisStorageRequeueService>();
         serviceCollection.AddHostedService<FelisStorageCleanService>();
-        serviceCollection.AddSingleton<IFelisConnectionManager, FelisConnectionManager>();
-        serviceCollection.AddSingleton<IFelisRouterStorage, FelisRouterStorage>();
-        serviceCollection.AddSingleton<IFelisRouterService, FelisRouterService>();
+        serviceCollection.AddSingleton<FelisConnectionManager>();
+        serviceCollection.AddSingleton<FelisRouterStorage>();
+        serviceCollection.AddSingleton<FelisRouterService>();
         serviceCollection.AddSingleton<FelisRouterHub>();
     }
 

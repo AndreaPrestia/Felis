@@ -1,8 +1,8 @@
 ﻿using System.Reflection;
 
-namespace Felis.Client;
+namespace Felis.Client.Resolvers;
 
-public class ConsumerResolveResult
+internal class ConsumerResolveResult
 {
     private ConsumerResolveResult(object? consumer, Type? consumerType, Type? messageType, MethodInfo? processMethod,
         object? deserializedEntity)
@@ -28,11 +28,11 @@ public class ConsumerResolveResult
     public MethodInfo? ProcessMethod { get; init; }
     public object? DeserializedEntity { get; set; }
 
-    public static ConsumerResolveResult Ok(object? consumer, Type? consumerType, Type? messageType,
+    internal static ConsumerResolveResult Ok(object? consumer, Type? consumerType, Type? messageType,
         MethodInfo? processMethod,
         object? deserializedEntity) => new(consumer, consumerType, messageType,
         processMethod,
         deserializedEntity);
 
-    public static ConsumerResolveResult Ko(Exception? exception) => new(exception);
+    internal static ConsumerResolveResult Ko(Exception? exception) => new(exception);
 }

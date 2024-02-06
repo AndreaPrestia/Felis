@@ -1,4 +1,4 @@
-﻿namespace Felis.Core
+﻿namespace Felis.Core.Models
 {
 	public record ErrorMessage(Message? Message, ConnectionId? ConnectionId, ErrorDetail? Error, RetryPolicy? RetryPolicy)
 	{

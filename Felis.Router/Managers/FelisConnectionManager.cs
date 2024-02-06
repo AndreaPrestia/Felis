@@ -1,61 +1,60 @@
 ﻿using Felis.Core;
 using Felis.Core.Models;
-using Felis.Router.Interfaces;
 
 namespace Felis.Router.Managers
 {
-	internal class FelisConnectionManager : IFelisConnectionManager
+	internal sealed class FelisConnectionManager 
 	{
-		private static readonly Dictionary<Service, List<ConnectionId>> FelisConnectionMap = new();
+		private static readonly Dictionary<Consumer, List<ConnectionId>> FelisConnectionMap = new();
 		private static readonly string UserConnectionMapLocker = string.Empty;
 
-		public List<ConnectionId> GetServiceConnections(Service service)
+		public List<ConnectionId> GetConsumerConnections(Consumer consumer)
 		{
 			List<ConnectionId> connections;
 
 			lock (UserConnectionMapLocker)
 			{ 
-				connections = FelisConnectionMap.Where(x => x.Key == service).SelectMany(x => x.Value).ToList();
+				connections = FelisConnectionMap.Where(x => x.Key == consumer).SelectMany(x => x.Value).ToList();
 			}
 
 			return connections;
 		}
 
-		public List<Service> GetConnectedServices()
+		public List<Consumer> GetConnectedConsumers()
 		{
-			List<Service> services;
+			List<Consumer> consumers;
 
 			lock (UserConnectionMapLocker)
 			{
-				services = FelisConnectionMap.Select(x => x.Key).ToList();
+				consumers = FelisConnectionMap.Select(x => x.Key).ToList();
 			}
 
-			return services;
+			return consumers;
 		}
 
-		public void KeepServiceConnection(Service service, ConnectionId connectionId)
+		public void KeepConsumerConnection(Consumer consumer, ConnectionId connectionId)
 		{
 			lock (UserConnectionMapLocker)
 			{
-				if (!FelisConnectionMap.ContainsKey(service))
+				if (!FelisConnectionMap.ContainsKey(consumer))
 				{
-					FelisConnectionMap[service] = new List<ConnectionId>();
+					FelisConnectionMap[consumer] = new List<ConnectionId>();
 				}
-				FelisConnectionMap[service].Add(connectionId);
+				FelisConnectionMap[consumer].Add(connectionId);
 			}
 		}
 
-		public void RemoveServiceConnections(ConnectionId connectionId)
+		public void RemoveConsumerConnections(ConnectionId connectionId)
 		{
 			lock (UserConnectionMapLocker)
 			{
-			   var services = FelisConnectionMap.Where(x => x.Value.Contains(connectionId)).ToList();
+			   var consumers = FelisConnectionMap.Where(x => x.Value.Contains(connectionId)).ToList();
 
-			   if (!services.Any()) return;
+			   if (!consumers.Any()) return;
 			   
-			   foreach (var service in services)
+			   foreach (var consumer in consumers)
 			   {
-				   FelisConnectionMap.Remove(service.Key);
+				   FelisConnectionMap.Remove(consumer.Key);
 			   }
 			}
 		}

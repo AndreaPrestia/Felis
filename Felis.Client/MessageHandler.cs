@@ -1,8 +1,10 @@
 ﻿using System.Net.Http.Json;
 using System.Text.Json;
+using Felis.Client.Resolvers;
 using Felis.Core;
 using Felis.Core.Models;
 using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Felis.Client;
@@ -17,12 +19,14 @@ public sealed class MessageHandler : IAsyncDisposable
     private string? _friendlyName;
     private readonly ConsumerResolver _consumerResolver;
 
-    public MessageHandler(HubConnection? hubConnection, ILogger<MessageHandler> logger,HttpClient httpClient, ConsumerResolver consumerResolver)
+    public MessageHandler(HubConnection? hubConnection, ILogger<MessageHandler> logger,HttpClient httpClient, IServiceScopeFactory serviceScopeFactory)
     {
         _hubConnection = hubConnection ?? throw new ArgumentNullException(nameof(hubConnection));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-        _consumerResolver = consumerResolver ?? throw new ArgumentNullException(nameof(consumerResolver));
+        ArgumentNullException.ThrowIfNull(serviceScopeFactory);
+        var scope = serviceScopeFactory.CreateScope();
+        _consumerResolver = scope.ServiceProvider.GetService<ConsumerResolver>() ?? throw new ArgumentNullException(nameof(ConsumerResolver));
     }
 
     public async Task PublishAsync<T>(T payload, string? topic, CancellationToken cancellationToken = default)
@@ -44,7 +48,7 @@ public sealed class MessageHandler : IAsyncDisposable
             var json = JsonSerializer.Serialize(payload);
 
             var responseMessage = await _httpClient.PostAsJsonAsync($"/messages/{topic ?? type}/dispatch",
-                new Message(Guid.NewGuid(), new Header(new Topic(topic ?? type), new List<Service>()), new Content(json)),
+                new Message(new Header(Guid.NewGuid(), new Topic(topic ?? type)), new Content(json)),
                 cancellationToken: cancellationToken).ConfigureAwait(false);
 
             responseMessage.EnsureSuccessStatusCode();
@@ -108,7 +112,7 @@ public sealed class MessageHandler : IAsyncDisposable
                         return;
                     }
                     
-                    var responseMessage = await _httpClient.PostAsJsonAsync($"/messages/{messageIncoming?.Id}/consume",
+                    var responseMessage = await _httpClient.PostAsJsonAsync($"/messages/{messageIncoming.Header?.Id}/consume",
                         new ConsumedMessage(messageIncoming,
                             new ConnectionId(_hubConnection.ConnectionId)),
                         cancellationToken: cancellationToken).ConfigureAwait(false);
@@ -130,7 +134,7 @@ public sealed class MessageHandler : IAsyncDisposable
                         }
                     }, cancellationToken);
                 }
-                catch (Exception ex)
+                catch (Exception? ex)
                 {
                     _logger.LogError(ex, ex.Message);
                     await SendError(messageIncoming, ex, cancellationToken).ConfigureAwait(false);
@@ -174,13 +178,13 @@ public sealed class MessageHandler : IAsyncDisposable
         }
     }
 
-    private async Task SendError(Message? message, Exception exception, CancellationToken cancellationToken = default)
+    private async Task SendError(Message? message, Exception? exception, CancellationToken cancellationToken = default)
     {
         try
         {
-            var responseMessage = await _httpClient.PostAsJsonAsync($"/messages/{message?.Id}/error",
+            var responseMessage = await _httpClient.PostAsJsonAsync($"/messages/{message?.Header?.Id}/error",
                 new ErrorMessage(message,
-                    new ConnectionId(_hubConnection?.ConnectionId), new ErrorDetail(exception.Message, exception.StackTrace), _retryPolicy),
+                    new ConnectionId(_hubConnection?.ConnectionId), new ErrorDetail(exception?.Message, exception?.StackTrace), _retryPolicy),
                 cancellationToken: cancellationToken).ConfigureAwait(false);
 
             responseMessage.EnsureSuccessStatusCode();

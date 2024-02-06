@@ -1,14 +1,13 @@
 ﻿using System.Collections.Concurrent;
 using Felis.Core;
 using Felis.Core.Models;
-using Felis.Router.Interfaces;
 
 namespace Felis.Router.Storage;
 
 /// <summary>
-/// This is an in-memory storage implementation of IFelisRouterStorage.
+/// This is an in-memory storage implementation of FelisStorage.
 /// </summary>
-public class FelisRouterStorage : IFelisRouterStorage
+public sealed class FelisRouterStorage
 {
     private ConcurrentQueue<Message?> _messages = new();
     private ConcurrentQueue<ConsumedMessage?> _consumedMessages = new();
@@ -28,7 +27,7 @@ public class FelisRouterStorage : IFelisRouterStorage
         _consumedMessages = new ConcurrentQueue<ConsumedMessage?>(_consumedMessages.Append(consumedMessage));
 
         _messages = new ConcurrentQueue<Message?>(_messages.Where(x =>
-            x?.Id != consumedMessage?.Message?.Id));
+            x?.Header?.Id != consumedMessage?.Message?.Header?.Id));
 
         return true;
     }
@@ -101,7 +100,7 @@ public class FelisRouterStorage : IFelisRouterStorage
     public bool ErrorMessageAdd(ErrorMessage message)
     {
         var errorMessageFound = _errorMessages.FirstOrDefault(em =>
-            em.Key?.Message?.Id == message.Message?.Id && em.Key?.ConnectionId?.Value == message.ConnectionId?.Value);
+            em.Key.Message?.Header?.Id == message.Message?.Header?.Id && em.Key.ConnectionId?.Value == message.ConnectionId?.Value);
 
         if (errorMessageFound.Equals(default(KeyValuePair<ErrorMessage, int>)))
         {

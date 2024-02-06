@@ -1,4 +1,4 @@
-﻿namespace Felis.Client
+﻿namespace Felis.Client.Attributes
 {
 	public sealed class TopicAttribute : Attribute
 	{

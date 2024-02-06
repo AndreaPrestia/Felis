@@ -1,19 +1,19 @@
 ﻿using Felis.Router.Configurations;
-using Felis.Router.Interfaces;
+using Felis.Router.Storage;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Felis.Router.Services.Background;
 
-internal class FelisStorageRequeueService : BackgroundService
+internal sealed class FelisStorageRequeueService : BackgroundService
 {
-    private readonly IFelisRouterStorage _felisRouterStorage;
+    private readonly FelisRouterStorage _felisRouterStorage;
     private readonly ILogger<FelisStorageRequeueService> _logger;
     private readonly FelisRouterConfiguration _configuration;
-    private readonly IFelisRouterService _felisRouterService;
+    private readonly FelisRouterService _felisRouterService;
 
-    public FelisStorageRequeueService(IFelisRouterStorage felisRouterStorage, ILogger<FelisStorageRequeueService> logger, IOptionsMonitor<FelisRouterConfiguration> configuration, IFelisRouterService felisRouterService)
+    public FelisStorageRequeueService(FelisRouterStorage felisRouterStorage, ILogger<FelisStorageRequeueService> logger, IOptionsMonitor<FelisRouterConfiguration> configuration, FelisRouterService felisRouterService)
     {
         _felisRouterStorage = felisRouterStorage ?? throw new ArgumentNullException(nameof(felisRouterStorage));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));

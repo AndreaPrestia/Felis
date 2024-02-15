@@ -153,7 +153,7 @@ internal sealed class FelisRouterService
                 throw new ArgumentNullException(nameof(topic));
             }
             
-            return Task.FromResult(_felisConnectionManager.GetConnectedConsumers().Where(x => x.Topics.Select(t => t.Value).ToList().Contains(topic.Value)).ToList());
+            return Task.FromResult(_felisConnectionManager.GetConnectedConsumers(topic));
         }
         catch (Exception ex)
         {

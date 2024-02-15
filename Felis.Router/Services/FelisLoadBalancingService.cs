@@ -1,53 +1,49 @@
 ﻿using System.Collections.Concurrent;
 using Felis.Core.Models;
+using Felis.Router.Managers;
 using Microsoft.Extensions.Logging;
 
 namespace Felis.Router.Services;
 
-public class FelisLoadBalancingService
+internal class FelisLoadBalancingService
 {
     private readonly ILogger<FelisLoadBalancingService> _logger;
-    private ConcurrentDictionary<Topic, ConcurrentBag<Consumer>> _servers = new();
-    private int _currentIndex = 0;
+    private readonly FelisConnectionManager _felisConnectionManager;
+    private ConcurrentDictionary<Topic, int> _currentIndexDictionary = new();
 
-    public FelisLoadBalancingService(ILogger<FelisLoadBalancingService> logger)
+    public FelisLoadBalancingService(ILogger<FelisLoadBalancingService> logger, FelisConnectionManager felisConnectionManager)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _felisConnectionManager = felisConnectionManager ?? throw  new ArgumentNullException(nameof(felisConnectionManager));
     }
 
-    public bool Set(Topic topic, List<Consumer> consumers)
+    public ConnectionId? GetNextConnectionId(Topic topic)
     {
-        if (_servers.TryGetValue(topic, out var server))
-        {
-            return _servers.TryUpdate(topic, new ConcurrentBag<Consumer>(consumers), server);
-        }
-
-        _servers = new ConcurrentDictionary<Topic, ConcurrentBag<Consumer>>(_servers.Append(
-            new KeyValuePair<Topic, ConcurrentBag<Consumer>>(topic, new ConcurrentBag<Consumer>(consumers))));
-
-        return true;
-    }
-    
-    public Consumer? GetNextConsumer(Topic topic)
-    {
-        var hasValue = _servers.TryGetValue(topic, out var servers);
-
-        if (!hasValue)
+        var connectionIds = _felisConnectionManager.GetConnectionIds(topic);
+        
+        if (!connectionIds.Any())
         {
             _logger.LogInformation($"No consumers found for topic {topic.Value}");
             return null;
         }
 
-        if (servers == null)
+        if (!_currentIndexDictionary.ContainsKey(topic))
         {
-            _logger.LogInformation($"No servers found for topic {topic.Value}");
-            return null;
+           var added = _currentIndexDictionary.TryAdd(topic, 0);
+           
+           _logger.LogDebug($"Index for topic {topic.Value} added {added}");
         }
+
+        var currentIndex = _currentIndexDictionary[topic];
         
-        var server = servers.ElementAt(_currentIndex);
+        var connectionId = connectionIds.ElementAt(currentIndex);
+
+        var updatedIndex = (currentIndex + 1) % connectionIds.Count;
+
+        var updated = _currentIndexDictionary.TryUpdate(topic, updatedIndex, currentIndex);
         
-        _currentIndex = (_currentIndex + 1) % servers.Count;
+        _logger.LogDebug($"Index for connectionId to use at the next run for topic {topic.Value} is {currentIndex} updated {updated}");
         
-        return server;
+        return connectionId;
     }
 }

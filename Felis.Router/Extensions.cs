@@ -51,6 +51,7 @@ public static class Extensions
         serviceCollection.AddSingleton<FelisRouterStorage>();
         serviceCollection.AddSingleton<FelisRouterService>();
         serviceCollection.AddSingleton<FelisRouterHub>();
+        serviceCollection.AddSingleton<FelisLoadBalancingService>();
     }
 
     private static void AddSwagger(IServiceCollection serviceCollection)

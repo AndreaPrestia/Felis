@@ -35,6 +35,7 @@ namespace Felis.Router.Services.Background
 
                         _logger.LogInformation($"Sending message {message.Header?.Id} for topic {message.Header?.Topic?.Value}");
 
+                        //TODO inject connection manager and choose service by load balancing
                         await _hubContext.Clients.All.SendAsync(message.Header?.Topic?.Value!, message, stoppingToken);
 
                         var messageSentSet = _felisRouterStorage.SentMessageAdd(message);

@@ -35,7 +35,7 @@ internal class FelisStorageCleanService : BackgroundService
 
             var timer = new PeriodicTimer(
                 TimeSpan.FromMinutes(minutesForClean.Value));
-            while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false))
+            while (await timer.WaitForNextTickAsync(stoppingToken))
             {
                 try
                 {
@@ -45,11 +45,11 @@ internal class FelisStorageCleanService : BackgroundService
                     
                     _logger.LogInformation(
                         $"Purging messages with TTL {_configuration.MessageConfiguration?.TimeToLiveMinutes}");
-                    var result = _felisRouterStorage.MessagePurge(_configuration.MessageConfiguration?.TimeToLiveMinutes);
+                    var result = _felisRouterStorage.ReadyMessagePurge(_configuration.MessageConfiguration?.TimeToLiveMinutes);
 
                     if (!result)
                     {
-                        _logger.LogWarning("MessagePurge returned false. No messages where purged.");
+                        _logger.LogWarning("ReadyMessagePurge returned false. No messages where purged.");
                     }
                 }
                 catch (Exception ex)

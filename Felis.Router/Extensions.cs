@@ -46,10 +46,12 @@ public static class Extensions
     {
         serviceCollection.AddHostedService<FelisStorageRequeueService>();
         serviceCollection.AddHostedService<FelisStorageCleanService>();
+        serviceCollection.AddHostedService<FelisSenderService>();
         serviceCollection.AddSingleton<FelisConnectionManager>();
         serviceCollection.AddSingleton<FelisRouterStorage>();
         serviceCollection.AddSingleton<FelisRouterService>();
         serviceCollection.AddSingleton<FelisRouterHub>();
+        serviceCollection.AddSingleton<FelisLoadBalancingService>();
     }
 
     private static void AddSwagger(IServiceCollection serviceCollection)

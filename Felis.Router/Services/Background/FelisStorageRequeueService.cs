@@ -13,7 +13,8 @@ internal sealed class FelisStorageRequeueService : BackgroundService
     private readonly FelisRouterConfiguration _configuration;
     private readonly FelisRouterService _felisRouterService;
 
-    public FelisStorageRequeueService(FelisRouterStorage felisRouterStorage, ILogger<FelisStorageRequeueService> logger, IOptionsMonitor<FelisRouterConfiguration> configuration, FelisRouterService felisRouterService)
+    public FelisStorageRequeueService(FelisRouterStorage felisRouterStorage, ILogger<FelisStorageRequeueService> logger,
+        IOptionsMonitor<FelisRouterConfiguration> configuration, FelisRouterService felisRouterService)
     {
         _felisRouterStorage = felisRouterStorage ?? throw new ArgumentNullException(nameof(felisRouterStorage));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -36,29 +37,25 @@ internal sealed class FelisStorageRequeueService : BackgroundService
 
             var timer = new PeriodicTimer(
                 TimeSpan.FromMinutes(minutesForRequeue.Value));
-            while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false))
+            while (await timer.WaitForNextTickAsync(stoppingToken))
             {
                 try
                 {
                     _logger.LogInformation("Start FelisStorageRequeueService ExecuteAsync");
 
-                    if (_configuration?.MessageConfiguration?.TimeToLiveMinutes is not > 0) continue;
-                    
-                    var result = _felisRouterStorage.ListMessagesToRequeue();
+                    var errorMessage = _felisRouterStorage.ErrorMessageGet();
 
-                    if (!result.Any())
+                    if (errorMessage == null)
                     {
-                        _logger.LogWarning("ListMessagesToRequeue returned empty list. No messages will be requeued.");
+                        _logger.LogWarning("No error message to requeue. No messages will be requeued.");
                         return;
                     }
+ 
+                    var dispatchResult =
+                        await _felisRouterService.Dispatch(errorMessage.Message?.Header?.Topic, errorMessage.Message);
 
-                    foreach (var errorMessage in result)
-                    {
-                        var dispatchResult = await _felisRouterService.Dispatch(errorMessage.Message?.Header?.Topic, errorMessage.Message, stoppingToken).ConfigureAwait(false);
-                        
-                        _logger.LogInformation($"{(dispatchResult ? "Dispatched" : "Not dispatched")} message for Topic {errorMessage.Message?.Header?.Topic}");
-                    }
-                    
+                    _logger.LogInformation(
+                        $"{(dispatchResult ? "Dispatched" : "Not dispatched")} message for Topic {errorMessage.Message?.Header?.Topic}");
                 }
                 catch (Exception ex)
                 {

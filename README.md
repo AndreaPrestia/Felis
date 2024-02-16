@@ -22,9 +22,10 @@ The ten endpoints are:
 - messages/{topic}/dispatch
 - messages/{id}/consume
 - messages/{id}/error
-- messages/{topic}/purge
+- messages/{topic}/ready/purge
 - messages/{topic}/consumers
-- messages/{topic}
+- messages/{topic}/ready
+- messages/{topic}/sent
 - messages/{topic}/error
 - messages/{topic}/consumed
 - consumers/{connectionId}/messages
@@ -127,6 +128,7 @@ Status code | Type | Context |
 **messages/{id}/error**
 
 This endpoint informs Felis when a client encounters errors while consuming a message. It is used to keep track of the operations (ACK).
+If no retry policy is provided the message is not requeued but only logged in Felis.
 
 ```
 curl -X 'POST' \
@@ -179,9 +181,9 @@ Status code | Type | Context |
 401 | UnauthorizedResult | When an operation fails due to missing authorization. |
 403 | ForbiddenResult | When an operation fails because it is not allowed in the context. |
 
-**messages/{topic}/purge**
+**messages/{topic}/ready/purge**
 
-This endpoint tells the router to purge the queue for a specific topic. It is irreversible.
+This endpoint tells the router to purge the ready queue for a specific topic. It is irreversible.
 
 ```
 curl -X 'DELETE' \
@@ -240,13 +242,52 @@ hostname | string | The hostname property of the consumer.                      
 isPublic | boolean | This property tells the router whether the consumer is configured to be discovered by other clients or not. |
 topics | array<Topic> | This property contains the array of topics subscribed by the consumer.                                      |
 
-**message/{topic}**
+**message/{topic}/ready**
 
 This endpoint provides a list of the message ready to sent in Felis for a specific topic provided in the route.
 
 ```
 curl -X 'GET' \
-  'https://localhost:7110/messages/topic' \
+  'https://localhost:7110/messages/topic/ready' \
+  -H 'accept: application/json'
+```
+
+***Response***
+
+```
+[
+  {
+    "header": {
+      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "topic": {
+        "value": "string"
+      },
+      "timestamp": 0
+    },
+    "content": {
+      "json": "string"
+    }
+  }
+]
+```
+This endpoint returns an array of message.
+
+Property | Type | Context |
+--- | --- | --- |
+header | object | the message header, containing the metadata of the message. |
+header.id | guid | the message global unique identifier. |
+header.topic | object | value object containing the topic of the message ready to be sent. |
+header.topic.value | string | the actual value of the topic of the message ready to be sent. |
+content | object | the message content. |
+content.json | string | Json string of the message ready to be sent. |
+
+**message/{topic}/sent**
+
+This endpoint provides a list of the message sent in Felis for a specific topic provided in the route.
+
+```
+curl -X 'GET' \
+  'https://localhost:7110/messages/topic/sent' \
   -H 'accept: application/json'
 ```
 

@@ -2,5 +2,5 @@
 
 public class LoadBalancingConfiguration
 {
-    
+    public string Endpoint { get; set; }
 }

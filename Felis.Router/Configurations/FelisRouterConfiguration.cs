@@ -4,4 +4,6 @@ public sealed class FelisRouterConfiguration
 {
     public const string FelisRouter = nameof(FelisRouter);
     public MessageConfiguration? MessageConfiguration { get; set; }
+    
+    public LoadBalancingConfiguration? LoadBalancingConfiguration { get; set; }
 }

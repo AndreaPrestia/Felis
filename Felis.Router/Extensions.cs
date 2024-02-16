@@ -5,10 +5,17 @@ using Felis.Router.Services;
 using Felis.Router.Services.Background;
 using Felis.Router.Storage;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Connections;
+using Microsoft.AspNetCore.Http.Connections;
+using Microsoft.AspNetCore.Http.Connections.Client;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.ResponseCompression;
+using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Microsoft.OpenApi.Models;
 
 namespace Felis.Router;
@@ -22,7 +29,10 @@ public static class Extensions
             services.Configure<FelisRouterConfiguration>(context.Configuration.GetSection(
                 FelisRouterConfiguration.FelisRouter));
 
-            var configuration = context.Configuration.GetSection(FelisRouterConfiguration.FelisRouter).Get<FelisRouterConfiguration>() ?? throw new ApplicationException($"{FelisRouterConfiguration.FelisRouter} configuration not provided");
+            var configuration =
+                context.Configuration.GetSection(FelisRouterConfiguration.FelisRouter)
+                    .Get<FelisRouterConfiguration>() ??
+                throw new ApplicationException($"{FelisRouterConfiguration.FelisRouter} configuration not provided");
 
             if (configuration.MessageConfiguration == null)
             {
@@ -36,13 +46,19 @@ public static class Extensions
 
             services.AddSignalR();
 
-            AddServices(services);
+            services.AddServices();
 
-            AddSwagger(services);
+            if (configuration.LoadBalancingConfiguration != null &&
+                !string.IsNullOrWhiteSpace(configuration.LoadBalancingConfiguration.Endpoint))
+            {
+                services.AddLoadBalancing(configuration);
+            }
+
+            services.AddSwagger();
         });
     }
 
-    private static void AddServices(IServiceCollection serviceCollection)
+    private static void AddServices(this IServiceCollection serviceCollection)
     {
         serviceCollection.AddHostedService<FelisStorageRequeueService>();
         serviceCollection.AddHostedService<FelisStorageCleanService>();
@@ -54,7 +70,7 @@ public static class Extensions
         serviceCollection.AddSingleton<FelisLoadBalancingService>();
     }
 
-    private static void AddSwagger(IServiceCollection serviceCollection)
+    private static void AddSwagger(this IServiceCollection serviceCollection)
     {
         serviceCollection.AddEndpointsApiExplorer();
 
@@ -74,7 +90,34 @@ public static class Extensions
             });
         });
     }
-    
+
+    private static void AddLoadBalancing(this IServiceCollection serviceCollection,
+        FelisRouterConfiguration configuration)
+    {
+        serviceCollection.AddResponseCompression(opts =>
+        {
+            opts.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(
+                new[] { "application/octet-stream" });
+        });
+
+        var hubConnectionBuilder = new HubConnectionBuilder();
+
+        hubConnectionBuilder.Services.AddSingleton<IConnectionFactory>(
+            new HttpConnectionFactory(Options.Create(new HttpConnectionOptions()), NullLoggerFactory.Instance));
+
+        serviceCollection.AddSingleton(hubConnectionBuilder
+            .WithUrl($"{configuration?.LoadBalancingConfiguration?.Endpoint}/felis/balancer",
+                options => { options.Transports = HttpTransportType.WebSockets; })
+            .WithAutomaticReconnect()
+            .Build());
+
+        var serviceProvider = serviceCollection.BuildServiceProvider();
+
+        var loadBalancingService = serviceProvider.GetService<FelisLoadBalancingService>();
+
+        loadBalancingService?.SubscribeToBalancerAsync().Wait();
+    }
+
     public static void UseFelisRouter(this WebApplication app)
     {
         app.MapHub<FelisRouterHub>("/felis/router");
@@ -91,7 +134,8 @@ public static class Extensions
     {
         AppDomain.CurrentDomain.GetAssemblies().First(x => x.GetName().Name == "Felis.Router")
             .GetTypes().Where(t =>
-                t.IsSubclassOf(typeof(ApiRouter)) && t is { IsInterface: false and false, IsAbstract: false }).ToList().ForEach(t =>
+                t.IsSubclassOf(typeof(ApiRouter)) && t is { IsInterface: false and false, IsAbstract: false }).ToList()
+            .ForEach(t =>
             {
                 var instance = (ApiRouter)Activator.CreateInstance(t)!;
 

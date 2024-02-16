@@ -532,9 +532,6 @@ Add this section to appsettings.json.
       "TimeToLiveMinutes": 5,
       "MinutesForEveryClean": 2,
       "MinutesForEveryRequeue": 2
-    },
-    "LoadBalancingConfiguration":{
-       "Endpoint": "loadbalancerendpoint"
     }
   }
 ```
@@ -546,8 +543,6 @@ MessageConfiguration | object | The message configuration.                      
 MessageConfiguration.TimeToLiveMinutes | int    | The TTL for a message in the router queue.                                 |
 MessageConfiguration.MinutesForEveryClean | int    | It makes the queue cleaner run every N minutes.                            |
 MessageConfiguration.MinutesForEveryRequeue | int    | It makes the re-queue service run every N minutes.                         |
-LoadBalancingConfiguration | object | The load balancing configuration.                                          |
-LoadBalancingConfiguration.Endpoint | string | The endpoint of the load balancer where the Felis Router should subscribe. |
 
 **Program.cs**
 

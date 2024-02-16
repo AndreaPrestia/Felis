@@ -1,21 +1,15 @@
 ﻿using Felis.Router.Configurations;
+using Felis.Router.Endpoints;
 using Felis.Router.Hubs;
 using Felis.Router.Managers;
 using Felis.Router.Services;
 using Felis.Router.Services.Background;
 using Felis.Router.Storage;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Connections;
-using Microsoft.AspNetCore.Http.Connections;
-using Microsoft.AspNetCore.Http.Connections.Client;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.ResponseCompression;
-using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using Microsoft.OpenApi.Models;
 
 namespace Felis.Router;
@@ -48,12 +42,6 @@ public static class Extensions
 
             services.AddServices();
 
-            if (configuration.LoadBalancingConfiguration != null &&
-                !string.IsNullOrWhiteSpace(configuration.LoadBalancingConfiguration.Endpoint))
-            {
-                services.AddLoadBalancing(configuration);
-            }
-
             services.AddSwagger();
         });
     }
@@ -67,7 +55,7 @@ public static class Extensions
         serviceCollection.AddSingleton<FelisRouterStorage>();
         serviceCollection.AddSingleton<FelisRouterService>();
         serviceCollection.AddSingleton<FelisRouterHub>();
-        serviceCollection.AddSingleton<FelisLoadBalancingService>();
+        serviceCollection.AddSingleton<FelisRouterLoadBalancingService>();
     }
 
     private static void AddSwagger(this IServiceCollection serviceCollection)
@@ -91,33 +79,6 @@ public static class Extensions
         });
     }
 
-    private static void AddLoadBalancing(this IServiceCollection serviceCollection,
-        FelisRouterConfiguration configuration)
-    {
-        serviceCollection.AddResponseCompression(opts =>
-        {
-            opts.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(
-                new[] { "application/octet-stream" });
-        });
-
-        var hubConnectionBuilder = new HubConnectionBuilder();
-
-        hubConnectionBuilder.Services.AddSingleton<IConnectionFactory>(
-            new HttpConnectionFactory(Options.Create(new HttpConnectionOptions()), NullLoggerFactory.Instance));
-
-        serviceCollection.AddSingleton(hubConnectionBuilder
-            .WithUrl($"{configuration?.LoadBalancingConfiguration?.Endpoint}/felis/balancer",
-                options => { options.Transports = HttpTransportType.WebSockets; })
-            .WithAutomaticReconnect()
-            .Build());
-
-        var serviceProvider = serviceCollection.BuildServiceProvider();
-
-        var loadBalancingService = serviceProvider.GetService<FelisLoadBalancingService>();
-
-        loadBalancingService?.SubscribeToBalancerAsync().Wait();
-    }
-
     public static void UseFelisRouter(this WebApplication app)
     {
         app.MapHub<FelisRouterHub>("/felis/router");
@@ -127,24 +88,6 @@ public static class Extensions
         app.UseSwaggerUI(options => options.SwaggerEndpoint("/swagger/v1/swagger.json",
             $"Felis Router v1"));
 
-        InitIApiRouterInstances(app);
-    }
-
-    private static void InitIApiRouterInstances(WebApplication app)
-    {
-        AppDomain.CurrentDomain.GetAssemblies().First(x => x.GetName().Name == "Felis.Router")
-            .GetTypes().Where(t =>
-                t.IsSubclassOf(typeof(ApiRouter)) && t is { IsInterface: false and false, IsAbstract: false }).ToList()
-            .ForEach(t =>
-            {
-                var instance = (ApiRouter)Activator.CreateInstance(t)!;
-
-                if (instance == null!)
-                {
-                    throw new ApplicationException($"Cannot create an instance of {t.Name}");
-                }
-
-                instance.Init(app);
-            });
+        app.MapFelisRouterEndpoints();
     }
 }

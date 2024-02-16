@@ -17,6 +17,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.Client.Test", "Exampl
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.Client.Second.Test", "Examples\Felis.Client.Second.Test\Felis.Client.Second.Test.csproj", "{60AE21D8-22ED-44C4-8FA3-CAD685E9A2BA}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.LoadBalancer", "Felis.LoadBalancer\Felis.LoadBalancer.csproj", "{F71B3FD5-CF0A-4D74-A27E-3569150869E1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -47,6 +49,10 @@ Global
 		{60AE21D8-22ED-44C4-8FA3-CAD685E9A2BA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{60AE21D8-22ED-44C4-8FA3-CAD685E9A2BA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{60AE21D8-22ED-44C4-8FA3-CAD685E9A2BA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F71B3FD5-CF0A-4D74-A27E-3569150869E1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F71B3FD5-CF0A-4D74-A27E-3569150869E1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F71B3FD5-CF0A-4D74-A27E-3569150869E1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F71B3FD5-CF0A-4D74-A27E-3569150869E1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

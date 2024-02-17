@@ -37,4 +37,12 @@ public static class Extensions
     {
         serviceCollection.AddSingleton<LoadBalancingMiddleware>();
     }
+
+    public static void UseFelisLoadBalancer(this IApplicationBuilder app)
+    {
+        app.UseWhen(
+            context => context.Request.Path.ToString().StartsWith("/messages") ||
+                       context.Request.Path.ToString().StartsWith("/consumers"),
+            appBranch => { appBranch.UseMiddleware<LoadBalancingMiddleware>(); });
+    }
 }

@@ -4,27 +4,27 @@ using Microsoft.Extensions.Options;
 
 namespace Felis.LoadBalancer.Service;
 
-internal sealed class FelisLoadBalancerService
+internal sealed class LoadBalancingService
 {
-    private readonly ILogger<FelisLoadBalancerService> _logger;
-    private readonly IOptionsMonitor<FelisLoadBalancerConfiguration> _felisLoadBalancerConfiguration;
+    private readonly ILogger<LoadBalancingService> _logger;
+    private readonly IOptionsMonitor<LoadBalancerConfiguration> _loadBalancerConfiguration;
     private int _currentIndex = 0;
 
-    public FelisLoadBalancerService(ILogger<FelisLoadBalancerService> logger,
-        IOptionsMonitor<FelisLoadBalancerConfiguration> felisLoadBalancerConfiguration)
+    public LoadBalancingService(ILogger<LoadBalancingService> logger,
+        IOptionsMonitor<LoadBalancerConfiguration> loadBalancerConfiguration)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _felisLoadBalancerConfiguration =
-            felisLoadBalancerConfiguration ?? throw new ArgumentNullException(nameof(felisLoadBalancerConfiguration));
+        _loadBalancerConfiguration =
+            loadBalancerConfiguration ?? throw new ArgumentNullException(nameof(loadBalancerConfiguration));
     }
 
     public string? GetNextRouterEndpoint()
     {
-        var routers = _felisLoadBalancerConfiguration.CurrentValue.Routers;
+        var routers = _loadBalancerConfiguration.CurrentValue.Routers;
 
         if (routers.Count == 0)
         {
-            _logger.LogInformation($"No Routers set in {FelisLoadBalancerConfiguration.FelisLoadBalancer}");
+            _logger.LogInformation($"No Routers set in {LoadBalancerConfiguration.FelisLoadBalancer}");
             return null;
         }
 

@@ -1,7 +1,7 @@
 ﻿using System.Data;
 using System.Security;
 using System.Text.Json;
-using Felis.LoadBalancer.Service;
+using Felis.LoadBalancer.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;

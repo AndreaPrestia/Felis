@@ -6,15 +6,15 @@ using Microsoft.Extensions.Options;
 
 namespace Felis.Router.Services.Background;
 
-internal sealed class FelisStorageRequeueService : BackgroundService
+internal sealed class RequeueService : BackgroundService
 {
-    private readonly FelisRouterStorage _felisRouterStorage;
-    private readonly ILogger<FelisStorageRequeueService> _logger;
-    private readonly FelisRouterConfiguration _configuration;
-    private readonly FelisRouterService _felisRouterService;
+    private readonly RouterStorage _felisRouterStorage;
+    private readonly ILogger<RequeueService> _logger;
+    private readonly RouterConfiguration _configuration;
+    private readonly RouterService _felisRouterService;
 
-    public FelisStorageRequeueService(FelisRouterStorage felisRouterStorage, ILogger<FelisStorageRequeueService> logger,
-        IOptionsMonitor<FelisRouterConfiguration> configuration, FelisRouterService felisRouterService)
+    public RequeueService(RouterStorage felisRouterStorage, ILogger<RequeueService> logger,
+        IOptionsMonitor<RouterConfiguration> configuration, RouterService felisRouterService)
     {
         _felisRouterStorage = felisRouterStorage ?? throw new ArgumentNullException(nameof(felisRouterStorage));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));

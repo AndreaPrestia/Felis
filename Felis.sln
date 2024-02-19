@@ -11,13 +11,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Felis.Client", "Felis.Clien
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples", "Examples", "{FE976AE8-F03F-4F08-9A08-29B02AEA49B1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.Router.Test", "Examples\Felis.Router.Test\Felis.Router.Test.csproj", "{BB7DFBE8-1065-4EF2-83EB-B7CED1B0A3EB}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Felis.Router.Test", "Examples\Felis.Router.Test\Felis.Router.Test.csproj", "{BB7DFBE8-1065-4EF2-83EB-B7CED1B0A3EB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.Client.Test", "Examples\Felis.Client.Test\Felis.Client.Test.csproj", "{F3874C95-AC03-48FC-9ED7-EC430A213EFF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Felis.Client.Test", "Examples\Felis.Client.Test\Felis.Client.Test.csproj", "{F3874C95-AC03-48FC-9ED7-EC430A213EFF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.Client.Second.Test", "Examples\Felis.Client.Second.Test\Felis.Client.Second.Test.csproj", "{60AE21D8-22ED-44C4-8FA3-CAD685E9A2BA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Felis.Client.Second.Test", "Examples\Felis.Client.Second.Test\Felis.Client.Second.Test.csproj", "{60AE21D8-22ED-44C4-8FA3-CAD685E9A2BA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.LoadBalancer", "Felis.LoadBalancer\Felis.LoadBalancer.csproj", "{F71B3FD5-CF0A-4D74-A27E-3569150869E1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Felis.LoadBalancer", "Felis.LoadBalancer\Felis.LoadBalancer.csproj", "{F71B3FD5-CF0A-4D74-A27E-3569150869E1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -57,12 +57,12 @@ Global
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{BB7DFBE8-1065-4EF2-83EB-B7CED1B0A3EB} = {FE976AE8-F03F-4F08-9A08-29B02AEA49B1}
+		{F3874C95-AC03-48FC-9ED7-EC430A213EFF} = {FE976AE8-F03F-4F08-9A08-29B02AEA49B1}
+		{60AE21D8-22ED-44C4-8FA3-CAD685E9A2BA} = {FE976AE8-F03F-4F08-9A08-29B02AEA49B1}
+	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {D605DA87-932C-4C6E-B7C8-77CED4B0C179}
-	EndGlobalSection
-	GlobalSection(NestedProjects) = preSolution
-		{F3874C95-AC03-48FC-9ED7-EC430A213EFF} = {FE976AE8-F03F-4F08-9A08-29B02AEA49B1}
-		{BB7DFBE8-1065-4EF2-83EB-B7CED1B0A3EB} = {FE976AE8-F03F-4F08-9A08-29B02AEA49B1}
-		{60AE21D8-22ED-44C4-8FA3-CAD685E9A2BA} = {FE976AE8-F03F-4F08-9A08-29B02AEA49B1}
 	EndGlobalSection
 EndGlobal

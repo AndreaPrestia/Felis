@@ -16,78 +16,78 @@ namespace Felis.Router;
 
 public static class Extensions
 {
-    public static void AddFelisRouter(this IHostBuilder builder)
-    {
-        builder.ConfigureServices((context, services) =>
-        {
-            services.Configure<FelisRouterConfiguration>(context.Configuration.GetSection(
-                FelisRouterConfiguration.FelisRouter));
+	public static void AddFelisRouter(this IHostBuilder builder)
+	{
+		builder.ConfigureServices((context, services) =>
+		{
+			services.Configure<RouterConfiguration>(context.Configuration.GetSection(
+				RouterConfiguration.FelisRouter));
 
-            var configuration =
-                context.Configuration.GetSection(FelisRouterConfiguration.FelisRouter)
-                    .Get<FelisRouterConfiguration>() ??
-                throw new ApplicationException($"{FelisRouterConfiguration.FelisRouter} configuration not provided");
+			var configuration =
+				context.Configuration.GetSection(RouterConfiguration.FelisRouter)
+					.Get<RouterConfiguration>() ??
+				throw new ApplicationException($"{RouterConfiguration.FelisRouter} configuration not provided");
 
-            if (configuration.MessageConfiguration == null)
-            {
-                throw new ApplicationException("FelisRouter:MessageConfiguration not provided");
-            }
+			if (configuration.MessageConfiguration == null)
+			{
+				throw new ApplicationException("FelisRouter:MessageConfiguration not provided");
+			}
 
-            services.Configure<JsonOptions>(options =>
-            {
-                options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
-            });
+			services.Configure<JsonOptions>(options =>
+			{
+				options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+			});
 
-            services.AddSignalR();
+			services.AddSignalR();
 
-            services.AddServices();
+			services.AddServices();
 
-            services.AddSwagger();
-        });
-    }
+			services.AddSwagger();
+		});
+	}
 
-    private static void AddServices(this IServiceCollection serviceCollection)
-    {
-        serviceCollection.AddHostedService<FelisStorageRequeueService>();
-        serviceCollection.AddHostedService<FelisStorageCleanService>();
-        serviceCollection.AddHostedService<FelisSenderService>();
-        serviceCollection.AddSingleton<FelisConnectionManager>();
-        serviceCollection.AddSingleton<FelisRouterStorage>();
-        serviceCollection.AddSingleton<FelisRouterService>();
-        serviceCollection.AddSingleton<FelisRouterHub>();
-        serviceCollection.AddSingleton<FelisRouterLoadBalancingService>();
-    }
+	private static void AddServices(this IServiceCollection serviceCollection)
+	{
+		serviceCollection.AddHostedService<RequeueService>();
+		serviceCollection.AddHostedService<CleanService>();
+		serviceCollection.AddHostedService<SenderService>();
+		serviceCollection.AddSingleton<ConnectionManager>();
+		serviceCollection.AddSingleton<RouterStorage>();
+		serviceCollection.AddSingleton<RouterService>();
+		serviceCollection.AddSingleton<RouterHub>();
+		serviceCollection.AddSingleton<LoadBalancingService>();
+	}
 
-    private static void AddSwagger(this IServiceCollection serviceCollection)
-    {
-        serviceCollection.AddEndpointsApiExplorer();
+	private static void AddSwagger(this IServiceCollection serviceCollection)
+	{
+		serviceCollection.AddEndpointsApiExplorer();
 
-        serviceCollection.AddSwaggerGen(c =>
-        {
-            c.SwaggerDoc("v1", new OpenApiInfo
-            {
-                Version = "v1",
-                Title = "Felis router",
-                Description = "Felis router endpoints",
-                Contact = new OpenApiContact
-                {
-                    Name = "Andrea Prestia",
-                    Email = "andrea@prestia.dev",
-                    Url = new Uri("https://www.linkedin.com/in/andrea-prestia-5212a2166/"),
-                }
-            });
-        });
-    }
+		serviceCollection.AddSwaggerGen(c =>
+		{
+			c.SwaggerDoc("v1", new OpenApiInfo
+			{
+				Version = "v1",
+				Title = "Felis router",
+				Description = "Felis router endpoints",
+				Contact = new OpenApiContact
+				{
+					Name = "Andrea Prestia",
+					Email = "andrea@prestia.dev",
+					Url = new Uri("https://www.linkedin.com/in/andrea-prestia-5212a2166/"),
+				}
+			});
+		});
+	}
 
-    public static void UseFelisRouter(this WebApplication app)
-    {
-        app.MapHub<FelisRouterHub>("/felis/router");
+	public static void UseFelisRouter(this WebApplication app)
+	{
+		app.MapHub<RouterHub>("/felis/router");
 
-        app.UseSwagger();
+		app.UseSwagger();
 
-        app.UseSwaggerUI(options => options.SwaggerEndpoint("/swagger/v1/swagger.json",
-            $"Felis Router v1"));
+		app.UseSwaggerUI(options => options.SwaggerEndpoint("/swagger/v1/swagger.json",
+			$"Felis Router v1"));
 
-        app.MapFelisRouterEndpoints();
-    }
+		app.MapFelisRouterEndpoints();
+	}
 }

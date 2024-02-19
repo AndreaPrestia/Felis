@@ -7,13 +7,13 @@ using Microsoft.AspNetCore.Routing;
 
 namespace Felis.Router.Endpoints;
 
-internal static class FelisRouterEndpoints
+internal static class RouterEndpoints
 {
     public static void MapFelisRouterEndpoints(this IEndpointRouteBuilder endpointRouteBuilder)
     {
         ArgumentNullException.ThrowIfNull(endpointRouteBuilder);
         
-        endpointRouteBuilder.MapPost("/messages/{topic}/dispatch", async ([FromServices] FelisRouterService service,
+        endpointRouteBuilder.MapPost("/messages/{topic}/dispatch", async ([FromServices] RouterService service,
                 [FromRoute] string? topic, [FromBody] Message message) =>
             {
                 var result = await service.Dispatch(new Topic(topic), message);
@@ -25,7 +25,7 @@ internal static class FelisRouterEndpoints
             .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
 
         endpointRouteBuilder.MapPost("/messages/{id}/consume",
-                async ([FromServices] FelisRouterService service, [FromRoute] Guid id,
+                async ([FromServices] RouterService service, [FromRoute] Guid id,
                     [FromBody] ConsumedMessage message) =>
                 {
                     var result = await service.Consume(id, message);
@@ -37,7 +37,7 @@ internal static class FelisRouterEndpoints
             .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
 
         endpointRouteBuilder.MapPost("/messages/{id}/error",
-                async ([FromServices] FelisRouterService service, [FromRoute] Guid id,
+                async ([FromServices] RouterService service, [FromRoute] Guid id,
                     [FromBody] ErrorMessage message) =>
                 {
                     var result = await service.Error(id, message);
@@ -49,7 +49,7 @@ internal static class FelisRouterEndpoints
             .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
 
         endpointRouteBuilder.MapDelete("/messages/{topic}/ready/purge",
-                async ([FromServices] FelisRouterService service, [FromRoute] string? topic) =>
+                async ([FromServices] RouterService service, [FromRoute] string? topic) =>
                 {
                     var result = await service.PurgeReady(new Topic(topic));
 
@@ -60,7 +60,7 @@ internal static class FelisRouterEndpoints
             .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
 
         endpointRouteBuilder.MapGet("/messages/{topic}/consumers",
-                async ([FromServices] FelisRouterService service, [FromRoute] string? topic) =>
+                async ([FromServices] RouterService service, [FromRoute] string? topic) =>
                 {
                     var result = await service.Consumers(new Topic(topic));
 
@@ -71,7 +71,7 @@ internal static class FelisRouterEndpoints
             .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
 
         endpointRouteBuilder.MapGet("/messages/{topic}/ready",
-                async ([FromServices] FelisRouterService service, [FromRoute] string? topic) =>
+                async ([FromServices] RouterService service, [FromRoute] string? topic) =>
                 {
                     var result = await service.ReadyMessageList(new Topic(topic));
 
@@ -82,7 +82,7 @@ internal static class FelisRouterEndpoints
             .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
 
         endpointRouteBuilder.MapGet("/messages/{topic}/sent",
-                async ([FromServices] FelisRouterService service, [FromRoute] string? topic) =>
+                async ([FromServices] RouterService service, [FromRoute] string? topic) =>
                 {
                     var result = await service.SentMessageList(new Topic(topic));
 
@@ -93,7 +93,7 @@ internal static class FelisRouterEndpoints
             .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
 
         endpointRouteBuilder.MapGet("/messages/{topic}/error",
-                async ([FromServices] FelisRouterService service, [FromRoute] string? topic) =>
+                async ([FromServices] RouterService service, [FromRoute] string? topic) =>
                 {
                     var result = await service.ErrorMessageList(new Topic(topic));
 
@@ -104,7 +104,7 @@ internal static class FelisRouterEndpoints
             .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
 
         endpointRouteBuilder.MapGet("/messages/{topic}/consumed",
-                async ([FromServices] FelisRouterService service, [FromRoute] string? topic) =>
+                async ([FromServices] RouterService service, [FromRoute] string? topic) =>
                 {
                     var result = await service.ConsumedMessageList(new Topic(topic));
 
@@ -115,7 +115,7 @@ internal static class FelisRouterEndpoints
             .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
 
         endpointRouteBuilder.MapGet("/consumers/{connectionId}/messages",
-                async ([FromServices] FelisRouterService service, [FromRoute] string? connectionId) =>
+                async ([FromServices] RouterService service, [FromRoute] string? connectionId) =>
                 {
                     var result = await service.ConsumedMessageList(new ConnectionId(connectionId));
 
@@ -125,7 +125,7 @@ internal static class FelisRouterEndpoints
             .Produces<UnauthorizedResult>(StatusCodes.Status401Unauthorized)
             .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
 
-        endpointRouteBuilder.MapGet("/consumers/{connectionId}/messages/{topic}", async ([FromServices] FelisRouterService service,
+        endpointRouteBuilder.MapGet("/consumers/{connectionId}/messages/{topic}", async ([FromServices] RouterService service,
                 [FromRoute] string? connectionId, [FromRoute] string? topic) =>
             {
                 var result = await service.ConsumedMessageList(new ConnectionId(connectionId), new Topic(topic));

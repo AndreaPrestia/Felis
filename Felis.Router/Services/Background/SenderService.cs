@@ -6,14 +6,14 @@ using Microsoft.Extensions.Logging;
 
 namespace Felis.Router.Services.Background
 {
-    internal sealed class FelisSenderService : BackgroundService
+    internal sealed class SenderService : BackgroundService
     {
-        private readonly FelisRouterStorage _felisRouterStorage;
-        private readonly ILogger<FelisSenderService> _logger;
-        private readonly IHubContext<FelisRouterHub> _hubContext;
-        private readonly FelisRouterLoadBalancingService _felisRouterLoadBalancingService;
+        private readonly RouterStorage _felisRouterStorage;
+        private readonly ILogger<SenderService> _logger;
+        private readonly IHubContext<RouterHub> _hubContext;
+        private readonly LoadBalancingService _felisRouterLoadBalancingService;
 
-        public FelisSenderService(FelisRouterStorage felisRouterStorage, ILogger<FelisSenderService> logger, IHubContext<FelisRouterHub> hubContext, FelisRouterLoadBalancingService felisRouterLoadBalancingService)
+        public SenderService(RouterStorage felisRouterStorage, ILogger<SenderService> logger, IHubContext<RouterHub> hubContext, LoadBalancingService felisRouterLoadBalancingService)
         {
             _felisRouterStorage = felisRouterStorage ?? throw new ArgumentNullException(nameof(felisRouterStorage));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));

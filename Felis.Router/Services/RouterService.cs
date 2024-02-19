@@ -5,13 +5,13 @@ using Microsoft.Extensions.Logging;
 
 namespace Felis.Router.Services;
 
-internal sealed class FelisRouterService
+internal sealed class RouterService
 {
-    private readonly ILogger<FelisRouterService> _logger;
-    private readonly FelisRouterStorage _storage;
-    private readonly FelisConnectionManager _felisConnectionManager;
+    private readonly ILogger<RouterService> _logger;
+    private readonly RouterStorage _storage;
+    private readonly ConnectionManager _felisConnectionManager;
 
-    public FelisRouterService(ILogger<FelisRouterService> logger, FelisRouterStorage storage, FelisConnectionManager felisConnectionManager)
+    public RouterService(ILogger<RouterService> logger, RouterStorage storage, ConnectionManager felisConnectionManager)
     {
         _logger = logger;
         _storage = storage;

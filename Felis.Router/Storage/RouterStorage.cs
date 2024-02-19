@@ -8,7 +8,7 @@ namespace Felis.Router.Storage;
 /// <summary>
 /// This is an in-memory storage implementation of FelisStorage.
 /// </summary>
-internal sealed class FelisRouterStorage
+internal sealed class RouterStorage
 {
     private ConcurrentQueue<Message?> _readyMessages = new();
     private ConcurrentQueue<Message?> _sentMessages = new();
@@ -16,9 +16,9 @@ internal sealed class FelisRouterStorage
     private ConcurrentQueue<ErrorMessage?> _errorMessages = new();
     private ConcurrentDictionary<Guid, int> _errorMessagesWithRetries = new();
 
-    private readonly ILogger<FelisRouterStorage> _logger;
+    private readonly ILogger<RouterStorage> _logger;
 
-    public FelisRouterStorage(ILogger<FelisRouterStorage> logger)
+    public RouterStorage(ILogger<RouterStorage> logger)
     {
         ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;

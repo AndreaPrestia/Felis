@@ -5,14 +5,14 @@ using Microsoft.Extensions.Logging;
 
 namespace Felis.Router.Services;
 
-internal class FelisRouterLoadBalancingService
+internal class LoadBalancingService
 {
-    private readonly ILogger<FelisRouterLoadBalancingService> _logger;
-    private readonly FelisConnectionManager _felisConnectionManager;
+    private readonly ILogger<LoadBalancingService> _logger;
+    private readonly ConnectionManager _felisConnectionManager;
     private ConcurrentDictionary<Topic, int> _currentIndexDictionary = new();
 
-    public FelisRouterLoadBalancingService(ILogger<FelisRouterLoadBalancingService> logger,
-        FelisConnectionManager felisConnectionManager)
+    public LoadBalancingService(ILogger<LoadBalancingService> logger,
+        ConnectionManager felisConnectionManager)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _felisConnectionManager =

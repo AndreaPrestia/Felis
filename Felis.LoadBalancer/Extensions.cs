@@ -9,39 +9,48 @@ namespace Felis.LoadBalancer;
 
 public static class Extensions
 {
-    public static void AddFelisLoadBalancer(this IHostBuilder builder)
-    {
-        builder.ConfigureServices((context, services) =>
-        {
-            services.Configure<LoadBalancerConfiguration>(context.Configuration.GetSection(
-                LoadBalancerConfiguration.FelisLoadBalancer));
+	public static void AddFelisLoadBalancer(this IHostBuilder builder)
+	{
+		builder.ConfigureServices((context, services) =>
+		{
+			services.Configure<LoadBalancerConfiguration>(context.Configuration.GetSection(
+				LoadBalancerConfiguration.FelisLoadBalancer));
 
-            services.Configure<JsonOptions>(options =>
-            {
-                options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
-            });
+			services.Configure<JsonOptions>(options =>
+			{
+				options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+			});
 
-            services.AddHttpClient<LoadBalancingMiddleware>("loadBalancingClient", (_, _) => { })
-                .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler()
-                {
-                    PooledConnectionLifetime = TimeSpan.FromMinutes(15)
-                })
-                .SetHandlerLifetime(Timeout.InfiniteTimeSpan);
+			services.AddHttpClient<LoadBalancingMiddleware>("loadBalancingClient", (_, _) => { })
+				.ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler()
+				{
+					PooledConnectionLifetime = TimeSpan.FromMinutes(15)
+				})
+				.SetHandlerLifetime(Timeout.InfiniteTimeSpan);
 
-            services.AddServices();
-        });
-    }
+			services.AddServices();
+		});
+	}
 
-    private static void AddServices(this IServiceCollection serviceCollection)
-    {
-        serviceCollection.AddSingleton<LoadBalancingMiddleware>();
-    }
+	private static void AddServices(this IServiceCollection serviceCollection)
+	{
+		serviceCollection.AddSingleton<LoadBalancingMiddleware>();
+	}
 
-    public static void UseFelisLoadBalancer(this IApplicationBuilder app)
-    {
-        app.UseWhen(
-            context => context.Request.Path.ToString().StartsWith("/messages") ||
-                       context.Request.Path.ToString().StartsWith("/consumers"),
-            appBranch => { appBranch.UseMiddleware<LoadBalancingMiddleware>(); });
-    }
+	public static void UseFelisLoadBalancer(this IApplicationBuilder app)
+	{
+		app.UseWhen(
+			context => context.Request.Path.ToString().EndsWith("/dispatch") || ((context.Request.Path.ToString().StartsWith("/messages") ||
+					   context.Request.Path.ToString().StartsWith("/consumers")) && context.Request.Method.Equals("GET")),
+			appBranch => { appBranch.UseMiddleware<LoadBalancingMiddleware>(); });
+	}
+
+	public static void UseFelisBroadcasting(this IApplicationBuilder app)
+	{
+		app.UseWhen(
+			context => ((context.Request.Path.ToString().EndsWith("/consume") ||
+					   context.Request.Path.ToString().EndsWith("/error") ||
+					   context.Request.Path.ToString().EndsWith("/purge")) && (context.Request.Method.Equals("POST") || context.Request.Method.Equals("DELETE"))),
+			appBranch => { appBranch.UseMiddleware<BroadcastMiddleware>(); });
+	}
 }

@@ -49,6 +49,8 @@ internal class LoadBalancingMiddleware
             _logger.LogInformation($"Forwarding {url} {method} to {server}");
 
             await ForwardRequest(context, server);
+
+            await _next.Invoke(context);
         }
         catch (Exception ex)
         {

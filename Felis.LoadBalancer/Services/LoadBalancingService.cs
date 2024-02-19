@@ -10,6 +10,7 @@ public sealed class LoadBalancingService
 	private readonly ILogger<LoadBalancingService> _logger;
 	private ConcurrentBag<string> _routers;
 	private int _currentIndex = 0;
+	public List<string> CurrentRouters => _routers.ToList();
 
 	public LoadBalancingService(ILogger<LoadBalancingService> logger,
 		IOptionsMonitor<LoadBalancerConfiguration> loadBalancerConfiguration)

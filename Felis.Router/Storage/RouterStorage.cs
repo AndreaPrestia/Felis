@@ -163,14 +163,29 @@ internal sealed class RouterStorage
         return _errorMessagesWithRetries.TryUpdate(message.Message.Header.Id, retryFound.Value + 1, retryFound.Value);
     }
 
-    public ErrorMessage? ErrorMessageGet()
+    public ErrorMessage? ErrorMessageGet(Origin? origin)
     {
+        if(origin == null)
+        {
+            _logger.LogWarning("No origin feature. No error message will be dequeued");
+            return null;
+        }
+
+
         var isDequeued = _errorMessages.TryDequeue(out var errorMessage);
 
         if (isDequeued)
             _logger.LogInformation($"Dequeued error message {errorMessage?.Message?.Header?.Id}");
 
-        var retriesDone = _errorMessagesWithRetries.FirstOrDefault(em =>
+
+		if (!string.Equals(errorMessage?.Message?.Header?.Origin?.IpAddress, origin?.IpAddress, StringComparison.InvariantCultureIgnoreCase))
+		{
+            _logger.LogWarning($"Error message dequeued {errorMessage?.Message?.Header?.Id} is from origin {errorMessage?.Message?.Header?.Origin?.IpAddress} won't be processed by {origin?.IpAddress}");
+			_logger.LogWarning($"Error message from different origin: {JsonSerializer.Serialize(errorMessage)}");
+			return null;
+		}
+
+		var retriesDone = _errorMessagesWithRetries.FirstOrDefault(em =>
                 em.Key == errorMessage?.Message?.Header?.Id && errorMessage.RetryPolicy?.Attempts >= em.Value).Value;
 
         if (retriesDone > errorMessage?.RetryPolicy?.Attempts)

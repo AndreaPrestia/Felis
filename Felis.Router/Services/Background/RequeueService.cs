@@ -12,14 +12,16 @@ internal sealed class RequeueService : BackgroundService
     private readonly ILogger<RequeueService> _logger;
     private readonly RouterConfiguration _configuration;
     private readonly RouterService _felisRouterService;
+    private readonly HttpInstanceService _httpInstanceService;
 
     public RequeueService(RouterStorage felisRouterStorage, ILogger<RequeueService> logger,
-        IOptionsMonitor<RouterConfiguration> configuration, RouterService felisRouterService)
+        IOptionsMonitor<RouterConfiguration> configuration, RouterService felisRouterService, HttpInstanceService httpInstanceService)
     {
         _felisRouterStorage = felisRouterStorage ?? throw new ArgumentNullException(nameof(felisRouterStorage));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _configuration = configuration.CurrentValue ?? throw new ArgumentNullException(nameof(configuration));
         _felisRouterService = felisRouterService ?? throw new ArgumentNullException(nameof(felisRouterService));
+        _httpInstanceService = httpInstanceService ?? throw new ArgumentNullException(nameof(httpInstanceService));
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -43,7 +45,7 @@ internal sealed class RequeueService : BackgroundService
                 {
                     _logger.LogInformation("Start FelisStorageRequeueService ExecuteAsync");
 
-                    var errorMessage = _felisRouterStorage.ErrorMessageGet();
+                    var errorMessage = _felisRouterStorage.ErrorMessageGet(_httpInstanceService.GetCurrentOrigin());
 
                     if (errorMessage == null)
                     {

@@ -1,26 +1,25 @@
 ﻿using Felis.Cluster.Managers;
 using Felis.Core.Models;
-using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using System.Net;
 
 namespace Felis.Cluster.Hubs
 {
-
-	[Route("/felis/cluster")]
+	[Route("felis/cluster")]
 	internal sealed class ClusterHub : Hub
 	{
 		private readonly ILogger<ClusterHub> _logger;
-		private readonly ConnectionManager _connectionManager;
+		private readonly ConnectionManager _felisConnectionManager;
 
-		public ClusterHub(ILogger<ClusterHub> logger, ConnectionManager connectionManager)
+		public ClusterHub(ILogger<ClusterHub> logger, ConnectionManager felisConnectionManager)
 		{
 			_logger = logger ?? throw new ArgumentNullException(nameof(logger));
-			_connectionManager = connectionManager ?? throw new ArgumentNullException(nameof(connectionManager));
+			_felisConnectionManager = felisConnectionManager ?? throw new ArgumentNullException(nameof(felisConnectionManager));
 		}
 
-		public string SetConnectionId()
+		public string SetConnectionId(List<Topic> topics, string friendlyName)
 		{
 			try
 			{
@@ -33,7 +32,7 @@ namespace Felis.Cluster.Hubs
 
 				var clientHostname = Dns.GetHostEntry(clientIp).HostName;
 
-				_connectionManager.KeepServerConnection(clientIp.ToString(),
+				_felisConnectionManager.KeepConsumerConnection(new Consumer(friendlyName, clientHostname, clientIp.ToString(), topics),
 					new ConnectionId(Context.ConnectionId));
 				return Context.ConnectionId;
 			}
@@ -48,7 +47,7 @@ namespace Felis.Cluster.Hubs
 		{
 			try
 			{
-				_connectionManager.RemoveServerConnection(connectionId);
+				_felisConnectionManager.RemoveConsumerConnections(connectionId);
 			}
 			catch (Exception ex)
 			{

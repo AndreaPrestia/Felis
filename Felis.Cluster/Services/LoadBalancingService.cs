@@ -1,9 +1,9 @@
-﻿using Felis.LoadBalancer.Configurations;
+﻿using Felis.Cluster.Configurations;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Collections.Concurrent;
 
-namespace Felis.LoadBalancer.Services;
+namespace Felis.Cluster.Services;
 
 public sealed class LoadBalancingService
 {

@@ -1,12 +1,12 @@
 ﻿using System.Data;
 using System.Security;
 using System.Text.Json;
-using Felis.LoadBalancer.Services;
+using Felis.Cluster.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
-namespace Felis.LoadBalancer.Middlewares;
+namespace Felis.Cluster.Middlewares;
 
 internal class LoadBalancingMiddleware
 {

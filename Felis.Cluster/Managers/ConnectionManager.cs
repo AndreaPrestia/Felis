@@ -4,40 +4,33 @@ namespace Felis.Cluster.Managers
 {
 	internal sealed class ConnectionManager
 	{
-		private static readonly Dictionary<string, List<ConnectionId>> ConnectionMap = new();
-		private static readonly string ConnectionMapLocker = string.Empty;
+		private static readonly Dictionary<Consumer, List<ConnectionId>> ConsumerConnectionMap = new();
+		private static readonly string ConsumerConnectionMapLocker = string.Empty;
+		public Dictionary<Consumer, List<ConnectionId>> ConnectedConsumers => ConsumerConnectionMap;
 
-		public Dictionary<string, List<ConnectionId>> GetConnectedServers()
+		public void KeepConsumerConnection(Consumer consumer, ConnectionId connectionId)
 		{
-			lock (ConnectionMapLocker)
+			lock (ConsumerConnectionMapLocker)
 			{
-				return ConnectionMap;
-			}
-		}
-
-		public void KeepServerConnection(string server, ConnectionId connectionId)
-		{
-			lock (ConnectionMapLocker)
-			{
-				if (!ConnectionMap.ContainsKey(server))
+				if (!ConsumerConnectionMap.ContainsKey(consumer))
 				{
-					ConnectionMap[server] = new List<ConnectionId>();
+					ConsumerConnectionMap[consumer] = new List<ConnectionId>();
 				}
-				ConnectionMap[server].Add(connectionId);
+				ConsumerConnectionMap[consumer].Add(connectionId);
 			}
 		}
 
-		public void RemoveServerConnection(ConnectionId connectionId)
+		public void RemoveConsumerConnections(ConnectionId connectionId)
 		{
-			lock (ConnectionMapLocker)
+			lock (ConsumerConnectionMapLocker)
 			{
-				var servers = ConnectionMap.Where(x => x.Value.Contains(connectionId)).ToList();
+				var consumers = ConsumerConnectionMap.Where(x => x.Value.Contains(connectionId)).ToList();
 
-				if (!servers.Any()) return;
+				if (!consumers.Any()) return;
 
-				foreach (var server in servers)
+				foreach (var consumer in consumers)
 				{
-					ConnectionMap.Remove(server.Key);
+					ConsumerConnectionMap.Remove(consumer.Key);
 				}
 			}
 		}

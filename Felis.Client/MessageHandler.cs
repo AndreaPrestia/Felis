@@ -50,7 +50,7 @@ public sealed class MessageHandler : IAsyncDisposable
             var json = JsonSerializer.Serialize(payload);
 
             var responseMessage = await _httpClient.PostAsJsonAsync($"/messages/{topic}/dispatch",
-                new Message(new Header(Guid.NewGuid(), new Topic(topic)), new Content(json)),
+                new Message(new Header(Guid.NewGuid(), new Topic(topic), null), new Content(json)),
                 cancellationToken: cancellationToken);
 
             responseMessage.EnsureSuccessStatusCode();

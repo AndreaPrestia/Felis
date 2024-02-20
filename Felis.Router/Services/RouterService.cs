@@ -10,12 +10,14 @@ internal sealed class RouterService
     private readonly ILogger<RouterService> _logger;
     private readonly RouterStorage _storage;
     private readonly ConnectionManager _felisConnectionManager;
+    private readonly HttpInstanceService _httpInstanceService;
 
-    public RouterService(ILogger<RouterService> logger, RouterStorage storage, ConnectionManager felisConnectionManager)
+    public RouterService(ILogger<RouterService> logger, RouterStorage storage, ConnectionManager felisConnectionManager, HttpInstanceService httpInstanceService)
     {
         _logger = logger;
         _storage = storage;
         _felisConnectionManager = felisConnectionManager;
+        _httpInstanceService = httpInstanceService;
     }
 
     public Task<bool> Dispatch(Topic? topic, Message? message)
@@ -44,7 +46,9 @@ internal sealed class RouterService
                 throw new InvalidOperationException("The topic provided in message and route are not matching");
             }
 
-            var result = _storage.ReadyMessageAdd(message);
+			message.Header!.Origin = _httpInstanceService.GetCurrentOrigin();
+
+			var result = _storage.ReadyMessageAdd(message);
 
             if (!result)
             {

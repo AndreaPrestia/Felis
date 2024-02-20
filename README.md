@@ -92,6 +92,10 @@ curl -X 'POST' \
             "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
             "topic": {
                 "value": "test"
+            },
+            "origin":{
+                "hostname": "felis.felis",
+                "ipAddress": "10.0.0.1"
             }
         },
         "content": {
@@ -112,6 +116,9 @@ message.header | object | the message header, containing the metadata of the mes
 message.header.id | guid | the message global unique identifier. |
 message.header.topic | object | value object containing the topic of the consumed message. |
 message.header.topic.value | string | the actual value of the topic of the consumed message. |
+message.header.origin | object | value object containing the felis router origin that dispatched the message. |
+message.header.origin.hostname | string | the actual value of the hostname of the felis router origin that dispatched the message. |
+message.header.origin.ipAddress | string | the actual value of the ipAddress of the felis router origin that dispatched the message. |
 message.content | object | the message content. |
 message.content.json | string | Json string of the consumed message. |
 connectionId | object | the connectionId value object.    |
@@ -142,6 +149,10 @@ curl -X 'POST' \
             "topic": {
                 "value": "test"
             },
+            "origin":{
+                "hostname": "felis.felis",
+                "ipAddress": "10.0.0.1"
+            }
         },
         "content": {
             "json": "{\"description\":\"Test\"}"
@@ -165,6 +176,9 @@ message.header | object | the message header, containing the metadata of the mes
 message.header.id | guid | the message global unique identifier. |
 message.header.topic | object | value object containing the topic of the message that throws an error. |
 message.header.topic.value | string | the actual value of the topic of the message that throws an error. |
+message.header.origin | object | value object containing the felis router origin that dispatched the message. |
+message.header.origin.hostname | string | the actual value of the hostname of the felis router origin that dispatched the message. |
+message.header.origin.ipAddress | string | the actual value of the ipAddress of the felis router origin that dispatched the message. |
 message.content | object | the message content. |
 message.content.json | string | Json string of the message that throws an error. |
 connectionId | object | the connectionId value object.    |
@@ -262,6 +276,10 @@ curl -X 'GET' \
       "topic": {
         "value": "string"
       },
+      "origin":{
+         "hostname": "felis.felis",
+         "ipAddress": "10.0.0.1"
+      },
       "timestamp": 0
     },
     "content": {
@@ -272,14 +290,17 @@ curl -X 'GET' \
 ```
 This endpoint returns an array of message.
 
-Property | Type | Context |
---- | --- | --- |
-header | object | the message header, containing the metadata of the message. |
-header.id | guid | the message global unique identifier. |
-header.topic | object | value object containing the topic of the message ready to be sent. |
-header.topic.value | string | the actual value of the topic of the message ready to be sent. |
-content | object | the message content. |
-content.json | string | Json string of the message ready to be sent. |
+Property | Type | Context                                                                                         |
+--- | --- |-------------------------------------------------------------------------------------------------|
+header | object | the message header, containing the metadata of the message.                                     |
+header.id | guid | the message global unique identifier.                                                           |
+header.topic | object | value object containing the topic of the message ready to be sent.                              |
+header.topic.value | string | the actual value of the topic of the message ready to be sent.                                  |
+header.origin | object | value object containing the felis router origin that dispatched the ready message.              |
+header.origin.hostname | string | the actual value of the hostname of the felis router origin of the ready message.               |
+header.origin.ipAddress | string | the actual value of the ipAddress of the felis router origin of the ready message. |
+content | object | the message content.                                                                            |
+content.json | string | Json string of the message ready to be sent.                                                    |
 
 **message/{topic}/sent**
 
@@ -301,6 +322,10 @@ curl -X 'GET' \
       "topic": {
         "value": "string"
       },
+      "origin":{
+         "hostname": "felis.felis",
+         "ipAddress": "10.0.0.1"
+      },
       "timestamp": 0
     },
     "content": {
@@ -311,14 +336,17 @@ curl -X 'GET' \
 ```
 This endpoint returns an array of message.
 
-Property | Type | Context |
---- | --- | --- |
-header | object | the message header, containing the metadata of the message. |
-header.id | guid | the message global unique identifier. |
-header.topic | object | value object containing the topic of the message ready to be sent. |
-header.topic.value | string | the actual value of the topic of the message ready to be sent. |
-content | object | the message content. |
-content.json | string | Json string of the message ready to be sent. |
+Property | Type | Context                                                                            |
+--- | --- |------------------------------------------------------------------------------------|
+header | object | the message header, containing the metadata of the message.                        |
+header.id | guid | the message global unique identifier.                                              |
+header.topic | object | value object containing the topic of the message ready to be sent.                 |
+header.topic.value | string | the actual value of the topic of the message ready to be sent.                     |
+header.origin | object | value object containing the felis router origin that sent the message.             |
+header.origin.hostname | string | the actual value of the hostname of the felis router origin of the sent message.   |
+header.origin.ipAddress | string | the actual value of the ipAddress of the felis router origin of the sent message. |
+content | object | the message content.                                                               |
+content.json | string | Json string of the message ready to be sent.                                       |
 
 **messages/{topic}/error**
 
@@ -344,6 +372,10 @@ curl -X 'GET' \
                 "timestamp": 0,
                 "topic": {
                     "value": "string"
+                },
+                "origin":{
+                    "hostname": "felis.felis",
+                    "ipAddress": "10.0.0.1"
                 }
             }
         },
@@ -359,20 +391,23 @@ curl -X 'GET' \
 ```
 This endpoint returns an array of messages with related error and connection id where the error happened.
 
-Property | Type | Context                                                                  |
---- | --- |--------------------------------------------------------------------------|
-message | object | The message entity used by Felis system.                                 |
-message.header | object | the message header, containing the metadata of the message.              |
-message.header.id | guid | the message global unique identifier.                                    |
-message.header.topic | object | value object containing the topic of the message that throws an error.   |
-message.header.topic.value | string | the actual value of the topic of the message that throws an error.       |
-message.content | object | the message content.                                                     |
-message.content.json | string | Json string of the message that throws an error.                         |
-connectionId | object | the connectionId value object.    |
-connectionId.value | string | the actual value of the connectionId of the message that throws an error. |
-error | object | The object containing the error occurred.                                |
-error.title | string | The .NET exception message.                                              |
-error.detail | string | The .NET exception stacktrace.                                           |
+Property | Type | Context                                                                                      |
+--- | --- |----------------------------------------------------------------------------------------------|
+message | object | The message entity used by Felis system.                                                     |
+message.header | object | the message header, containing the metadata of the message.                                  |
+message.header.id | guid | the message global unique identifier.                                                        |
+message.header.topic | object | value object containing the topic of the message that throws an error.                       |
+message.header.topic.value | string | the actual value of the topic of the message that throws an error.                           |
+message.header.origin | object | value object containing the felis router origin that dispatched the message.             |
+message.header.origin.hostname | string | the actual value of the hostname of the felis router origin that dispatched the message. |
+message.header.origin.ipAddress | string | the actual value of the ipAddress of the felis router origin that dispatched the message. |
+message.content | object | the message content.                                                                         |
+message.content.json | string | Json string of the message that throws an error.                                             |
+connectionId | object | the connectionId value object.                                                               |
+connectionId.value | string | the actual value of the connectionId of the message that throws an error.                    |
+error | object | The object containing the error occurred.                                                    |
+error.title | string | The .NET exception message.                                                                  |
+error.detail | string | The .NET exception stacktrace.                                                               |
 
 **messages/{topic}/consumed**
 
@@ -398,6 +433,10 @@ curl -X 'GET' \
                 "timestamp": 0,
                 "topic": {
                     "value": "string"
+                },
+                "origin":{
+                    "hostname": "felis.felis",
+                    "ipAddress": "10.0.0.1"
                 }
             }
         },
@@ -417,6 +456,9 @@ message.header | object | the message header, containing the metadata of the mes
 message.header.id | guid | the message global unique identifier.                                           |
 message.header.topic | object | value object containing the topic of the message consumed.          |
 message.header.topic.value | string | the actual value of the topic of the message consumed.                          |
+message.header.origin | object | value object containing the felis router origin that dispatched the message.             |
+message.header.origin.hostname | string | the actual value of the hostname of the felis router origin that dispatched the message. |
+message.header.origin.ipAddress | string | the actual value of the ipAddress of the felis router origin that dispatched the message. |
 message.content | object | the message content.                                                            |
 message.content.json | string | Json string of the message consumed.                                            |
 connectionId | object | the connectionId value object.    |
@@ -447,6 +489,10 @@ curl -X 'GET' \
                 "timestamp": 0,
                 "topic": {
                     "value": "string"
+                },
+                "origin":{
+                    "hostname": "felis.felis",
+                    "ipAddress": "10.0.0.1"
                 }
             }
         },
@@ -466,6 +512,9 @@ message.header | object | the message header, containing the metadata of the mes
 message.header.id | guid | the message global unique identifier. |
 message.header.topic | object | value object containing the topic of the message consumed. |
 message.header.topic.value | string | the actual value of the topic of the message consumed. |
+message.header.origin | object | value object containing the felis router origin that dispatched the message.             |
+message.header.origin.hostname | string | the actual value of the hostname of the felis router origin that dispatched the message. |
+message.header.origin.ipAddress | string | the actual value of the ipAddress of the felis router origin that dispatched the message. |
 message.content | object | the message content. |
 message.content.json | string | Json string of the message consumed. |
 connectionId | object | the connectionId value object.    |
@@ -496,6 +545,10 @@ curl -X 'GET' \
                 "timestamp": 0,
                 "topic": {
                     "value": "string"
+                },
+                "origin":{
+                    "hostname": "felis.felis",
+                    "ipAddress": "10.0.0.1"
                 }
             }
         },
@@ -515,6 +568,9 @@ message.id | guid | the message global unique identifier. |
 message.header | object | the message header, containing the metadata of the message. |
 message.header.topic | object | value object containing the topic of the message consumed. |
 message.header.topic.value | string | the actual value of the topic of the message consumed. |
+message.header.origin | object | value object containing the felis router origin that dispatched the message.             |
+message.header.origin.hostname | string | the actual value of the hostname of the felis router origin that dispatched the message. |
+message.header.origin.ipAddress | string | the actual value of the ipAddress of the felis router origin that dispatched the message. |
 message.content | object | the message content. |
 message.content.json | string | Json string of the message consumed. |
 connectionId | object | the connectionId value object.    |

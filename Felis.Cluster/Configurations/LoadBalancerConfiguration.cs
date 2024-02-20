@@ -1,4 +1,4 @@
-﻿namespace Felis.LoadBalancer.Configurations;
+﻿namespace Felis.Cluster.Configurations;
 
 public class LoadBalancerConfiguration
 {

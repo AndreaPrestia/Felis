@@ -1,11 +1,11 @@
-﻿using Felis.LoadBalancer.Configurations;
-using Felis.LoadBalancer.Middlewares;
+﻿using Felis.Cluster.Configurations;
+using Felis.Cluster.Middlewares;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-namespace Felis.LoadBalancer;
+namespace Felis.Cluster;
 
 public static class Extensions
 {
@@ -43,14 +43,5 @@ public static class Extensions
 			context => context.Request.Path.ToString().EndsWith("/dispatch") || ((context.Request.Path.ToString().StartsWith("/messages") ||
 					   context.Request.Path.ToString().StartsWith("/consumers")) && context.Request.Method.Equals("GET")),
 			appBranch => { appBranch.UseMiddleware<LoadBalancingMiddleware>(); });
-	}
-
-	public static void UseFelisBroadcasting(this IApplicationBuilder app)
-	{
-		app.UseWhen(
-			context => ((context.Request.Path.ToString().EndsWith("/consume") ||
-					   context.Request.Path.ToString().EndsWith("/error") ||
-					   context.Request.Path.ToString().EndsWith("/purge")) && (context.Request.Method.Equals("POST") || context.Request.Method.Equals("DELETE"))),
-			appBranch => { appBranch.UseMiddleware<BroadcastMiddleware>(); });
 	}
 }

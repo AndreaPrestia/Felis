@@ -24,7 +24,6 @@ namespace Felis.Router.Services
 				throw new ArgumentNullException($"Connection to Felis cluster not correctly initialized");
 			}
 
-
 			_hubConnection.On<ErrorMessage?, ConnectionId?>("ErrorMessageMirroring", async (messageIncoming, connectedConsumer) =>
 			{
 				try

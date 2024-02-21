@@ -1,10 +1,11 @@
 # Felis
 A message broker totally written in .NET, based on SignalR.
 
-The Felis project is composed of two parts:
+The Felis project is composed of three parts:
 
 - **Router**, containing the logic for dispatching, storing and validating messages.
 - **Client**, containing the logic of the client, that will consume a message by topic, using a specific entity contract.
+- **Cluster**, containing the logic of the cluster, to have multiple **Router** instance in parallel.
 
 **How can I use it?**
 

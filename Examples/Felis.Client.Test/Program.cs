@@ -30,7 +30,7 @@ var app = builder.Build();
 app.UseSwagger();
 
 app.UseSwaggerUI(options => options.SwaggerEndpoint("/swagger/v1/swagger.json",
-    $"Felis Router v1"));
+    "Felis Router v1"));
 
 app.MapGet("/", () => "Felis client is up and running!").ExcludeFromDescription();
 

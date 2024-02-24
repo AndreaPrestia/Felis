@@ -20,140 +20,163 @@ namespace Felis.Router.Services
 		public async Task SubscribeAsync(CancellationToken cancellationToken = default)
 		{
 			if (_hubConnection == null)
-			{
-				throw new ArgumentNullException($"Connection to Felis cluster not correctly initialized");
+            {
+				_logger.LogError("Connection to Felis Cluster not correctly initialized");
+
+                throw new ArgumentNullException(nameof(_hubConnection));
 			}
 
-			_hubConnection.On<ErrorMessage?, ConnectionId?>("ErrorMessageMirroring", async (messageIncoming, connectedConsumer) =>
-			{
-				try
-				{
-					if (messageIncoming == null)
-					{
-						_logger.LogWarning("No messageIncoming.");
-						return;
-					}
+			ListenErrorMessage();
 
-					if (messageIncoming.Message == null)
-					{
-						_logger.LogWarning("No messageIncoming.Message");
-						return;
-					}
+			ListenConsumedMessage();
 
-					if (messageIncoming.Message.Header == null)
-					{
-
-						_logger.LogWarning("No Header provided.");
-						return;
-					}
-
-					if (messageIncoming.Message.Header?.Topic == null ||
-						string.IsNullOrWhiteSpace(messageIncoming.Message.Header?.Topic?.Value))
-					{
-
-						_logger.LogWarning("No Topic provided in Header.");
-						return;
-					}
-
-					if (string.IsNullOrWhiteSpace(_hubConnection?.ConnectionId))
-					{
-						_logger.LogWarning("No connection id found. No message will be processed.");
-						return;
-					}
-
-					var errorSetResult = await _routerService.Error(messageIncoming.Message.Header.Id, messageIncoming);
-
-					_logger.LogInformation($"ErrorMessageMirroring set result {errorSetResult} for connection id {_hubConnection.ConnectionId} from consumer {connectedConsumer?.Value}");
-				}
-				catch (Exception? ex)
-				{
-					_logger.LogError(ex, ex.Message);
-				}
-			});
-
-			_hubConnection.On<ConsumedMessage?, ConnectionId?>("ConsumedMessageMirroring", async (messageIncoming, connectedConsumer) =>
-			{
-				try
-				{
-					if (messageIncoming == null)
-					{
-						_logger.LogWarning("No messageIncoming.");
-						return;
-					}
-
-					if (messageIncoming.Message == null)
-					{
-						_logger.LogWarning("No messageIncoming.Message");
-						return;
-					}
-
-					if (messageIncoming.Message.Header == null)
-					{
-
-						_logger.LogWarning("No Header provided.");
-						return;
-					}
-
-					if (messageIncoming.Message.Header?.Topic == null ||
-						string.IsNullOrWhiteSpace(messageIncoming.Message.Header?.Topic?.Value))
-					{
-
-						_logger.LogWarning("No Topic provided in Header.");
-						return;
-					}
-
-					if (string.IsNullOrWhiteSpace(_hubConnection?.ConnectionId))
-					{
-						_logger.LogWarning("No connection id found. No message will be processed.");
-						return;
-					}
-
-					var consumeSetResult = await _routerService.Consume(messageIncoming.Message.Header.Id, messageIncoming);
-
-					_logger.LogInformation($"ConsumedMessageMirroring set result {consumeSetResult} for connection id {_hubConnection.ConnectionId} from consumer {connectedConsumer?.Value}");
-				}
-				catch (Exception? ex)
-				{
-					_logger.LogError(ex, ex.Message);
-				}
-			});
-
-			_hubConnection.On<Topic?, ConnectionId?>("PurgeMirroring", async (messageIncoming, connectedConsumer) =>
-			{
-				try
-				{
-					if (messageIncoming == null)
-					{
-						_logger.LogWarning("No message incoming.");
-						return;
-					}
-
-					if (string.IsNullOrWhiteSpace(messageIncoming.Value))
-					{
-						_logger.LogWarning("No message incoming value.");
-						return;
-					}
-
-					if (string.IsNullOrWhiteSpace(_hubConnection?.ConnectionId))
-					{
-						_logger.LogWarning("No connection id found. No message will be processed.");
-						return;
-					}
-
-					var purgeResult = await _routerService.PurgeReady(messageIncoming);
-
-					_logger.LogInformation($"PurgeMirroring set result {purgeResult} for connection id {_hubConnection.ConnectionId} from consumer {connectedConsumer?.Value}");
-				}
-				catch (Exception ex)
-				{
-					_logger.LogError(ex, ex.Message);
-				}
-			});
+			ListenPurgeMessage();
 
 			await CheckHubConnectionStateAndStartIt(cancellationToken);
 		}
 
-		public async ValueTask DisposeAsync()
+        private void ListenPurgeMessage()
+        {
+            _hubConnection?.On<Topic?, ConnectionId?>("PurgeMirroring", (messageIncoming, connectedConsumer) =>
+            {
+                try
+                {
+                    if (messageIncoming == null)
+                    {
+                        _logger.LogWarning("No message incoming.");
+                        return Task.CompletedTask;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(messageIncoming.Value))
+                    {
+                        _logger.LogWarning("No message incoming value.");
+                        return Task.CompletedTask;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(_hubConnection?.ConnectionId))
+                    {
+                        _logger.LogWarning("No connection id found. No message will be processed.");
+                        return Task.CompletedTask;
+                    }
+
+                    var purgeResult = _routerService.PurgeReady(messageIncoming);
+
+                    _logger.LogInformation(
+                        $"PurgeMirroring set result {purgeResult} for connection id {_hubConnection.ConnectionId} from consumer {connectedConsumer?.Value}");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, ex.Message);
+                }
+
+                return Task.CompletedTask;
+            });
+        }
+
+        private void ListenConsumedMessage()
+        {
+            _hubConnection?.On<ConsumedMessage?, ConnectionId?>("ConsumedMessageMirroring",
+                (messageIncoming, connectedConsumer) =>
+                {
+                    try
+                    {
+                        if (messageIncoming == null)
+                        {
+                            _logger.LogWarning("No messageIncoming.");
+                            return Task.CompletedTask;
+                        }
+
+                        if (messageIncoming.Message == null)
+                        {
+                            _logger.LogWarning("No messageIncoming.Message");
+                            return Task.CompletedTask;
+                        }
+
+                        if (messageIncoming.Message.Header == null)
+                        {
+                            _logger.LogWarning("No Header provided.");
+                            return Task.CompletedTask;
+                        }
+
+                        if (messageIncoming.Message.Header?.Topic == null ||
+                            string.IsNullOrWhiteSpace(messageIncoming.Message.Header?.Topic?.Value))
+                        {
+                            _logger.LogWarning("No Topic provided in Header.");
+                            return Task.CompletedTask;
+                        }
+
+                        if (string.IsNullOrWhiteSpace(_hubConnection?.ConnectionId))
+                        {
+                            _logger.LogWarning("No connection id found. No message will be processed.");
+                            return Task.CompletedTask;
+                        }
+
+                        var consumeSetResult = _routerService.Consume(messageIncoming.Message.Header.Id, messageIncoming);
+
+                        _logger.LogInformation(
+                            $"ConsumedMessageMirroring set result {consumeSetResult} for connection id {_hubConnection.ConnectionId} from consumer {connectedConsumer?.Value}");
+                    }
+                    catch (Exception? ex)
+                    {
+                        _logger.LogError(ex, ex.Message);
+                    }
+
+                    return Task.CompletedTask;
+                });
+        }
+
+        private void ListenErrorMessage()
+        {
+            _hubConnection?.On<ErrorMessage?, ConnectionId?>("ErrorMessageMirroring", (messageIncoming, connectedConsumer) =>
+            {
+                try
+                {
+                    if (messageIncoming == null)
+                    {
+                        _logger.LogWarning("No messageIncoming.");
+                        return Task.CompletedTask;
+                    }
+
+                    if (messageIncoming.Message == null)
+                    {
+                        _logger.LogWarning("No messageIncoming.Message");
+                        return Task.CompletedTask;
+                    }
+
+                    if (messageIncoming.Message.Header == null)
+                    {
+                        _logger.LogWarning("No Header provided.");
+                        return Task.CompletedTask;
+                    }
+
+                    if (messageIncoming.Message.Header?.Topic == null ||
+                        string.IsNullOrWhiteSpace(messageIncoming.Message.Header?.Topic?.Value))
+                    {
+                        _logger.LogWarning("No Topic provided in Header.");
+                        return Task.CompletedTask;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(_hubConnection?.ConnectionId))
+                    {
+                        _logger.LogWarning("No connection id found. No message will be processed.");
+                        return Task.CompletedTask;
+                    }
+
+                    var errorSetResult = _routerService.Error(messageIncoming.Message.Header.Id, messageIncoming);
+
+                    _logger.LogInformation(
+                        $"ErrorMessageMirroring set result {errorSetResult} for connection id {_hubConnection.ConnectionId} from consumer {connectedConsumer?.Value}");
+                }
+                catch (Exception? ex)
+                {
+                    _logger.LogError(ex, ex.Message);
+                }
+
+                return Task.CompletedTask;
+            });
+        }
+
+        public async ValueTask DisposeAsync()
 		{
 			if (_hubConnection != null)
 			{

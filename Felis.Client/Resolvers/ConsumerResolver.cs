@@ -119,7 +119,7 @@ internal sealed class ConsumerResolver
 
         return string.IsNullOrWhiteSpace(content)
             ? null
-            : JsonSerializer.Deserialize(content, type, new JsonSerializerOptions()
+            : JsonSerializer.Deserialize(content, type, new JsonSerializerOptions
             {
                 AllowTrailingCommas = true,
                 PropertyNameCaseInsensitive = true

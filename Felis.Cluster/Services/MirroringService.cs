@@ -19,49 +19,49 @@ namespace Felis.Cluster.Services
 			_connectionManager = connectionManager ?? throw new ArgumentNullException(nameof(connectionManager));
 		}
 
-		public async Task DispatchAsync(ConnectionId connectionId, ErrorMessage errorMessage, CancellationToken token)
+		public async Task ErrorAsync(ConnectionId connectionId, ErrorMessage errorMessage, CancellationToken token)
 		{
-			var connectedConsumer = _connectionManager.ConnectedConsumers.Where(x => !x.Value.Select(c => c.Value).Contains(connectionId.Value)).SelectMany(e => e.Value).ToList();
+			var connectedConsumers = _connectionManager.ConnectedConsumers.Where(x => !x.Value.Select(c => c.Value).Contains(connectionId.Value)).SelectMany(e => e.Value).ToList();
 
-			if (!connectedConsumer.Any())
+			if (!connectedConsumers.Any())
 			{
 				_logger.LogWarning($"No connected consumers other than {connectionId.Value}. No dispatch will be done.");
 				return;
 			}
 
-			await Parallel.ForEachAsync(connectedConsumer, async (connectedConsumer, cancellationToken) =>
-					   {
-						   await _hubContext.Clients.Client(connectedConsumer.Value!).SendAsync("ErrorMessageMirroring", errorMessage, connectedConsumer, token);
-					   });
+			await Parallel.ForEachAsync(connectedConsumers, token, async (connectedConsumer, cancellationToken) =>
+            {
+                await _hubContext.Clients.Client(connectedConsumer.Value!).SendAsync("ErrorMessageMirroring", errorMessage, connectedConsumer, token);
+            }).ConfigureAwait(false);
 		}
 
-		public async Task DispatchAsync(ConnectionId connectionId, ConsumedMessage consumedMessage, CancellationToken token)
+		public async Task ConsumeAsync(ConnectionId connectionId, ConsumedMessage consumedMessage, CancellationToken token)
 		{
-			var connectedConsumer = _connectionManager.ConnectedConsumers.Where(x => !x.Value.Select(c => c.Value).Contains(connectionId.Value)).SelectMany(e => e.Value).ToList();
+			var connectedConsumers = _connectionManager.ConnectedConsumers.Where(x => !x.Value.Select(c => c.Value).Contains(connectionId.Value)).SelectMany(e => e.Value).ToList();
 
-			if (!connectedConsumer.Any())
+			if (!connectedConsumers.Any())
 			{
-				_logger.LogWarning($"No connected consumers other than {connectionId.Value}. No dispatch will be done.");
+				_logger.LogWarning($"No connected consumers other than {connectionId.Value}. No consume will be done.");
 				return;
 			}
 
-			await Parallel.ForEachAsync(connectedConsumer, async (connectedConsumer, cancellationToken) =>
-			{
-				await _hubContext.Clients.Client(connectedConsumer.Value!).SendAsync("ConsumedMessageMirroring", consumedMessage, connectedConsumer, token);
-			});
+			await Parallel.ForEachAsync(connectedConsumers, token, async (connectedConsumer, cancellationToken) =>
+            {
+                await _hubContext.Clients.Client(connectedConsumer.Value!).SendAsync("ConsumedMessageMirroring", consumedMessage, connectedConsumer, token);
+            }).ConfigureAwait(false);
 		}
 
 		public async Task PurgeReadyAsync(ConnectionId connectionId, Topic topic, CancellationToken token)
 		{
-			var connectedConsumer = _connectionManager.ConnectedConsumers.Where(x => !x.Value.Select(c => c.Value).Contains(connectionId.Value)).SelectMany(e => e.Value).ToList();
+			var connectedConsumers = _connectionManager.ConnectedConsumers.Where(x => !x.Value.Select(c => c.Value).Contains(connectionId.Value)).SelectMany(e => e.Value).ToList();
 
-			if (!connectedConsumer.Any())
+			if (!connectedConsumers.Any())
 			{
 				_logger.LogWarning($"No connected consumers other than {connectionId.Value}. No dispatch will be done.");
 				return;
 			}
 
-			await Parallel.ForEachAsync(connectedConsumer, async (connectedConsumer, cancellationToken) =>
+			await Parallel.ForEachAsync(connectedConsumers, token, async (connectedConsumer, cancellationToken) =>
 			{
 				await _hubContext.Clients.Client(connectedConsumer.Value!).SendAsync("PurgeMirroring", topic, connectedConsumer, token);
 			});

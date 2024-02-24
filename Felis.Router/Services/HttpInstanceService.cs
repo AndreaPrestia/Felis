@@ -1,5 +1,5 @@
-﻿using Felis.Core.Models;
-using System.Net;
+﻿using System.Net;
+using Felis.Core.Models;
 
 namespace Felis.Router.Services
 {

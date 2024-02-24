@@ -1,7 +1,7 @@
-﻿using Felis.Cluster.Configurations;
+﻿using System.Collections.Concurrent;
+using Felis.Cluster.Configurations;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System.Collections.Concurrent;
 
 namespace Felis.Cluster.Services;
 
@@ -9,7 +9,7 @@ public sealed class LoadBalancingService
 {
 	private readonly ILogger<LoadBalancingService> _logger;
 	private ConcurrentBag<string> _routers;
-	private int _currentIndex = 0;
+	private int _currentIndex;
 	public List<string> CurrentRouters => _routers.ToList();
 
 	public LoadBalancingService(ILogger<LoadBalancingService> logger,

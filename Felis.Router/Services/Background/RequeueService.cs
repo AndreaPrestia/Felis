@@ -53,8 +53,7 @@ internal sealed class RequeueService : BackgroundService
                         return;
                     }
  
-                    var dispatchResult =
-                        await _felisRouterService.Dispatch(errorMessage.Message?.Header?.Topic, errorMessage.Message);
+                    var dispatchResult = _felisRouterService.Dispatch(errorMessage.Message?.Header?.Topic, errorMessage.Message);
 
                     _logger.LogInformation(
                         $"{(dispatchResult ? "Dispatched" : "Not dispatched")} message for Topic {errorMessage.Message?.Header?.Topic}");

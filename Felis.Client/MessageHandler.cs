@@ -65,7 +65,7 @@ public sealed class MessageHandler : IAsyncDisposable
     {
         if (_hubConnection == null)
         {
-            throw new ArgumentNullException($"Connection to Felis router not correctly initialized");
+            throw new ArgumentNullException("Connection to Felis router not correctly initialized");
         }
 
         _retryPolicy = retryPolicy;
@@ -82,7 +82,7 @@ public sealed class MessageHandler : IAsyncDisposable
                 continue;
             }
             
-            _hubConnection.On<Message?>(topicType.Key.Value, async (messageIncoming) =>
+            _hubConnection.On<Message?>(topicType.Key.Value, async messageIncoming =>
             {
                 try
                 {

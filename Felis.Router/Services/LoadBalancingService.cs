@@ -9,7 +9,7 @@ internal class LoadBalancingService
 {
     private readonly ILogger<LoadBalancingService> _logger;
     private readonly ConnectionManager _felisConnectionManager;
-    private ConcurrentDictionary<Topic, int> _currentIndexDictionary = new();
+    private readonly ConcurrentDictionary<Topic, int> _currentIndexDictionary = new();
 
     public LoadBalancingService(ILogger<LoadBalancingService> logger,
         ConnectionManager felisConnectionManager)

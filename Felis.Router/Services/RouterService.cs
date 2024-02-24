@@ -20,7 +20,7 @@ internal sealed class RouterService
         _httpInstanceService = httpInstanceService;
     }
 
-    public Task<bool> Dispatch(Topic? topic, Message? message)
+    public bool Dispatch(Topic? topic, Message? message)
     {
         try
         {
@@ -31,14 +31,14 @@ internal sealed class RouterService
 
             if (message.Header?.Topic == null)
             {
-                throw new ArgumentNullException($"No Topic provided in Header");
+                throw new ArgumentException("No Topic provided in Header");
             }
 
             var topicValue = message.Header?.Topic?.Value;
 
             if (string.IsNullOrWhiteSpace(topicValue))
             {
-                throw new ArgumentNullException($"No Topic Value provided in Header");
+                throw new ArgumentException("No Topic Value provided in Header");
             }
 
             if (!string.Equals(topicValue, topic?.Value, StringComparison.InvariantCultureIgnoreCase))
@@ -53,19 +53,19 @@ internal sealed class RouterService
             if (!result)
             {
                 _logger.LogWarning("Cannot add message in storage.");
-                return Task.FromResult(result);
+                return result;
             }
 
-            return Task.FromResult(result);
+            return result;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, ex.Message);
-            return Task.FromResult(false);
+            return false;
         }
     }
 
-    public Task<bool> Consume(Guid id, ConsumedMessage? consumedMessage)
+    public bool Consume(Guid id, ConsumedMessage? consumedMessage)
     {
         try
         {
@@ -86,16 +86,16 @@ internal sealed class RouterService
                 _logger.LogWarning("Cannot add consumed message in storage.");
             }
 
-            return Task.FromResult(result);
+            return result;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, ex.Message);
-            return Task.FromResult(false);
+            return false;
         }
     }
 
-    public Task<bool> Error(Guid id, ErrorMessage? errorMessage)
+    public bool Error(Guid id, ErrorMessage? errorMessage)
     {
         try
         {
@@ -116,16 +116,16 @@ internal sealed class RouterService
                 _logger.LogWarning("Cannot add error message in storage.");
             }
 
-            return Task.FromResult(result);
+            return result;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, ex.Message);
-            return Task.FromResult(false);
+            return false;
         }
     }
 
-    public Task<bool> PurgeReady(Topic? topic)
+    public bool PurgeReady(Topic? topic)
     {
         try
         {
@@ -139,16 +139,16 @@ internal sealed class RouterService
                 throw new ArgumentNullException(nameof(topic.Value));
             }
 
-            return Task.FromResult(_storage.ReadyMessagePurge(topic));
+            return _storage.ReadyMessagePurge(topic);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, ex.Message);
-            return Task.FromResult(false);
+            return false;
         }
     }
 
-    public Task<List<Consumer>> Consumers(Topic? topic)
+    public List<Consumer> Consumers(Topic? topic)
     {
         try
         {
@@ -157,16 +157,16 @@ internal sealed class RouterService
                 throw new ArgumentNullException(nameof(topic));
             }
             
-            return Task.FromResult(_felisConnectionManager.GetConnectedConsumers(topic));
+            return _felisConnectionManager.GetConnectedConsumers(topic);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, ex.Message);
-            return Task.FromResult(new List<Consumer>());
+            return new List<Consumer>();
         }
     }
 
-    public Task<List<Message?>> ReadyMessageList(Topic? topic = null)
+    public List<Message?> ReadyMessageList(Topic? topic = null)
     {
         try
         {
@@ -175,16 +175,16 @@ internal sealed class RouterService
                 throw new ArgumentNullException(nameof(topic));
             }
             
-            return Task.FromResult(_storage.ReadyMessageList(topic));
+            return _storage.ReadyMessageList(topic);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, ex.Message);
-            return Task.FromResult(new List<Message?>());
+            return new List<Message?>();
         }
     }
 
-    public Task<List<Message?>> SentMessageList(Topic? topic = null)
+    public List<Message?> SentMessageList(Topic? topic = null)
     {
         try
         {
@@ -193,29 +193,29 @@ internal sealed class RouterService
                 throw new ArgumentNullException(nameof(topic));
             }
 
-            return Task.FromResult(_storage.SentMessageList(topic));
+            return _storage.SentMessageList(topic);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, ex.Message);
-            return Task.FromResult(new List<Message?>());
+            return new List<Message?>();
         }
     }
 
-    public Task<List<ErrorMessage>> ErrorMessageList(Topic? topic = null)
+    public List<ErrorMessage?> ErrorMessageList(Topic? topic = null)
     {
         try
         {
-            return Task.FromResult(_storage.ErrorMessageList(topic));
+            return _storage.ErrorMessageList(topic);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, ex.Message);
-            return Task.FromResult(new List<ErrorMessage>());
+            return new List<ErrorMessage?>();
         }
     }
 
-    public Task<List<ConsumedMessage?>> ConsumedMessageList(ConnectionId connectionId)
+    public List<ConsumedMessage?> ConsumedMessageList(ConnectionId connectionId)
     {
         try
         {
@@ -224,16 +224,16 @@ internal sealed class RouterService
                 throw new ArgumentNullException(nameof(connectionId));
             }
             
-            return Task.FromResult(_storage.ConsumedMessageList(connectionId));
+            return _storage.ConsumedMessageList(connectionId);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, ex.Message);
-            return Task.FromResult(new List<ConsumedMessage?>());
+            return new List<ConsumedMessage?>();
         }
     }
 
-    public Task<List<ConsumedMessage?>> ConsumedMessageList(Topic topic)
+    public List<ConsumedMessage?> ConsumedMessageList(Topic topic)
     {
         try
         {
@@ -242,16 +242,16 @@ internal sealed class RouterService
                 throw new ArgumentNullException(nameof(topic));
             }
             
-            return Task.FromResult(_storage.ConsumedMessageList(topic));
+            return _storage.ConsumedMessageList(topic);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, ex.Message);
-            return Task.FromResult(new List<ConsumedMessage?>());
+            return new List<ConsumedMessage?>();
         }
     }
     
-    public Task<List<ConsumedMessage?>> ConsumedMessageList(ConnectionId connectionId, Topic topic)
+    public List<ConsumedMessage?> ConsumedMessageList(ConnectionId connectionId, Topic topic)
     {
         try
         {
@@ -265,12 +265,12 @@ internal sealed class RouterService
                 throw new ArgumentNullException(nameof(topic));
             }
             
-            return Task.FromResult(_storage.ConsumedMessageList(connectionId, topic));
+            return _storage.ConsumedMessageList(connectionId, topic);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, ex.Message);
-            return Task.FromResult(new List<ConsumedMessage?>());
+            return new List<ConsumedMessage?>();
         }
     }
 }

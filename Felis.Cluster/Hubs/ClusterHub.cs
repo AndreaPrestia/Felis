@@ -1,9 +1,9 @@
-﻿using Felis.Cluster.Managers;
+﻿using System.Net;
+using Felis.Cluster.Managers;
 using Felis.Core.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
-using System.Net;
 
 namespace Felis.Cluster.Hubs
 {

@@ -53,8 +53,8 @@ public static class Extensions
 			serviceCollection.AddHttpClient<MessageHandler>("felisClient", (_, client) =>
 				{
 					client.BaseAddress = new Uri(routerEndpoint);
-				}).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler()
-				{
+				}).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+                {
 					PooledConnectionLifetime = TimeSpan.FromMinutes(pooledConnectionLifeTimeMinutes)
 				})
 				.SetHandlerLifetime(Timeout.InfiniteTimeSpan);

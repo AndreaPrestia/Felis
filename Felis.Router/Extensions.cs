@@ -1,5 +1,4 @@
-﻿using Felis.Core.Models;
-using Felis.Router.Configurations;
+﻿using Felis.Router.Configurations;
 using Felis.Router.Endpoints;
 using Felis.Router.Hubs;
 using Felis.Router.Managers;
@@ -123,7 +122,7 @@ public static class Extensions
 		app.UseSwagger();
 
 		app.UseSwaggerUI(options => options.SwaggerEndpoint("/swagger/v1/swagger.json",
-			$"Felis Router v1"));
+			"Felis Router v1"));
 
 		app.MapFelisRouterEndpoints();
 	}

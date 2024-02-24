@@ -72,7 +72,7 @@ internal class LoadBalancingMiddleware
             context.Response.StatusCode = status.Item1;
 
             await context.Response.WriteAsync(
-                JsonSerializer.Serialize(new ProblemDetails()
+                JsonSerializer.Serialize(new ProblemDetails
                 {
                     Type = $"https://httpstatuses.io/{status.Item1}",
                     Detail = ex.Message,
@@ -87,7 +87,7 @@ internal class LoadBalancingMiddleware
     {
         var requestMessage = new HttpRequestMessage();
         requestMessage.Method = new HttpMethod(context.Request.Method);
-        requestMessage.RequestUri = new System.Uri($"{destinationServer}/{context.Request.Path}");
+        requestMessage.RequestUri = new Uri($"{destinationServer}/{context.Request.Path}");
 
         // Copy headers from the original request
         foreach (var header in context.Request.Headers)

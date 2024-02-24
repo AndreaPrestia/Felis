@@ -178,9 +178,9 @@ internal sealed class RouterStorage
             _logger.LogInformation($"Dequeued error message {errorMessage?.Message?.Header?.Id}");
 
 
-		if (!string.Equals(errorMessage?.Message?.Header?.Origin?.IpAddress, origin?.IpAddress, StringComparison.InvariantCultureIgnoreCase))
+		if (!string.Equals(errorMessage?.Message?.Header?.Origin?.IpAddress, origin.IpAddress, StringComparison.InvariantCultureIgnoreCase))
 		{
-            _logger.LogWarning($"Error message dequeued {errorMessage?.Message?.Header?.Id} is from origin {errorMessage?.Message?.Header?.Origin?.IpAddress} won't be processed by {origin?.IpAddress}");
+            _logger.LogWarning($"Error message dequeued {errorMessage?.Message?.Header?.Id} is from origin {errorMessage?.Message?.Header?.Origin?.IpAddress} won't be processed by {origin.IpAddress}");
 			_logger.LogWarning($"Error message from different origin: {JsonSerializer.Serialize(errorMessage)}");
 			return null;
 		}

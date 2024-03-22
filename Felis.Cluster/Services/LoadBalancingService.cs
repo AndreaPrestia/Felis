@@ -1,5 +1,4 @@
-﻿using System.Collections.Concurrent;
-using Felis.Cluster.Configurations;
+﻿using Felis.Cluster.Configurations;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -8,40 +7,76 @@ namespace Felis.Cluster.Services;
 public sealed class LoadBalancingService
 {
 	private readonly ILogger<LoadBalancingService> _logger;
-	private ConcurrentBag<string> _routers;
-	private int _currentIndex;
-	public List<string> CurrentRouters => _routers.ToList();
+    private List<string>? _routers;
+    private readonly object _lockObject = new();
 
-	public LoadBalancingService(ILogger<LoadBalancingService> logger,
-		IOptionsMonitor<LoadBalancerConfiguration> loadBalancerConfiguration)
+    public LoadBalancingService(ILogger<LoadBalancingService> logger,
+		IOptionsMonitor<LoadBalancerConfiguration> optionsMonitor)
 	{
 		_logger = logger ?? throw new ArgumentNullException(nameof(logger));
-		_routers =
-			new ConcurrentBag<string>(loadBalancerConfiguration.CurrentValue.Routers) ?? throw new ArgumentNullException(nameof(loadBalancerConfiguration.CurrentValue));
-		loadBalancerConfiguration.OnChange((config, _) =>
-		{
-			_currentIndex = 0;
-			_routers = new ConcurrentBag<string>(config.Routers);
-		});
-	}
 
-	public string? GetNextRouterEndpoint()
+        UpdateServers(optionsMonitor.CurrentValue);
+
+        optionsMonitor.OnChange((config, _) =>
+        {
+            UpdateServers(config);
+        });
+    }
+
+    /// <summary>
+    /// Sticky session
+    /// </summary>
+    /// <param name="sessionId"></param>
+    /// <returns></returns>
+	public string? GetNextRouterEndpoint(string? sessionId)
 	{
-		if (_routers.Count == 0)
-		{
-			_logger.LogInformation($"No Routers set in {LoadBalancerConfiguration.FelisLoadBalancer}");
-			return null;
-		}
+        if (sessionId == null)
+        {
+            _logger.LogWarning("No sessionId provided.");
+            return null;
+        }
 
-		var router = _routers.ElementAt(_currentIndex);
+        lock (_lockObject)
+        {
 
-		_logger.LogDebug($"Router {router} with index {_currentIndex}");
+            if (_routers == null || _routers.Count == 0)
+            {
+                _logger.LogInformation($"No Routers set in {LoadBalancerConfiguration.FelisLoadBalancer}");
+                return null;
+            }
 
-		_currentIndex = (_currentIndex + 1) % _routers.Count;
+            var hash = sessionId.GetHashCode();
+            var index = Math.Abs(hash) % _routers.Count;
 
-		_logger.LogDebug(
-			$"Index for router to use at the next run is {_currentIndex}");
+            var router = _routers.ElementAt(index);
 
-		return router;
-	}
+            if (string.IsNullOrWhiteSpace(router))
+            {
+                _logger.LogWarning($"No server found at index {index}");
+                return null;
+            }
+
+            _logger.LogDebug(
+                $"Router {router} for session {sessionId}");
+
+            return router;
+        }
+    }
+
+    private void UpdateServers(LoadBalancerConfiguration? configuration)
+    {
+        if (configuration == null || configuration.Routers.Count == 0)
+        {
+            _logger.LogDebug("Routers from configuration not provided");
+            return;
+        }
+
+        lock (_lockObject)
+        {
+            _routers ??= new List<string>();
+            _routers.Clear();
+
+            _routers = configuration.Routers;
+        }
+    }
 }

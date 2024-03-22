@@ -34,11 +34,13 @@ internal class LoadBalancingMiddleware
 
         var method = context.Request.Method;
 
+        var sessionId = context.Session.Id;
+
         try
         {
-            _logger.LogInformation($"Processing request {url} {method}");
+            _logger.LogInformation($"Processing request {url} {method} for session {sessionId}");
 
-            var server = _loadBalancingService.GetNextRouterEndpoint();
+            var server = _loadBalancingService.GetNextRouterEndpoint(sessionId);
 
             if (string.IsNullOrWhiteSpace(server))
             {

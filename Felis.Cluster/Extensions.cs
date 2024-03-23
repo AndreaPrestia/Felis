@@ -1,6 +1,7 @@
 ﻿using Felis.Cluster.Configurations;
 using Felis.Cluster.Endpoints;
 using Felis.Cluster.Middlewares;
+using Felis.Cluster.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
@@ -35,7 +36,7 @@ public static class Extensions
 
 	private static void AddServices(this IServiceCollection serviceCollection)
 	{
-		serviceCollection.AddSingleton<LoadBalancingMiddleware>();
+		serviceCollection.AddSingleton<LoadBalancingService>();
 	}
 
 	public static void UseFelisCluster(this WebApplication app)

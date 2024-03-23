@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.OpenApi.Models;
 
 namespace Felis.Cluster;
 
@@ -23,6 +24,8 @@ public static class Extensions
 				options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
 			});
 
+			services.AddSwagger();
+
 			services.AddHttpClient<LoadBalancingMiddleware>("loadBalancingClient", (_, _) => { })
 				.ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
                 {
@@ -34,6 +37,27 @@ public static class Extensions
 		});
 	}
 
+	private static void AddSwagger(this IServiceCollection serviceCollection)
+	{
+		serviceCollection.AddEndpointsApiExplorer();
+
+		serviceCollection.AddSwaggerGen(c =>
+		{
+			c.SwaggerDoc("v1", new OpenApiInfo
+			{
+				Version = "v1",
+				Title = "Felis router",
+				Description = "Felis Cluster endpoints",
+				Contact = new OpenApiContact
+				{
+					Name = "Andrea Prestia",
+					Email = "andrea@prestia.dev",
+					Url = new Uri("https://www.linkedin.com/in/andrea-prestia-5212a2166/"),
+				}
+			});
+		});
+	}
+	
 	private static void AddServices(this IServiceCollection serviceCollection)
 	{
 		serviceCollection.AddSingleton<LoadBalancingService>();
@@ -41,6 +65,11 @@ public static class Extensions
 
 	public static void UseFelisCluster(this WebApplication app)
 	{
+		app.UseSwagger();
+
+		app.UseSwaggerUI(options => options.SwaggerEndpoint("/swagger/v1/swagger.json",
+			"Felis Cluster v1"));
+		
         app.MapFelisClusterEndpoints();
 
 		app.UseWhen(

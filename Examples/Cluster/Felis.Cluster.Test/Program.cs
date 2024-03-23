@@ -5,10 +5,15 @@ namespace Felis.Cluster.Test
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+
+            builder.Host.AddFelisCluster();
+            
             var app = builder.Build();
 
-            app.MapGet("/", () => "Hello World!");
+            app.MapGet("/", () => "Felis Cluster is up and running :)");
 
+            app.UseFelisCluster();
+            
             app.Run();
         }
     }

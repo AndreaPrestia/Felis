@@ -6,21 +6,18 @@ namespace Felis.Cluster.Services;
 
 public sealed class LoadBalancingService
 {
-	private readonly ILogger<LoadBalancingService> _logger;
+    private readonly ILogger<LoadBalancingService> _logger;
     private List<string>? _routers;
     private readonly object _lockObject = new();
 
     public LoadBalancingService(ILogger<LoadBalancingService> logger,
-		IOptionsMonitor<LoadBalancerConfiguration> optionsMonitor)
-	{
-		_logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        IOptionsMonitor<LoadBalancerConfiguration> optionsMonitor)
+    {
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         UpdateServers(optionsMonitor.CurrentValue);
 
-        optionsMonitor.OnChange((config, _) =>
-        {
-            UpdateServers(config);
-        });
+        optionsMonitor.OnChange((config, _) => { UpdateServers(config); });
     }
 
     /// <summary>
@@ -28,16 +25,21 @@ public sealed class LoadBalancingService
     /// </summary>
     /// <param name="sessionId"></param>
     /// <returns></returns>
-	public string? GetNextRouterEndpoint(string? sessionId)
-	{
-        if (sessionId == null)
-        {
-            _logger.LogWarning("No sessionId provided.");
-            return null;
-        }
-
+    public string? GetNextRouterEndpoint(string? sessionId)
+    {
         lock (_lockObject)
         {
+            if (sessionId == null)
+            {
+                _logger.LogWarning("No sessionId provided.");
+                if (_routers == null || _routers.Count == 0)
+                {
+                    _logger.LogInformation($"No Routers set in {LoadBalancerConfiguration.FelisLoadBalancer}");
+                    return null;
+                }
+
+                return _routers.FirstOrDefault();
+            }
 
             if (_routers == null || _routers.Count == 0)
             {

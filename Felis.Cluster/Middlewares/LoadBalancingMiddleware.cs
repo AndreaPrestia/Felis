@@ -34,7 +34,7 @@ internal class LoadBalancingMiddleware
 
         var method = context.Request.Method;
 
-        var sessionId = context.Session.Id;
+        var sessionId = context.Session != null! ? context.Session.Id : null;
 
         try
         {

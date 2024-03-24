@@ -73,7 +73,7 @@ public static class Extensions
         app.MapFelisClusterEndpoints();
 
 		app.UseWhen(
-			context => (context.Request.Path.ToString().EndsWith("/dispatch") && context.Request.Method.Equals("POST")) || ((context.Request.Path.ToString().StartsWith("/messages") ||
+			context => context.Request.Path.ToString().Contains("felis/router") || (context.Request.Path.ToString().EndsWith("/dispatch") && context.Request.Method.Equals("POST")) || ((context.Request.Path.ToString().StartsWith("/messages") ||
 					   context.Request.Path.ToString().StartsWith("/consumers")) && context.Request.Method.Equals("GET")),
 			appBranch => { appBranch.UseMiddleware<LoadBalancingMiddleware>(); });
 	}

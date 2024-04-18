@@ -1,6 +1,6 @@
 ﻿using Felis.Core.Models;
+using Felis.Router.Abstractions;
 using Felis.Router.Managers;
-using Felis.Router.Storage;
 using Microsoft.Extensions.Logging;
 
 namespace Felis.Router.Services;
@@ -8,10 +8,10 @@ namespace Felis.Router.Services;
 internal sealed class RouterService
 {
     private readonly ILogger<RouterService> _logger;
-    private readonly InMemoryRouterStorage _storage;
+    private readonly IRouterStorage _storage;
     private readonly ConnectionManager _connectionManager;
 
-    public RouterService(ILogger<RouterService> logger, InMemoryRouterStorage storage, ConnectionManager connectionManager)
+    public RouterService(ILogger<RouterService> logger, IRouterStorage storage, ConnectionManager connectionManager)
     {
         _logger = logger;
         _storage = storage;

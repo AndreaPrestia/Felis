@@ -28,13 +28,14 @@ namespace Felis.Router.Storage
 
             lock (_lock)
             {
-                var consumedCollection = _database.GetCollection<ConsumedMessage>("messages-consumed");
+                if(consumedMessage.Id == Guid.Empty)
+                {
+                    consumedMessage.Id = consumedMessage.Message.Header.Id;
+                }
 
-                var messageFound = consumedCollection.FindOne(cm => cm.ConnectionId.Value == consumedMessage.ConnectionId.Value
-                                                                    && string.Equals(cm.Message!.Header!.Topic!.Value,
-                                                                        consumedMessage.Message.Header.Topic.Value,
-                                                                        StringComparison.InvariantCultureIgnoreCase)
-                                                                    && cm.Timestamp == consumedMessage.Timestamp);
+                var consumedCollection = _database.GetCollection<ConsumedMessage>("messages_consumed");
+
+                var messageFound = consumedCollection.FindById(consumedMessage.Id);
 
                 if (messageFound != null)
                 {
@@ -42,11 +43,9 @@ namespace Felis.Router.Storage
                     return false;
                 }
 
-                consumedMessage.Id = Guid.NewGuid();
-
                 consumedCollection.Insert(consumedMessage.Id, consumedMessage);
 
-                var sentCollection = _database.GetCollection<Message?>("messages-sent");
+                var sentCollection = _database.GetCollection<Message?>("messages_sent");
 
                 _logger.LogDebug($"Message {consumedMessage.Message.Header.Id} removing from sent");
 
@@ -66,7 +65,7 @@ namespace Felis.Router.Storage
 
             lock (_lock)
             {
-                var readyCollection = _database.GetCollection<Message?>("messages-ready");
+                var readyCollection = _database.GetCollection<Message?>("messages_ready");
 
                 readyCollection.Insert(message.Header.Id, message);
 
@@ -78,7 +77,7 @@ namespace Felis.Router.Storage
         {
             lock (_lock)
             {
-                var readyCollection = _database.GetCollection<Message?>("messages-ready");
+                var readyCollection = _database.GetCollection<Message?>("messages_ready");
 
                 var messageFound = readyCollection.Query().Where(x => x != null && x.Header != null).OrderBy(e => e!.Header!.Timestamp).FirstOrDefault();
 
@@ -98,7 +97,7 @@ namespace Felis.Router.Storage
         {
             lock (_lock)
             {
-                var readyCollection = _database.GetCollection<Message?>("messages-ready");
+                var readyCollection = _database.GetCollection<Message?>("messages_ready");
 
                 var messages = readyCollection.Query().Where(x => x != null &&
                     topic != null ? x.Header!.Topic!.Value == topic.Value : x != null && x.Header!.Id != Guid.Empty).ToList();
@@ -115,7 +114,7 @@ namespace Felis.Router.Storage
 
             lock (_lock)
             {
-                var readyCollection = _database.GetCollection<Message?>("messages-sent");
+                var readyCollection = _database.GetCollection<Message?>("messages_sent");
 
                 readyCollection.Insert(message.Header.Id, message);
 
@@ -127,7 +126,7 @@ namespace Felis.Router.Storage
         {
             lock (_lock)
             {
-                var sentCollection = _database.GetCollection<Message?>("messages-sent");
+                var sentCollection = _database.GetCollection<Message?>("messages_sent");
 
                 var messages = sentCollection.Query().Where(x => x != null &&
                                                                  topic != null ? x.Header!.Topic!.Value == topic.Value : x != null && x.Header!.Id != Guid.Empty).ToList();
@@ -140,7 +139,7 @@ namespace Felis.Router.Storage
         {
             lock (_lock)
             {
-                var consumedCollection = _database.GetCollection<ConsumedMessage?>("messages-consumed");
+                var consumedCollection = _database.GetCollection<ConsumedMessage?>("messages_consumed");
 
                 var messages = consumedCollection.Query().Where(x => x != null && x.ConnectionId.Value == connectionId.Value).ToList();
 
@@ -152,7 +151,7 @@ namespace Felis.Router.Storage
         {
             lock (_lock)
             {
-                var consumedCollection = _database.GetCollection<ConsumedMessage?>("messages-consumed");
+                var consumedCollection = _database.GetCollection<ConsumedMessage?>("messages_consumed");
 
                 var messages = consumedCollection.Query().Where(x => x != null && x.Message!.Header!.Topic!.Value == topic.Value).ToList();
 
@@ -164,7 +163,7 @@ namespace Felis.Router.Storage
         {
             lock (_lock)
             {
-                var consumedCollection = _database.GetCollection<ConsumedMessage?>("messages-consumed");
+                var consumedCollection = _database.GetCollection<ConsumedMessage?>("messages_consumed");
 
                 var messages = consumedCollection.Query().Where(x => x != null && x.ConnectionId.Value == connectionId.Value && x.Message!.Header!.Topic!.Value == topic.Value).ToList();
 
@@ -178,7 +177,7 @@ namespace Felis.Router.Storage
 
             lock (_lock)
             {
-                var readyMessageCollection = _database.GetCollection<Message?>("messages-ready");
+                var readyMessageCollection = _database.GetCollection<Message?>("messages_ready");
 
                 var deleteResult = readyMessageCollection.DeleteMany(m => m!.Header!.Topic!.Value == topic.Value);
 
@@ -195,7 +194,7 @@ namespace Felis.Router.Storage
 
             lock (_lock)
             {
-                var readyMessageCollection = _database.GetCollection<Message?>("messages-ready");
+                var readyMessageCollection = _database.GetCollection<Message?>("messages_ready");
 
                 var deleteResult = readyMessageCollection.DeleteMany(m => m!.Header!.Timestamp <
                                                                           new DateTimeOffset(DateTime.UtcNow)
@@ -221,12 +220,11 @@ namespace Felis.Router.Storage
                     return true;
                 }
 
-                var errorMessageWithRetriesDoneCollection = _database.GetCollection<ErrorMessageWithRetries?>("messages-error-with-retries");
+                var errorMessageWithRetriesDoneCollection = _database.GetCollection<ErrorMessageWithRetries?>("messages_error_with_retries");
 
-                var retryFound = errorMessageWithRetriesDoneCollection.FindOne(em => em != null &&
-                    em.Id == message.Message.Header.Id);
+                var retryFound = errorMessageWithRetriesDoneCollection.FindById(message.Message.Header.Id);
 
-                var errorMessageCollection = _database.GetCollection<ErrorMessage?>("messages-error");
+                var errorMessageCollection = _database.GetCollection<ErrorMessage?>("messages_error");
 
                 if (retryFound == null)
                 {
@@ -243,7 +241,7 @@ namespace Felis.Router.Storage
                 }
 
                 var errorMessageFound =
-                    errorMessageCollection.FindOne(x => x != null && x.Message != null && x.Message.Header != null && x.Message.Header.Id != message.Message.Header.Id);
+                    errorMessageCollection.Query().Where(x => x != null && x.Message != null && x.Message.Header != null && x.Message.Header.Id != message.Message.Header.Id).FirstOrDefault();
 
                 if (errorMessageFound == null)
                 {
@@ -262,7 +260,7 @@ namespace Felis.Router.Storage
         {
             lock (_lock)
             {
-                var errorCollection = _database.GetCollection<ErrorMessage?>("messages-error");
+                var errorCollection = _database.GetCollection<ErrorMessage?>("messages_error");
 
                 var errorMessage = errorCollection.Query().Where(x => x != null && x.Message!.Header != null).OrderBy(e => e!.Message!.Header!.Timestamp).FirstOrDefault();
 
@@ -272,9 +270,9 @@ namespace Felis.Router.Storage
                     return null;
                 }
 
-                var errorMessageWithRetriesDoneCollection = _database.GetCollection<ErrorMessageWithRetries?>("messages-error-with-retries");
+                var errorMessageWithRetriesDoneCollection = _database.GetCollection<ErrorMessageWithRetries?>("messages_error_with_retries");
 
-                var retriesDone = errorMessageWithRetriesDoneCollection.FindOne(em => em!.Id == errorMessage.Message!.Header!.Id && errorMessage.RetryPolicy!.Attempts >= em.RetryCount)?.RetryCount;
+                var retriesDone = errorMessageWithRetriesDoneCollection.Query().Where(em => em!.Id == errorMessage.Message!.Header!.Id && errorMessage.RetryPolicy!.Attempts >= em.RetryCount).FirstOrDefault()?.RetryCount;
 
                 if (retriesDone > errorMessage.RetryPolicy?.Attempts)
                 {
@@ -290,7 +288,7 @@ namespace Felis.Router.Storage
         {
             lock (_lock)
             {
-                var errorCollection = _database.GetCollection<ErrorMessage?>("messages-error");
+                var errorCollection = _database.GetCollection<ErrorMessage?>("messages_error");
 
                 var messages = errorCollection.Query().Where(x => x != null && x.Message != null && x.Message.Header != null && x.Message.Header.Topic != null &&
                                                                   topic != null ? x.Message.Header.Topic.Value == topic.Value : x != null && x.Message != null && x.Message.Header != null && x.Message.Header.Id != Guid.Empty).ToList();

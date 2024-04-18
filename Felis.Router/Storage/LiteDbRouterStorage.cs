@@ -2,7 +2,6 @@
 using Felis.Router.Abstractions;
 using LiteDB;
 using Microsoft.Extensions.Logging;
-using System.Collections.Concurrent;
 
 namespace Felis.Router.Storage
 {
@@ -110,37 +109,101 @@ namespace Felis.Router.Storage
 
         public bool SentMessageAdd(Message? message)
         {
-            throw new NotImplementedException();
+            ArgumentNullException.ThrowIfNull(message);
+            ArgumentNullException.ThrowIfNull(message.Header);
+            ArgumentNullException.ThrowIfNull(message.Header.Topic);
+
+            lock (_lock)
+            {
+                var readyCollection = _database.GetCollection<Message?>("messages-sent");
+
+                readyCollection.Insert(message.Header.Id, message);
+
+                return true;
+            }
         }
 
         public List<Message?> SentMessageList(Topic? topic = null)
         {
-            throw new NotImplementedException();
+            lock (_lock)
+            {
+                var sentCollection = _database.GetCollection<Message?>("messages-sent");
+
+                var messages = sentCollection.Query().Where(x => x != null &&
+                                                                 topic != null ? x.Header!.Topic!.Value == topic.Value : x != null && x.Header!.Id != Guid.Empty).ToList();
+
+                return messages;
+            }
         }
 
         public List<ConsumedMessage?> ConsumedMessageList(ConnectionId connectionId)
         {
-            throw new NotImplementedException();
+            lock (_lock)
+            {
+                var consumedCollection = _database.GetCollection<ConsumedMessage?>("messages-consumed");
+
+                var messages = consumedCollection.Query().Where(x => x != null && x.ConnectionId.Value == connectionId.Value).ToList();
+
+                return messages;
+            }
         }
 
         public List<ConsumedMessage?> ConsumedMessageList(Topic topic)
         {
-            throw new NotImplementedException();
+            lock (_lock)
+            {
+                var consumedCollection = _database.GetCollection<ConsumedMessage?>("messages-consumed");
+
+                var messages = consumedCollection.Query().Where(x => x != null && x.Message!.Header!.Topic!.Value == topic.Value).ToList();
+
+                return messages;
+            }
         }
 
         public List<ConsumedMessage?> ConsumedMessageList(ConnectionId connectionId, Topic topic)
         {
-            throw new NotImplementedException();
+            lock (_lock)
+            {
+                var consumedCollection = _database.GetCollection<ConsumedMessage?>("messages-consumed");
+
+                var messages = consumedCollection.Query().Where(x => x != null && x.ConnectionId.Value == connectionId.Value && x.Message!.Header!.Topic!.Value == topic.Value).ToList();
+
+                return messages;
+            }
         }
 
         public bool ReadyMessagePurge(Topic? topic)
         {
-            throw new NotImplementedException();
+            ArgumentNullException.ThrowIfNull(topic);
+
+            lock (_lock)
+            {
+                var readyMessageCollection = _database.GetCollection<Message?>("messages-ready");
+
+                var deleteResult = readyMessageCollection.DeleteMany(m => m!.Header!.Topic!.Value == topic.Value);
+
+                return deleteResult > 0;
+            }
         }
 
         public bool ReadyMessagePurge(int? timeToLiveMinutes)
         {
-            throw new NotImplementedException();
+            if (!timeToLiveMinutes.HasValue || timeToLiveMinutes <= 0)
+            {
+                return false;
+            }
+
+            lock (_lock)
+            {
+                var readyMessageCollection = _database.GetCollection<Message?>("messages-ready");
+
+                var deleteResult = readyMessageCollection.DeleteMany(m => m!.Header!.Timestamp <
+                                                                          new DateTimeOffset(DateTime.UtcNow)
+                                                                              .AddMinutes(-timeToLiveMinutes.Value)
+                                                                              .ToUnixTimeMilliseconds());
+
+                return deleteResult > 0;
+            }
         }
 
         public bool ErrorMessageAdd(ErrorMessage? message)
@@ -211,15 +274,15 @@ namespace Felis.Router.Storage
 
                 var errorMessageWithRetriesDoneCollection = _database.GetCollection<ErrorMessageWithRetries?>("messages-error-with-retries");
 
-                var retriesDone = errorMessageWithRetriesDoneCollection.FindOne(em => em.Id == errorMessage.Message!.Header!.Id && errorMessage.RetryPolicy!.Attempts >= em.RetryCount).RetryCount;
+                var retriesDone = errorMessageWithRetriesDoneCollection.FindOne(em => em!.Id == errorMessage.Message!.Header!.Id && errorMessage.RetryPolicy!.Attempts >= em.RetryCount)?.RetryCount;
 
-                if (retriesDone > errorMessage?.RetryPolicy?.Attempts)
+                if (retriesDone > errorMessage.RetryPolicy?.Attempts)
                 {
                     _logger.LogWarning($"Error message finished Attempts: {System.Text.Json.JsonSerializer.Serialize(errorMessage)}");
                     return null;
                 }
 
-                return retriesDone <= errorMessage?.RetryPolicy?.Attempts ? null : errorMessage;
+                return retriesDone <= errorMessage.RetryPolicy?.Attempts ? null : errorMessage;
             }
         }
 

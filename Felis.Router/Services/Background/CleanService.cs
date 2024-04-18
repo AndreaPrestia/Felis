@@ -1,21 +1,21 @@
-﻿using Felis.Router.Configurations;
-using Felis.Router.Storage;
+﻿using Felis.Router.Abstractions;
+using Felis.Router.Configurations;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Felis.Router.Services.Background;
 
-internal class FelisStorageCleanService : BackgroundService
+internal class CleanService : BackgroundService
 {
-    private readonly FelisRouterStorage _felisRouterStorage;
-    private readonly ILogger<FelisStorageCleanService> _logger;
-    private readonly FelisRouterConfiguration _configuration;
+    private readonly IRouterStorage _routerStorage;
+    private readonly ILogger<CleanService> _logger;
+    private readonly RouterConfiguration _configuration;
 
-    public FelisStorageCleanService(FelisRouterStorage felisRouterStorage, ILogger<FelisStorageCleanService> logger,
-        IOptionsMonitor<FelisRouterConfiguration> configuration)
+    public CleanService(IRouterStorage routerStorage, ILogger<CleanService> logger,
+        IOptionsMonitor<RouterConfiguration> configuration)
     {
-        _felisRouterStorage = felisRouterStorage ?? throw new ArgumentNullException(nameof(felisRouterStorage));
+        _routerStorage = routerStorage ?? throw new ArgumentNullException(nameof(routerStorage));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _configuration = configuration.CurrentValue ?? throw new ArgumentNullException(nameof(configuration));
     }
@@ -45,7 +45,7 @@ internal class FelisStorageCleanService : BackgroundService
                     
                     _logger.LogInformation(
                         $"Purging messages with TTL {_configuration.MessageConfiguration?.TimeToLiveMinutes}");
-                    var result = _felisRouterStorage.ReadyMessagePurge(_configuration.MessageConfiguration?.TimeToLiveMinutes);
+                    var result = _routerStorage.ReadyMessagePurge(_configuration.MessageConfiguration?.TimeToLiveMinutes);
 
                     if (!result)
                     {

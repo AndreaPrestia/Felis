@@ -1,25 +1,25 @@
-﻿using Felis.Router.Configurations;
-using Felis.Router.Storage;
+﻿using Felis.Router.Abstractions;
+using Felis.Router.Configurations;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Felis.Router.Services.Background;
 
-internal sealed class FelisStorageRequeueService : BackgroundService
+internal sealed class RequeueService : BackgroundService
 {
-    private readonly FelisRouterStorage _felisRouterStorage;
-    private readonly ILogger<FelisStorageRequeueService> _logger;
-    private readonly FelisRouterConfiguration _configuration;
-    private readonly FelisRouterService _felisRouterService;
+    private readonly IRouterStorage _routerStorage;
+    private readonly ILogger<RequeueService> _logger;
+    private readonly RouterConfiguration _configuration;
+    private readonly RouterService _routerService;
 
-    public FelisStorageRequeueService(FelisRouterStorage felisRouterStorage, ILogger<FelisStorageRequeueService> logger,
-        IOptionsMonitor<FelisRouterConfiguration> configuration, FelisRouterService felisRouterService)
+    public RequeueService(IRouterStorage routerStorage, ILogger<RequeueService> logger,
+        IOptionsMonitor<RouterConfiguration> configuration, RouterService routerService)
     {
-        _felisRouterStorage = felisRouterStorage ?? throw new ArgumentNullException(nameof(felisRouterStorage));
+        _routerStorage = routerStorage ?? throw new ArgumentNullException(nameof(routerStorage));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _configuration = configuration.CurrentValue ?? throw new ArgumentNullException(nameof(configuration));
-        _felisRouterService = felisRouterService ?? throw new ArgumentNullException(nameof(felisRouterService));
+        _routerService = routerService ?? throw new ArgumentNullException(nameof(routerService));
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -43,7 +43,7 @@ internal sealed class FelisStorageRequeueService : BackgroundService
                 {
                     _logger.LogInformation("Start FelisStorageRequeueService ExecuteAsync");
 
-                    var errorMessage = _felisRouterStorage.ErrorMessageGet();
+                    var errorMessage = _routerStorage.ErrorMessageGet();
 
                     if (errorMessage == null)
                     {
@@ -52,7 +52,7 @@ internal sealed class FelisStorageRequeueService : BackgroundService
                     }
  
                     var dispatchResult =
-                        await _felisRouterService.Dispatch(errorMessage.Message?.Header?.Topic, errorMessage.Message);
+                        await _routerService.Dispatch(errorMessage.Message?.Header?.Topic, errorMessage.Message);
 
                     _logger.LogInformation(
                         $"{(dispatchResult ? "Dispatched" : "Not dispatched")} message for Topic {errorMessage.Message?.Header?.Topic}");

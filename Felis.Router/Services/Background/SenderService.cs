@@ -1,24 +1,24 @@
-﻿using Felis.Router.Hubs;
-using Felis.Router.Storage;
+﻿using Felis.Router.Abstractions;
+using Felis.Router.Hubs;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace Felis.Router.Services.Background
 {
-    internal sealed class FelisSenderService : BackgroundService
+    internal sealed class SenderService : BackgroundService
     {
-        private readonly FelisRouterStorage _felisRouterStorage;
-        private readonly ILogger<FelisSenderService> _logger;
-        private readonly IHubContext<FelisRouterHub> _hubContext;
-        private readonly FelisLoadBalancingService _felisLoadBalancingService;
+        private readonly IRouterStorage _routerStorage;
+        private readonly ILogger<SenderService> _logger;
+        private readonly IHubContext<RouterHub> _hubContext;
+        private readonly LoadBalancingService _loadBalancingService;
 
-        public FelisSenderService(FelisRouterStorage felisRouterStorage, ILogger<FelisSenderService> logger, IHubContext<FelisRouterHub> hubContext, FelisLoadBalancingService felisLoadBalancingService)
+        public SenderService(IRouterStorage routerStorage, ILogger<SenderService> logger, IHubContext<RouterHub> hubContext, LoadBalancingService loadBalancingService)
         {
-            _felisRouterStorage = felisRouterStorage ?? throw new ArgumentNullException(nameof(felisRouterStorage));
+            _routerStorage = routerStorage ?? throw new ArgumentNullException(nameof(routerStorage));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _hubContext = hubContext ?? throw new ArgumentNullException(nameof(hubContext));
-            _felisLoadBalancingService = felisLoadBalancingService ?? throw new ArgumentNullException(nameof(felisLoadBalancingService));
+            _loadBalancingService = loadBalancingService ?? throw new ArgumentNullException(nameof(loadBalancingService));
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -31,13 +31,19 @@ namespace Felis.Router.Services.Background
                 {
                     try
                     {
-                        var message = _felisRouterStorage.ReadyMessageGet();
+                        var message = _routerStorage.ReadyMessageGet();
 
                         if (message == null || string.IsNullOrWhiteSpace(message.Header?.Topic?.Value)) continue;
 
                         _logger.LogInformation($"Sending message {message.Header?.Id} for topic {message.Header?.Topic?.Value}");
 
-                        var connectionId = _felisLoadBalancingService.GetNextConnectionId(message.Header?.Topic);
+                        if (message.Header?.Topic == null)
+                        {
+                            _logger.LogWarning($"No topic available for topic {message.Header?.Id}");
+                            continue;
+                        }
+
+                        var connectionId = _loadBalancingService.GetNextConnectionId(message.Header?.Topic!);
 
                         if (connectionId == null || string.IsNullOrWhiteSpace(connectionId.Value))
                         {
@@ -47,7 +53,7 @@ namespace Felis.Router.Services.Background
                         
                         await _hubContext.Clients.Client(connectionId.Value).SendAsync(message.Header?.Topic?.Value!, message, stoppingToken);
 
-                        var messageSentSet = _felisRouterStorage.SentMessageAdd(message);
+                        var messageSentSet = _routerStorage.SentMessageAdd(message);
 
                         _logger.LogWarning($"Message {message.Header?.Id} sent {messageSentSet}.");
                     }

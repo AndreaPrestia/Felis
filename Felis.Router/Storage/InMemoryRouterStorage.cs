@@ -1,6 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.Text.Json;
 using Felis.Core.Models;
+using Felis.Router.Abstractions;
 using Microsoft.Extensions.Logging;
 
 namespace Felis.Router.Storage;
@@ -8,7 +9,7 @@ namespace Felis.Router.Storage;
 /// <summary>
 /// This is an in-memory storage implementation of FelisStorage.
 /// </summary>
-internal sealed class FelisRouterStorage
+internal sealed class InMemoryRouterStorage : IRouterStorage
 {
     private ConcurrentQueue<Message?> _readyMessages = new();
     private ConcurrentQueue<Message?> _sentMessages = new();
@@ -16,9 +17,9 @@ internal sealed class FelisRouterStorage
     private ConcurrentQueue<ErrorMessage?> _errorMessages = new();
     private ConcurrentDictionary<Guid, int> _errorMessagesWithRetries = new();
 
-    private readonly ILogger<FelisRouterStorage> _logger;
+    private readonly ILogger<InMemoryRouterStorage> _logger;
 
-    public FelisRouterStorage(ILogger<FelisRouterStorage> logger)
+    public InMemoryRouterStorage(ILogger<InMemoryRouterStorage> logger)
     {
         ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;

@@ -6,11 +6,11 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Felis.Router.Api;
 
-internal class FelisRouter : ApiRouter
+internal class Router : ApiRouter
 {
     public override void Init(WebApplication app)
     {
-          app.MapPost("/messages/{topic}/dispatch", async ([FromServices] FelisRouterService service, [FromRoute] string? topic, [FromBody] Message message) =>
+          app.MapPost("/messages/{topic}/dispatch", async ([FromServices] RouterService service, [FromRoute] string? topic, [FromBody] Message message) =>
             {
                 var result = await service.Dispatch(new Topic(topic), message);
 
@@ -21,7 +21,7 @@ internal class FelisRouter : ApiRouter
             .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
 
         app.MapPost("/messages/{id}/consume",
-                async ([FromServices] FelisRouterService service, [FromRoute] Guid id, [FromBody] ConsumedMessage message) =>
+                async ([FromServices] RouterService service, [FromRoute] Guid id, [FromBody] ConsumedMessage message) =>
                 {
                     var result = await service.Consume(id, message);
 
@@ -31,7 +31,7 @@ internal class FelisRouter : ApiRouter
             .Produces<UnauthorizedResult>(StatusCodes.Status401Unauthorized)
             .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
 
-        app.MapPost("/messages/{id}/error", async ([FromServices] FelisRouterService service, [FromRoute] Guid id, [FromBody] ErrorMessage message) =>
+        app.MapPost("/messages/{id}/error", async ([FromServices] RouterService service, [FromRoute] Guid id, [FromBody] ErrorMessage message) =>
             {
                 var result = await service.Error(id, message);
 
@@ -41,7 +41,7 @@ internal class FelisRouter : ApiRouter
             .Produces<UnauthorizedResult>(StatusCodes.Status401Unauthorized)
             .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
 
-        app.MapDelete("/messages/{topic}/ready/purge", async ([FromServices] FelisRouterService service, [FromRoute] string? topic) =>
+        app.MapDelete("/messages/{topic}/ready/purge", async ([FromServices] RouterService service, [FromRoute] string? topic) =>
             {
                 var result = await service.PurgeReady(new Topic(topic));
 
@@ -51,7 +51,7 @@ internal class FelisRouter : ApiRouter
             .Produces<UnauthorizedResult>(StatusCodes.Status401Unauthorized)
             .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
 
-        app.MapGet("/messages/{topic}/consumers", async ([FromServices] FelisRouterService service, [FromRoute] string? topic) =>
+        app.MapGet("/messages/{topic}/consumers", async ([FromServices] RouterService service, [FromRoute] string? topic) =>
             {
                 var result = await service.Consumers(new Topic(topic));
 
@@ -61,7 +61,7 @@ internal class FelisRouter : ApiRouter
             .Produces<UnauthorizedResult>(StatusCodes.Status401Unauthorized)
             .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
         
-        app.MapGet("/messages/{topic}/ready", async ([FromServices] FelisRouterService service, [FromRoute] string? topic) =>
+        app.MapGet("/messages/{topic}/ready", async ([FromServices] RouterService service, [FromRoute] string? topic) =>
             {
                 var result = await service.ReadyMessageList(new Topic(topic));
 
@@ -71,7 +71,7 @@ internal class FelisRouter : ApiRouter
             .Produces<UnauthorizedResult>(StatusCodes.Status401Unauthorized)
             .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
 
-        app.MapGet("/messages/{topic}/sent", async ([FromServices] FelisRouterService service, [FromRoute] string? topic) =>
+        app.MapGet("/messages/{topic}/sent", async ([FromServices] RouterService service, [FromRoute] string? topic) =>
             {
                 var result = await service.SentMessageList(new Topic(topic));
 
@@ -82,7 +82,7 @@ internal class FelisRouter : ApiRouter
             .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
 
 
-        app.MapGet("/messages/{topic}/error", async ([FromServices] FelisRouterService service, [FromRoute] string? topic) =>
+        app.MapGet("/messages/{topic}/error", async ([FromServices] RouterService service, [FromRoute] string? topic) =>
             {
                 var result = await service.ErrorMessageList(new Topic(topic));
 
@@ -92,7 +92,7 @@ internal class FelisRouter : ApiRouter
             .Produces<UnauthorizedResult>(StatusCodes.Status401Unauthorized)
             .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
               
-        app.MapGet("/messages/{topic}/consumed", async ([FromServices] FelisRouterService service, [FromRoute] string? topic) =>
+        app.MapGet("/messages/{topic}/consumed", async ([FromServices] RouterService service, [FromRoute] string? topic) =>
             {
                 var result = await service.ConsumedMessageList(new Topic(topic));
 
@@ -102,7 +102,7 @@ internal class FelisRouter : ApiRouter
             .Produces<UnauthorizedResult>(StatusCodes.Status401Unauthorized)
             .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
         
-        app.MapGet("/consumers/{connectionId}/messages", async ([FromServices] FelisRouterService service, [FromRoute] string? connectionId) =>
+        app.MapGet("/consumers/{connectionId}/messages", async ([FromServices] RouterService service, [FromRoute] string? connectionId) =>
             {
                 var result = await service.ConsumedMessageList(new ConnectionId(connectionId));
 
@@ -112,7 +112,7 @@ internal class FelisRouter : ApiRouter
             .Produces<UnauthorizedResult>(StatusCodes.Status401Unauthorized)
             .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
         
-        app.MapGet("/consumers/{connectionId}/messages/{topic}", async ([FromServices] FelisRouterService service, [FromRoute] string? connectionId, [FromRoute] string? topic) =>
+        app.MapGet("/consumers/{connectionId}/messages/{topic}", async ([FromServices] RouterService service, [FromRoute] string? connectionId, [FromRoute] string? topic) =>
             {
                 var result = await service.ConsumedMessageList(new ConnectionId(connectionId), new Topic(topic));
 

@@ -2,9 +2,9 @@
 
 namespace Felis.Router.Managers
 {
-	internal sealed class FelisConnectionManager 
+	internal sealed class ConnectionManager 
 	{
-		private static readonly Dictionary<Consumer, List<ConnectionId>> FelisConnectionMap = new();
+		private static readonly Dictionary<Consumer, List<ConnectionId>> ConnectionMap = new();
 		private static readonly string ConsumerConnectionMapLocker = string.Empty;
 
 		public List<Consumer> GetConnectedConsumers(Topic topic)
@@ -13,7 +13,7 @@ namespace Felis.Router.Managers
 
 			lock (ConsumerConnectionMapLocker)
 			{
-				consumers = FelisConnectionMap.Select(x => x.Key).Where(x => x.Topics.Select(t => t.Value).ToList().Contains(topic.Value)).ToList();
+				consumers = ConnectionMap.Select(x => x.Key).Where(x => x.Topics.Select(t => t.Value).ToList().Contains(topic.Value)).ToList();
 			}
 
 			return consumers;
@@ -25,7 +25,7 @@ namespace Felis.Router.Managers
 
 			lock (ConsumerConnectionMapLocker)
 			{
-				connectionIds = FelisConnectionMap.Where(x => x.Key.Topics.Select(t => t.Value).ToList().Contains(topic.Value)).SelectMany(e => e.Value).ToList();
+				connectionIds = ConnectionMap.Where(x => x.Key.Topics.Select(t => t.Value).ToList().Contains(topic.Value)).SelectMany(e => e.Value).ToList();
 			}
 
 			return connectionIds;
@@ -35,11 +35,11 @@ namespace Felis.Router.Managers
 		{
 			lock (ConsumerConnectionMapLocker)
 			{
-				if (!FelisConnectionMap.ContainsKey(consumer))
+				if (!ConnectionMap.ContainsKey(consumer))
 				{
-					FelisConnectionMap[consumer] = new List<ConnectionId>();
+                    ConnectionMap[consumer] = new List<ConnectionId>();
 				}
-				FelisConnectionMap[consumer].Add(connectionId);
+                ConnectionMap[consumer].Add(connectionId);
 			}
 		}
 
@@ -47,13 +47,13 @@ namespace Felis.Router.Managers
 		{
 			lock (ConsumerConnectionMapLocker)
 			{
-			   var consumers = FelisConnectionMap.Where(x => x.Value.Contains(connectionId)).ToList();
+			   var consumers = ConnectionMap.Where(x => x.Value.Contains(connectionId)).ToList();
 
 			   if (!consumers.Any()) return;
 			   
 			   foreach (var consumer in consumers)
 			   {
-				   FelisConnectionMap.Remove(consumer.Key);
+                   ConnectionMap.Remove(consumer.Key);
 			   }
 			}
 		}

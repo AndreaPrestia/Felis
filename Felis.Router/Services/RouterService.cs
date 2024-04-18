@@ -5,17 +5,17 @@ using Microsoft.Extensions.Logging;
 
 namespace Felis.Router.Services;
 
-internal sealed class FelisRouterService
+internal sealed class RouterService
 {
-    private readonly ILogger<FelisRouterService> _logger;
-    private readonly FelisRouterStorage _storage;
-    private readonly FelisConnectionManager _felisConnectionManager;
+    private readonly ILogger<RouterService> _logger;
+    private readonly InMemoryRouterStorage _storage;
+    private readonly ConnectionManager _connectionManager;
 
-    public FelisRouterService(ILogger<FelisRouterService> logger, FelisRouterStorage storage, FelisConnectionManager felisConnectionManager)
+    public RouterService(ILogger<RouterService> logger, InMemoryRouterStorage storage, ConnectionManager connectionManager)
     {
         _logger = logger;
         _storage = storage;
-        _felisConnectionManager = felisConnectionManager;
+        _connectionManager = connectionManager;
     }
 
     public Task<bool> Dispatch(Topic? topic, Message? message)
@@ -69,7 +69,12 @@ internal sealed class FelisRouterService
             {
                 throw new ArgumentNullException(nameof(consumedMessage));
             }
-            
+
+            if (consumedMessage.Id != id)
+            {
+                throw new InvalidOperationException("The id provided in message and route are not matching");
+            }
+
             if (consumedMessage.Message?.Header?.Id != id)
             {
                 throw new InvalidOperationException("The id provided in message and route are not matching");
@@ -153,7 +158,7 @@ internal sealed class FelisRouterService
                 throw new ArgumentNullException(nameof(topic));
             }
             
-            return Task.FromResult(_felisConnectionManager.GetConnectedConsumers(topic));
+            return Task.FromResult(_connectionManager.GetConnectedConsumers(topic));
         }
         catch (Exception ex)
         {
@@ -198,7 +203,7 @@ internal sealed class FelisRouterService
         }
     }
 
-    public Task<List<ErrorMessage>> ErrorMessageList(Topic? topic = null)
+    public Task<List<ErrorMessage?>> ErrorMessageList(Topic? topic = null)
     {
         try
         {
@@ -207,7 +212,7 @@ internal sealed class FelisRouterService
         catch (Exception ex)
         {
             _logger.LogError(ex, ex.Message);
-            return Task.FromResult(new List<ErrorMessage>());
+            return Task.FromResult(new List<ErrorMessage?>());
         }
     }
 

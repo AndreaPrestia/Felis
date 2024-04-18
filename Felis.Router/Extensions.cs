@@ -1,9 +1,11 @@
-﻿using Felis.Router.Configurations;
+﻿using Felis.Router.Abstractions;
+using Felis.Router.Configurations;
 using Felis.Router.Hubs;
 using Felis.Router.Managers;
 using Felis.Router.Services;
 using Felis.Router.Services.Background;
 using Felis.Router.Storage;
+using LiteDB;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
@@ -15,14 +17,35 @@ namespace Felis.Router;
 
 public static class Extensions
 {
+    public static void AddInMemoryFelisRouter(this IHostBuilder builder)
+    {
+        builder.AddFelisRouterBase();
+        
+        builder.ConfigureServices((_, services) =>
+        {
+            services.AddSingleton<IRouterStorage, InMemoryRouterStorage>();
+        });
+    }
+
     public static void AddFelisRouter(this IHostBuilder builder)
+    {
+        builder.AddFelisRouterBase();
+
+        builder.ConfigureServices((_, services) =>
+        {
+            services.AddSingleton<ILiteDatabase>(_ => new LiteDatabase("Felis.db"));
+            services.AddSingleton<IRouterStorage, LiteDbRouterStorage>();
+        });
+    }
+
+    private static void AddFelisRouterBase(this IHostBuilder builder)
     {
         builder.ConfigureServices((context, services) =>
         {
-            services.Configure<FelisRouterConfiguration>(context.Configuration.GetSection(
-                FelisRouterConfiguration.FelisRouter));
+            services.Configure<RouterConfiguration>(context.Configuration.GetSection(
+                RouterConfiguration.FelisRouter));
 
-            var configuration = context.Configuration.GetSection(FelisRouterConfiguration.FelisRouter).Get<FelisRouterConfiguration>() ?? throw new ApplicationException($"{FelisRouterConfiguration.FelisRouter} configuration not provided");
+            var configuration = context.Configuration.GetSection(RouterConfiguration.FelisRouter).Get<RouterConfiguration>() ?? throw new ApplicationException($"{RouterConfiguration.FelisRouter} configuration not provided");
 
             if (configuration.MessageConfiguration == null)
             {
@@ -44,14 +67,13 @@ public static class Extensions
 
     private static void AddServices(IServiceCollection serviceCollection)
     {
-        serviceCollection.AddHostedService<FelisStorageRequeueService>();
-        serviceCollection.AddHostedService<FelisStorageCleanService>();
-        serviceCollection.AddHostedService<FelisSenderService>();
-        serviceCollection.AddSingleton<FelisConnectionManager>();
-        serviceCollection.AddSingleton<FelisRouterStorage>();
-        serviceCollection.AddSingleton<FelisRouterService>();
-        serviceCollection.AddSingleton<FelisRouterHub>();
-        serviceCollection.AddSingleton<FelisLoadBalancingService>();
+        serviceCollection.AddHostedService<RequeueService>();
+        serviceCollection.AddHostedService<CleanService>();
+        serviceCollection.AddHostedService<SenderService>();
+        serviceCollection.AddSingleton<ConnectionManager>();
+        serviceCollection.AddSingleton<RouterService>();
+        serviceCollection.AddSingleton<RouterHub>();
+        serviceCollection.AddSingleton<LoadBalancingService>();
     }
 
     private static void AddSwagger(IServiceCollection serviceCollection)
@@ -77,7 +99,7 @@ public static class Extensions
     
     public static void UseFelisRouter(this WebApplication app)
     {
-        app.MapHub<FelisRouterHub>("/felis/router");
+        app.MapHub<RouterHub>("/felis/router");
 
         app.UseSwagger();
 

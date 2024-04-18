@@ -8,12 +8,12 @@ using Microsoft.Extensions.Logging;
 namespace Felis.Router.Hubs;
 
 [Route("/felis/router")]
-internal sealed class FelisRouterHub : Hub
+internal sealed class RouterHub : Hub
 {
-    private readonly ILogger<FelisRouterHub> _logger;
-    private readonly FelisConnectionManager _felisConnectionManager;
+    private readonly ILogger<RouterHub> _logger;
+    private readonly ConnectionManager _felisConnectionManager;
 
-    public FelisRouterHub(ILogger<FelisRouterHub> logger, FelisConnectionManager felisConnectionManager)
+    public RouterHub(ILogger<RouterHub> logger, ConnectionManager felisConnectionManager)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _felisConnectionManager = felisConnectionManager ?? throw new ArgumentNullException(nameof(felisConnectionManager));

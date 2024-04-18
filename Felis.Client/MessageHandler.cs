@@ -115,7 +115,7 @@ public sealed class MessageHandler : IAsyncDisposable
                     }
                     
                     var responseMessage = await _httpClient.PostAsJsonAsync($"/messages/{messageIncoming.Header?.Id}/consume",
-                        new ConsumedMessage(messageIncoming,
+                        new ConsumedMessage(messageIncoming.Header!.Id, messageIncoming,
                             new ConnectionId(_hubConnection.ConnectionId)),
                         cancellationToken: cancellationToken);
 

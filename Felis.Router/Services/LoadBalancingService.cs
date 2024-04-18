@@ -5,21 +5,21 @@ using Microsoft.Extensions.Logging;
 
 namespace Felis.Router.Services;
 
-internal class FelisLoadBalancingService
+internal class LoadBalancingService
 {
-    private readonly ILogger<FelisLoadBalancingService> _logger;
-    private readonly FelisConnectionManager _felisConnectionManager;
-    private ConcurrentDictionary<Topic, int> _currentIndexDictionary = new();
+    private readonly ILogger<LoadBalancingService> _logger;
+    private readonly ConnectionManager _connectionManager;
+    private readonly ConcurrentDictionary<Topic, int> _currentIndexDictionary = new();
 
-    public FelisLoadBalancingService(ILogger<FelisLoadBalancingService> logger, FelisConnectionManager felisConnectionManager)
+    public LoadBalancingService(ILogger<LoadBalancingService> logger, ConnectionManager connectionManager)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _felisConnectionManager = felisConnectionManager ?? throw  new ArgumentNullException(nameof(felisConnectionManager));
+        _connectionManager = connectionManager ?? throw  new ArgumentNullException(nameof(connectionManager));
     }
 
     public ConnectionId? GetNextConnectionId(Topic topic)
     {
-        var connectionIds = _felisConnectionManager.GetConnectionIds(topic);
+        var connectionIds = _connectionManager.GetConnectionIds(topic);
         
         if (!connectionIds.Any())
         {

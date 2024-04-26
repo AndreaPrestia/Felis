@@ -8,5 +8,5 @@ internal abstract class ApiRouter
     /// Init routers
     /// </summary>
     /// <param name="app"></param>
-    public abstract void Init(WebApplication app);
+    public abstract void Init(IApplicationBuilder app);
 }

@@ -10,59 +10,99 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.OpenApi.Models;
 
 namespace Felis.Router;
 
 public static class Extensions
 {
-    public static void AddInMemoryFelisRouter(this IHostBuilder builder)
+    public static void UseFelisRouter(this IApplicationBuilder app)
     {
-        builder.AddFelisRouterBase();
-        
-        builder.ConfigureServices((_, services) =>
+        var serviceProvider = app.ApplicationServices;
+        var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+        var services = new ServiceCollection();
+        var registeredDescriptors = serviceProvider.GetServices<ServiceDescriptor>();
+        foreach (var descriptor in registeredDescriptors)
         {
-            services.AddSingleton<IRouterStorage, InMemoryRouterStorage>();
+            services.Add(descriptor);
+        }
+
+        services.AddRange(serviceProvider.)
+
+        services.AddFelisRouter(configuration);
+
+        services.BuildServiceProvider();
+
+        app.UseEndpoints(endpoints =>
+        {
+            endpoints.MapHub<RouterHub>("/felis/router");
         });
+
+        app.UseSwagger();
+
+        app.UseSwaggerUI(options => options.SwaggerEndpoint("/swagger/v1/swagger.json",
+            "Felis Router v1"));
+
+        InitIApiRouterInstances(app);
     }
 
-    public static void AddFelisRouter(this IHostBuilder builder)
+    public static void UseInMemoryFelisRouter(this IApplicationBuilder app)
     {
-        builder.AddFelisRouterBase();
+        var serviceProvider = app.ApplicationServices;
+        var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+        var services = app.ApplicationServices.GetRequiredService<IServiceCollection>();
 
-        builder.ConfigureServices((_, services) =>
+        services.AddInMemoryFelisRouter(configuration);
+
+        app.UseEndpoints(endpoints =>
         {
-            services.AddSingleton<ILiteDatabase>(_ => new LiteDatabase("Felis.db"));
-            services.AddSingleton<IRouterStorage, LiteDbRouterStorage>();
+            endpoints.MapHub<RouterHub>("/felis/router");
         });
+
+        app.UseSwagger();
+
+        app.UseSwaggerUI(options => options.SwaggerEndpoint("/swagger/v1/swagger.json",
+            "Felis Router v1"));
+
+        InitIApiRouterInstances(app);
     }
 
-    private static void AddFelisRouterBase(this IHostBuilder builder)
+    private static void AddInMemoryFelisRouter(this IServiceCollection services, IConfiguration configuration)
     {
-        builder.ConfigureServices((context, services) =>
+        services.AddFelisRouterBase(configuration);
+        services.AddSingleton<IRouterStorage, InMemoryRouterStorage>();
+    }
+
+    private static void AddFelisRouter(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddFelisRouterBase(configuration);
+        services.AddSingleton<ILiteDatabase>(_ => new LiteDatabase("Felis.db"));
+        services.AddSingleton<IRouterStorage, LiteDbRouterStorage>();
+    }
+
+    private static void AddFelisRouterBase(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<RouterConfiguration>(configuration.GetSection(
+            RouterConfiguration.FelisRouter));
+
+        var routerConfiguration = configuration.GetSection(RouterConfiguration.FelisRouter).Get<RouterConfiguration>() ?? throw new ApplicationException($"{RouterConfiguration.FelisRouter} configuration not provided");
+
+        if (routerConfiguration.MessageConfiguration == null)
         {
-            services.Configure<RouterConfiguration>(context.Configuration.GetSection(
-                RouterConfiguration.FelisRouter));
+            throw new ApplicationException("FelisRouter:MessageConfiguration not provided");
+        }
 
-            var configuration = context.Configuration.GetSection(RouterConfiguration.FelisRouter).Get<RouterConfiguration>() ?? throw new ApplicationException($"{RouterConfiguration.FelisRouter} configuration not provided");
-
-            if (configuration.MessageConfiguration == null)
-            {
-                throw new ApplicationException("FelisRouter:MessageConfiguration not provided");
-            }
-
-            services.Configure<JsonOptions>(options =>
-            {
-                options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
-            });
-
-            services.AddSignalR();
-
-            AddServices(services);
-
-            AddSwagger(services);
+        services.Configure<JsonOptions>(options =>
+        {
+            options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
         });
+
+        services.AddSignalR();
+
+        AddServices(services);
+
+        AddSwagger(services);
     }
 
     private static void AddServices(IServiceCollection serviceCollection)
@@ -96,20 +136,8 @@ public static class Extensions
             });
         });
     }
-    
-    public static void UseFelisRouter(this WebApplication app)
-    {
-        app.MapHub<RouterHub>("/felis/router");
 
-        app.UseSwagger();
-
-        app.UseSwaggerUI(options => options.SwaggerEndpoint("/swagger/v1/swagger.json",
-            $"Felis Router v1"));
-
-        InitIApiRouterInstances(app);
-    }
-
-    private static void InitIApiRouterInstances(WebApplication app)
+    private static void InitIApiRouterInstances(IApplicationBuilder app)
     {
         AppDomain.CurrentDomain.GetAssemblies().First(x => x.GetName().Name == "Felis.Router")
             .GetTypes().Where(t =>
@@ -124,5 +152,20 @@ public static class Extensions
 
                 instance.Init(app);
             });
+    }
+
+    public static IServiceCollection AddRange(this IServiceCollection current, IServiceCollection main)
+    {
+        if (current == null)
+        {
+            throw new ArgumentNullException(nameof(current));
+        }
+
+        foreach (var service in main)
+        {
+            current.Add(service);
+        }
+
+        return current;
     }
 }

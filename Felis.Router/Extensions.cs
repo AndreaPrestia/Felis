@@ -1,5 +1,6 @@
 ﻿using Felis.Router.Abstractions;
 using Felis.Router.Configurations;
+using Felis.Router.Endpoints;
 using Felis.Router.Hubs;
 using Felis.Router.Managers;
 using Felis.Router.Services;
@@ -7,6 +8,7 @@ using Felis.Router.Services.Background;
 using Felis.Router.Storage;
 using LiteDB;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,33 +21,20 @@ public static class Extensions
 {
     public static void UseFelisRouter(this IApplicationBuilder app)
     {
-        var serviceProvider = app.ApplicationServices;
-        var configuration = serviceProvider.GetRequiredService<IConfiguration>();
-        var services = new ServiceCollection();
-        var registeredDescriptors = serviceProvider.GetServices<ServiceDescriptor>();
-        foreach (var descriptor in registeredDescriptors)
-        {
-            services.Add(descriptor);
-        }
-
-        services.AddFelisRouter(configuration);
-
-        services.BuildServiceProvider();
-
         app.UseEndpoints(endpoints =>
         {
             endpoints.MapHub<RouterHub>("/felis/router");
+            endpoints.MapRouterEndpoints();
+            endpoints.MapGet("/", () => "Felis Router is up and running!").ExcludeFromDescription();
         });
 
         app.UseSwagger();
 
         app.UseSwaggerUI(options => options.SwaggerEndpoint("/swagger/v1/swagger.json",
             "Felis Router v1"));
-
-        InitIApiRouterInstances(app);
     }
 
-    private static void AddFelisRouter(this IServiceCollection services, IConfiguration configuration)
+    public static void AddFelisRouter(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddFelisRouterBase(configuration);
         services.AddSingleton<ILiteDatabase>(_ => new LiteDatabase("Felis.db"));
@@ -107,24 +96,7 @@ public static class Extensions
             });
         });
     }
-
-    private static void InitIApiRouterInstances(IApplicationBuilder app)
-    {
-        AppDomain.CurrentDomain.GetAssemblies().First(x => x.GetName().Name == "Felis.Router")
-            .GetTypes().Where(t =>
-                t.IsSubclassOf(typeof(ApiRouter)) && t is { IsInterface: false and false, IsAbstract: false }).ToList().ForEach(t =>
-            {
-                var instance = (ApiRouter)Activator.CreateInstance(t)!;
-
-                if (instance == null!)
-                {
-                    throw new ApplicationException($"Cannot create an instance of {t.Name}");
-                }
-
-                instance.Init(app);
-            });
-    }
-
+   
     public static IServiceCollection AddRange(this IServiceCollection current, IServiceCollection main)
     {
         if (current == null)

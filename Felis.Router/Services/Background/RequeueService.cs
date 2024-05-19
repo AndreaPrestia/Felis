@@ -51,8 +51,7 @@ internal sealed class RequeueService : BackgroundService
                         continue;
                     }
  
-                    var dispatchResult =
-                        await _routerService.Dispatch(errorMessage.Message?.Header?.Topic, errorMessage.Message);
+                    var dispatchResult = _routerService.Dispatch(errorMessage.Message?.Header?.Topic, errorMessage.Message);
 
                     _logger.LogInformation(
                         $"{(dispatchResult ? "Dispatched" : "Not dispatched")} message for Topic {errorMessage.Message?.Header?.Topic}");

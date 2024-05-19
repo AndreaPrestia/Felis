@@ -28,8 +28,6 @@ public static class Extensions
             services.Add(descriptor);
         }
 
-        services.AddRange(serviceProvider.)
-
         services.AddFelisRouter(configuration);
 
         services.BuildServiceProvider();
@@ -45,33 +43,6 @@ public static class Extensions
             "Felis Router v1"));
 
         InitIApiRouterInstances(app);
-    }
-
-    public static void UseInMemoryFelisRouter(this IApplicationBuilder app)
-    {
-        var serviceProvider = app.ApplicationServices;
-        var configuration = serviceProvider.GetRequiredService<IConfiguration>();
-        var services = app.ApplicationServices.GetRequiredService<IServiceCollection>();
-
-        services.AddInMemoryFelisRouter(configuration);
-
-        app.UseEndpoints(endpoints =>
-        {
-            endpoints.MapHub<RouterHub>("/felis/router");
-        });
-
-        app.UseSwagger();
-
-        app.UseSwaggerUI(options => options.SwaggerEndpoint("/swagger/v1/swagger.json",
-            "Felis Router v1"));
-
-        InitIApiRouterInstances(app);
-    }
-
-    private static void AddInMemoryFelisRouter(this IServiceCollection services, IConfiguration configuration)
-    {
-        services.AddFelisRouterBase(configuration);
-        services.AddSingleton<IRouterStorage, InMemoryRouterStorage>();
     }
 
     private static void AddFelisRouter(this IServiceCollection services, IConfiguration configuration)

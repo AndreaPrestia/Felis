@@ -1,10 +1,10 @@
-﻿using System.Net.Http.Json;
-using System.Text.Json;
-using Felis.Client.Resolvers;
+﻿using Felis.Client.Resolvers;
 using Felis.Core.Models;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System.Net.Http.Json;
+using System.Text.Json;
 
 namespace Felis.Client;
 
@@ -50,7 +50,7 @@ public sealed class MessageHandler : IAsyncDisposable
             var json = JsonSerializer.Serialize(payload);
 
             var responseMessage = await _httpClient.PostAsJsonAsync($"/messages/{topic}/dispatch",
-                new Message(new Header(Guid.NewGuid(), new Topic(topic)), new Content(json)),
+                new Message(new Header(Guid.NewGuid(), new Topic(topic), new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds()), new Content(json)),
                 cancellationToken: cancellationToken);
 
             responseMessage.EnsureSuccessStatusCode();
@@ -115,8 +115,7 @@ public sealed class MessageHandler : IAsyncDisposable
                     }
                     
                     var responseMessage = await _httpClient.PostAsJsonAsync($"/messages/{messageIncoming.Header?.Id}/consume",
-                        new ConsumedMessage(messageIncoming.Header!.Id, messageIncoming,
-                            new ConnectionId(_hubConnection.ConnectionId)),
+                        new ConsumedMessage(messageIncoming.Header!.Id, new ConnectionId(_hubConnection.ConnectionId), new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds()),
                         cancellationToken: cancellationToken);
 
                     responseMessage.EnsureSuccessStatusCode();
@@ -185,7 +184,7 @@ public sealed class MessageHandler : IAsyncDisposable
         try
         {
             var responseMessage = await _httpClient.PostAsJsonAsync($"/messages/{message?.Header?.Id}/error",
-                new ErrorMessage(message,
+                new ErrorMessageRequest(message!.Header!.Id,
                     new ConnectionId(_hubConnection?.ConnectionId), new ErrorDetail(exception?.Message, exception?.StackTrace), _retryPolicy),
                 cancellationToken: cancellationToken);
 

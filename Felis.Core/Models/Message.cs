@@ -2,7 +2,7 @@
 
 public record Message(Header? Header, Content? Content);
 
-public record Header(Guid Id, Topic? Topic)
+public record Header(Guid Id, Topic? Topic, long Timestamp)
 { 
     public long Timestamp => new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
 }

@@ -38,7 +38,7 @@ internal class Router : ApiRouter
 
             endpoints.MapPost("/messages/{id}/error",
                     async ([FromServices] RouterService service, [FromRoute] Guid id,
-                        [FromBody] ErrorMessage message) =>
+                        [FromBody] ErrorMessageRequest message) =>
                     {
                         var result = await service.Error(id, message);
 

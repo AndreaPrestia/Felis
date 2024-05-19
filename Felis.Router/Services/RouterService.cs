@@ -75,7 +75,7 @@ internal sealed class RouterService
                 throw new InvalidOperationException("The id provided in message and route are not matching");
             }
 
-            if (consumedMessage.Message?.Header?.Id != id)
+            if (consumedMessage.Id != id)
             {
                 throw new InvalidOperationException("The id provided in message and route are not matching");
             }
@@ -96,7 +96,7 @@ internal sealed class RouterService
         }
     }
 
-    public Task<bool> Error(Guid id, ErrorMessage? errorMessage)
+    public Task<bool> Error(Guid id, ErrorMessageRequest? errorMessage)
     {
         try
         {
@@ -105,7 +105,7 @@ internal sealed class RouterService
                 throw new ArgumentNullException(nameof(errorMessage));
             }
 
-            if (errorMessage.Message?.Header?.Id != id)
+            if (errorMessage.Id != id)
             {
                 throw new InvalidOperationException("The id provided in message and route are not matching");
             }
@@ -167,7 +167,7 @@ internal sealed class RouterService
         }
     }
 
-    public Task<List<Message?>> ReadyMessageList(Topic? topic = null)
+    public Task<List<Message>> ReadyMessageList(Topic? topic = null)
     {
         try
         {
@@ -181,11 +181,11 @@ internal sealed class RouterService
         catch (Exception ex)
         {
             _logger.LogError(ex, ex.Message);
-            return Task.FromResult(new List<Message?>());
+            return Task.FromResult(new List<Message>());
         }
     }
 
-    public Task<List<Message?>> SentMessageList(Topic? topic = null)
+    public Task<List<Message>> SentMessageList(Topic? topic = null)
     {
         try
         {
@@ -199,11 +199,11 @@ internal sealed class RouterService
         catch (Exception ex)
         {
             _logger.LogError(ex, ex.Message);
-            return Task.FromResult(new List<Message?>());
+            return Task.FromResult(new List<Message>());
         }
     }
 
-    public Task<List<ErrorMessage?>> ErrorMessageList(Topic? topic = null)
+    public Task<List<ErrorMessage>> ErrorMessageList(Topic? topic = null)
     {
         try
         {
@@ -212,11 +212,11 @@ internal sealed class RouterService
         catch (Exception ex)
         {
             _logger.LogError(ex, ex.Message);
-            return Task.FromResult(new List<ErrorMessage?>());
+            return Task.FromResult(new List<ErrorMessage>());
         }
     }
 
-    public Task<List<ConsumedMessage?>> ConsumedMessageList(ConnectionId connectionId)
+    public Task<List<ConsumedMessage>> ConsumedMessageList(ConnectionId connectionId)
     {
         try
         {
@@ -230,11 +230,11 @@ internal sealed class RouterService
         catch (Exception ex)
         {
             _logger.LogError(ex, ex.Message);
-            return Task.FromResult(new List<ConsumedMessage?>());
+            return Task.FromResult(new List<ConsumedMessage>());
         }
     }
 
-    public Task<List<ConsumedMessage?>> ConsumedMessageList(Topic topic)
+    public Task<List<ConsumedMessage>> ConsumedMessageList(Topic topic)
     {
         try
         {
@@ -248,11 +248,11 @@ internal sealed class RouterService
         catch (Exception ex)
         {
             _logger.LogError(ex, ex.Message);
-            return Task.FromResult(new List<ConsumedMessage?>());
+            return Task.FromResult(new List<ConsumedMessage>());
         }
     }
     
-    public Task<List<ConsumedMessage?>> ConsumedMessageList(ConnectionId connectionId, Topic topic)
+    public Task<List<ConsumedMessage>> ConsumedMessageList(ConnectionId connectionId, Topic topic)
     {
         try
         {
@@ -271,7 +271,7 @@ internal sealed class RouterService
         catch (Exception ex)
         {
             _logger.LogError(ex, ex.Message);
-            return Task.FromResult(new List<ConsumedMessage?>());
+            return Task.FromResult(new List<ConsumedMessage>());
         }
     }
 }

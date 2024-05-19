@@ -48,7 +48,7 @@ internal sealed class RequeueService : BackgroundService
                     if (errorMessage == null)
                     {
                         _logger.LogWarning("No error message to requeue. No messages will be requeued.");
-                        return;
+                        continue;
                     }
  
                     var dispatchResult =

@@ -1,5 +1,4 @@
 ﻿using System.Collections.Concurrent;
-using Felis.Core.Models;
 using Felis.Router.Managers;
 using Microsoft.Extensions.Logging;
 
@@ -17,7 +16,7 @@ internal class LoadBalancingService
         _connectionManager = connectionManager ?? throw  new ArgumentNullException(nameof(connectionManager));
     }
 
-    public ConnectionId? GetNextConnectionId(string topic)
+    public string? GetNextConnectionId(string topic)
     {
         var connectionIds = _connectionManager.GetConnectionIds(topic);
         

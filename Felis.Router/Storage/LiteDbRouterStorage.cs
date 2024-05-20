@@ -23,8 +23,7 @@ internal sealed class LiteDbRouterStorage : IRouterStorage
     public bool ConsumedMessageAdd(ConsumedMessage? consumedMessage)
     {
         ArgumentNullException.ThrowIfNull(consumedMessage);
-        ArgumentNullException.ThrowIfNull(consumedMessage.ConnectionId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(consumedMessage.ConnectionId.Value);
+        ArgumentException.ThrowIfNullOrWhiteSpace(consumedMessage.ConnectionId);
 
         lock (_lock)
         {
@@ -45,7 +44,7 @@ internal sealed class LiteDbRouterStorage : IRouterStorage
 
             messageFound.Ack.Add(new MessageAcknowledgement()
             {
-                ConnectionId = consumedMessage.ConnectionId.Value,
+                ConnectionId = consumedMessage.ConnectionId,
                 Timestamp = consumedMessage.Timestamp
             });
 
@@ -174,7 +173,7 @@ internal sealed class LiteDbRouterStorage : IRouterStorage
         }
     }
 
-    public List<ConsumedMessage> ConsumedMessageList(ConnectionId connectionId)
+    public List<ConsumedMessage> ConsumedMessageListByConnectionId(string connectionId)
     {
         lock (_lock)
         {
@@ -183,7 +182,7 @@ internal sealed class LiteDbRouterStorage : IRouterStorage
             var messages = messageCollection.Query().Where(x => x.Ack.Any()).OrderBy(x => x.Timestamp).ToList();
 
             return messages != null
-                ? messages.SelectMany(x => x.Ack).Select(ack => new ConsumedMessage(ack.MessageId, new ConnectionId(ack.ConnectionId), ack.Timestamp)).ToList()
+                ? messages.SelectMany(x => x.Ack).Select(ack => new ConsumedMessage(ack.MessageId, ack.ConnectionId, ack.Timestamp)).ToList()
                 : new();
 
         }
@@ -198,21 +197,21 @@ internal sealed class LiteDbRouterStorage : IRouterStorage
             var messages = messageCollection.Query().Where(x => x.Ack.Any() && x.Topic == topic).OrderBy(x => x.Timestamp).ToList();
 
             return messages != null
-                ? messages.SelectMany(x => x.Ack).Select(ack => new ConsumedMessage(ack.MessageId, new ConnectionId(ack.ConnectionId), ack.Timestamp)).ToList()
+                ? messages.SelectMany(x => x.Ack).Select(ack => new ConsumedMessage(ack.MessageId, ack.ConnectionId, ack.Timestamp)).ToList()
                 : new();
         }
     }
 
-    public List<ConsumedMessage> ConsumedMessageList(ConnectionId connectionId, string topic)
+    public List<ConsumedMessage> ConsumedMessageList(string connectionId, string topic)
     {
         lock (_lock)
         {
             var messageCollection = _database.GetCollection<MessageEntity>("messages");
 
-            var messages = messageCollection.Query().Where(x => x.Ack.Any(ack => ack.ConnectionId == connectionId.Value) && x.Topic == topic).OrderBy(x => x.Timestamp).ToList();
+            var messages = messageCollection.Query().Where(x => x.Ack.Any(ack => ack.ConnectionId == connectionId) && x.Topic == topic).OrderBy(x => x.Timestamp).ToList();
 
             return messages != null
-                ? messages.SelectMany(x => x.Ack).Select(ack => new ConsumedMessage(ack.MessageId, new ConnectionId(ack.ConnectionId), ack.Timestamp)).ToList()
+                ? messages.SelectMany(x => x.Ack).Select(ack => new ConsumedMessage(ack.MessageId, ack.ConnectionId, ack.Timestamp)).ToList()
                 : new();
         }
     }
@@ -255,7 +254,7 @@ internal sealed class LiteDbRouterStorage : IRouterStorage
     {
         ArgumentNullException.ThrowIfNull(message);
         ArgumentNullException.ThrowIfNull(message.ConnectionId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(message.ConnectionId.Value);
+        ArgumentException.ThrowIfNullOrWhiteSpace(message.ConnectionId);
         ArgumentNullException.ThrowIfNull(message.Error);
         ArgumentException.ThrowIfNullOrWhiteSpace(message.Error.Detail);
         ArgumentException.ThrowIfNullOrWhiteSpace(message.Error.Title);
@@ -279,13 +278,13 @@ internal sealed class LiteDbRouterStorage : IRouterStorage
 
             var hasRetryPolicy = message.RetryPolicy is { Attempts: > 0 };
 
-            var error = messageFound.Errors.FirstOrDefault(x => x.ConnectionId == message.ConnectionId.Value);
+            var error = messageFound.Errors.FirstOrDefault(x => x.ConnectionId == message.ConnectionId);
 
             if (error == null)
             {
                 error = new MessageError()
                 {
-                    ConnectionId = message.ConnectionId.Value
+                    ConnectionId = message.ConnectionId
                 };
 
                 messageFound.Errors.Add(error);
@@ -309,7 +308,7 @@ internal sealed class LiteDbRouterStorage : IRouterStorage
             {
                 messageFound.Retries.Add(new MessageRetry()
                 {
-                    ConnectionId = message.ConnectionId.Value,
+                    ConnectionId = message.ConnectionId,
                     Timestamp = message.Timestamp
                 });
             }
@@ -357,7 +356,7 @@ internal sealed class LiteDbRouterStorage : IRouterStorage
 
             var errorDetails = errorMessage.Errors.Where(e => e.ConnectionId == firstRetryToApply.ConnectionId).ToList();
 
-            return new ErrorMessage(errorMessage.Id, new Message(new Header(errorMessage.Id, errorMessage.Topic, errorMessage.Timestamp), new Content(errorMessage.Payload)), errorDetails.Select(ed => new ErrorMessageDetail(new ConnectionId(ed.ConnectionId), ed.Details.Select(d => new ErrorDetail(d.Title, d.Detail)).ToList(), ed.RetryPolicy != null ? new RetryPolicy(ed.RetryPolicy.Attempts) : null)).ToList());
+            return new ErrorMessage(errorMessage.Id, new Message(new Header(errorMessage.Id, errorMessage.Topic, errorMessage.Timestamp), new Content(errorMessage.Payload)), errorDetails.Select(ed => new ErrorMessageDetail(ed.ConnectionId, ed.Details.Select(d => new ErrorDetail(d.Title, d.Detail)).ToList(), ed.RetryPolicy != null ? new RetryPolicy(ed.RetryPolicy.Attempts) : null)).ToList());
         }
     }
 
@@ -371,7 +370,7 @@ internal sealed class LiteDbRouterStorage : IRouterStorage
                 ? messageCollection.Query().Where(x => x.Status == MessageStatus.Error && x.Topic == topic).ToList()
                 : messageCollection.Query().Where(x => x.Status == MessageStatus.Error).ToList();
 
-            return messages.Select(m => new ErrorMessage(m.Id, new Message(new Header(m.Id, m.Topic, m.Timestamp), new Content(m.Payload)), m.Errors.Select(d => new ErrorMessageDetail(new ConnectionId(d.ConnectionId), d.Details.Select(dt => new ErrorDetail(dt.Title, dt.Detail)).ToList(), d.RetryPolicy != null ? new RetryPolicy(d.RetryPolicy.Attempts) : null)).ToList())).ToList();
+            return messages.Select(m => new ErrorMessage(m.Id, new Message(new Header(m.Id, m.Topic, m.Timestamp), new Content(m.Payload)), m.Errors.Select(d => new ErrorMessageDetail(d.ConnectionId, d.Details.Select(dt => new ErrorDetail(dt.Title, dt.Detail)).ToList(), d.RetryPolicy != null ? new RetryPolicy(d.RetryPolicy.Attempts) : null)).ToList())).ToList();
         }
     }
 }

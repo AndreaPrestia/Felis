@@ -204,16 +204,16 @@ internal sealed class RouterService
         }
     }
 
-    public List<ConsumedMessage> ConsumedMessageList(ConnectionId connectionId)
+    public List<ConsumedMessage> ConsumedMessageListByConnectionId(string connectionId)
     {
         try
         {
-            if (connectionId == null)
+            if (string.IsNullOrWhiteSpace(connectionId))
             {
                 throw new ArgumentNullException(nameof(connectionId));
             }
             
-            return _storage.ConsumedMessageList(connectionId);
+            return _storage.ConsumedMessageListByConnectionId(connectionId);
         }
         catch (Exception ex)
         {
@@ -240,11 +240,11 @@ internal sealed class RouterService
         }
     }
     
-    public List<ConsumedMessage> ConsumedMessageList(ConnectionId connectionId, string topic)
+    public List<ConsumedMessage> ConsumedMessageList(string connectionId, string topic)
     {
         try
         {
-            if (connectionId == null)
+            if (string.IsNullOrWhiteSpace(connectionId))
             {
                 throw new ArgumentNullException(nameof(connectionId));
             }

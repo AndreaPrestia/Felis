@@ -45,13 +45,13 @@ namespace Felis.Router.Services.Background
 
                         var connectionId = _loadBalancingService.GetNextConnectionId(message.Header?.Topic!);
 
-                        if (connectionId == null || string.IsNullOrWhiteSpace(connectionId.Value))
+                        if (connectionId == null || string.IsNullOrWhiteSpace(connectionId))
                         {
                             _logger.LogWarning($"No connectionId available for topic {message.Header?.Topic}");
                             continue;
                         }
                         
-                        await _hubContext.Clients.Client(connectionId.Value).SendAsync(message.Header?.Topic!, message, stoppingToken);
+                        await _hubContext.Clients.Client(connectionId).SendAsync(message.Header?.Topic!, message, stoppingToken);
 
                         var messageSentSet = _routerStorage.SentMessageAdd(message);
 

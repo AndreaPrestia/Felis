@@ -115,7 +115,7 @@ public sealed class MessageHandler : IAsyncDisposable
                     }
                     
                     var responseMessage = await _httpClient.PostAsJsonAsync($"/messages/{messageIncoming.Header?.Id}/consume",
-                        new ConsumedMessage(messageIncoming.Header!.Id, new ConnectionId(_hubConnection.ConnectionId), new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds()),
+                        new ConsumedMessage(messageIncoming.Header!.Id, _hubConnection.ConnectionId, new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds()),
                         cancellationToken: cancellationToken);
 
                     responseMessage.EnsureSuccessStatusCode();
@@ -150,8 +150,8 @@ public sealed class MessageHandler : IAsyncDisposable
     {
         if (_hubConnection != null)
         {
-            await _hubConnection?.InvokeAsync("RemoveConnectionId", new ConnectionId(_hubConnection?.ConnectionId))!;
-            await _hubConnection!.DisposeAsync();
+            await _hubConnection.InvokeAsync("RemoveConnectionId", _hubConnection.ConnectionId);
+            await _hubConnection.DisposeAsync();
         }
     }
 
@@ -183,9 +183,12 @@ public sealed class MessageHandler : IAsyncDisposable
     {
         try
         {
+            ArgumentNullException.ThrowIfNull(_hubConnection);
+            ArgumentException.ThrowIfNullOrWhiteSpace(_hubConnection.ConnectionId);
+
             var responseMessage = await _httpClient.PostAsJsonAsync($"/messages/{message?.Header?.Id}/error",
                 new ErrorMessageRequest(message!.Header!.Id,
-                    new ConnectionId(_hubConnection?.ConnectionId), new ErrorDetail(exception?.Message, exception?.StackTrace), _retryPolicy),
+                    _hubConnection.ConnectionId, new ErrorDetail(exception?.Message, exception?.StackTrace), _retryPolicy),
                 cancellationToken: cancellationToken);
 
             responseMessage.EnsureSuccessStatusCode();

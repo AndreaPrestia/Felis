@@ -10,9 +10,9 @@ internal interface IRouterStorage
     List<Message> ReadyMessageList(string? topic = null);
     bool SentMessageAdd(Message? message);
     List<Message> SentMessageList(string? topic = null);
-    List<ConsumedMessage> ConsumedMessageList(ConnectionId connectionId);
+    List<ConsumedMessage> ConsumedMessageListByConnectionId(string connectionId);
     List<ConsumedMessage> ConsumedMessageList(string topic);
-    List<ConsumedMessage> ConsumedMessageList(ConnectionId connectionId, string topic);
+    List<ConsumedMessage> ConsumedMessageList(string connectionId, string topic);
     bool ReadyMessagePurge(string topic);
     bool ReadyMessagePurge(int? timeToLiveMinutes);
     bool ErrorMessageAdd(ErrorMessageRequest? message);

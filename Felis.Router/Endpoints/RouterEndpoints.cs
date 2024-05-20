@@ -114,9 +114,9 @@ internal static class RouterEndpoints
             .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
 
         endpointRouteBuilder.MapGet("/consumers/{connectionId}/messages",
-                ([FromServices] RouterService service, [FromRoute] string? connectionId) =>
+                ([FromServices] RouterService service, [FromRoute] string connectionId) =>
                 {
-                    var result = service.ConsumedMessageList(new ConnectionId(connectionId));
+                    var result = service.ConsumedMessageList(connectionId);
 
                     return Results.Ok(result);
                 }).WithName("ConsumedMessageListByConnectionId").Produces<List<ConsumedMessage>>()
@@ -125,9 +125,9 @@ internal static class RouterEndpoints
             .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
 
         endpointRouteBuilder.MapGet("/consumers/{connectionId}/messages/{topic}", ([FromServices] RouterService service,
-                [FromRoute] string? connectionId, [FromRoute] string topic) =>
+                [FromRoute] string connectionId, [FromRoute] string topic) =>
         {
-            var result = service.ConsumedMessageList(new ConnectionId(connectionId), topic);
+            var result = service.ConsumedMessageList(connectionId, topic);
 
             return Results.Ok(result);
         }).WithName("ConsumedMessageListByConnectionIdAndTopic").Produces<List<ConsumedMessage>>()

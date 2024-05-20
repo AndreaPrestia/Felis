@@ -4,7 +4,7 @@ namespace Felis.Router.Managers
 {
 	internal sealed class ConnectionManager 
 	{
-		private static readonly Dictionary<Consumer, List<ConnectionId>> ConnectionMap = new();
+		private static readonly Dictionary<Consumer, List<string>> ConnectionMap = new();
 		private static readonly string ConsumerConnectionMapLocker = string.Empty;
 
 		public List<Consumer> GetConnectedConsumers(string topic)
@@ -19,9 +19,9 @@ namespace Felis.Router.Managers
 			return consumers;
 		}
 
-		public List<ConnectionId> GetConnectionIds(string topic)
+		public List<string> GetConnectionIds(string topic)
 		{
-			List<ConnectionId> connectionIds;
+			List<string> connectionIds;
 
 			lock (ConsumerConnectionMapLocker)
 			{
@@ -31,19 +31,19 @@ namespace Felis.Router.Managers
 			return connectionIds;
 		}
 
-		public void KeepConsumerConnection(Consumer consumer, ConnectionId connectionId)
+		public void KeepConsumerConnection(Consumer consumer, string connectionId)
 		{
 			lock (ConsumerConnectionMapLocker)
 			{
 				if (!ConnectionMap.ContainsKey(consumer))
 				{
-                    ConnectionMap[consumer] = new List<ConnectionId>();
+                    ConnectionMap[consumer] = new List<string>();
 				}
                 ConnectionMap[consumer].Add(connectionId);
 			}
 		}
 
-		public void RemoveConsumerConnections(ConnectionId connectionId)
+		public void RemoveConsumerConnections(string connectionId)
 		{
 			lock (ConsumerConnectionMapLocker)
 			{

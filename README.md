@@ -49,12 +49,10 @@ curl -X 'POST' \
   -d '{
     "header": {
         "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-        "topic": {
-            "value": "test"
-        }
+        "topic": "test"
     },
     "content": {
-        "json": "{\"description\":\"Test\"}"
+        "payload": "{\"description\":\"Test\"}"
     }
 }'
 ```
@@ -64,10 +62,9 @@ Property | Type | Context |
 --- | --- | --- |
 header | object | the message header, containing the metadata of the message. |
 header.id | guid | the message global unique identifier. |
-header.topic | object | value object containing the topic of the message to dispatch. |
-header.topic.value | string | the actual content of the topic of the message to dispatch. |
+header.topic | string | the content of the topic of the message to dispatch. |
 content | object | the message content. |
-content.json | string | Json string of the message to dispatch. |
+content.payload | string | Json string of the message to dispatch. |
 
 ***Response***
 Status code | Type | Context |
@@ -90,17 +87,13 @@ curl -X 'POST' \
     "message": {
         "header": {
             "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-            "topic": {
-                "value": "test"
-            }
+            "topic": "test"
         },
         "content": {
-            "json": "{\"description\":\"Test\"}"
+            "payload": "{\"description\":\"Test\"}"
         }
     },
-    "connectionId": {
-        "value": "AYhRMfzMA62BvJn3paMczQ"
-    }
+    "connectionId": "AYhRMfzMA62BvJn3paMczQ"
 }'
 ```
 
@@ -110,12 +103,10 @@ Property | Type | Context |
 message | object | The message entity used by Felis system. |
 message.header | object | the message header, containing the metadata of the message. |
 message.header.id | guid | the message global unique identifier. |
-message.header.topic | object | value object containing the topic of the consumed message. |
-message.header.topic.value | string | the actual value of the topic of the consumed message. |
+message.header.topic | string | the content of the topic of the message to dispatch. |
 message.content | object | the message content. |
-message.content.json | string | Json string of the consumed message. |
-connectionId | object | the connectionId value object.    |
-connectionId.value | string | the actual value of the connectionId of the message that throws an error. |
+message.content.payload | string | Json string of the consumed message. |
+connectionId | string | the actual value of the connectionId of the message that throws an error. |
 
 ***Response***
 Status code | Type | Context |
@@ -136,23 +127,14 @@ curl -X 'POST' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
   -d '{
-    "message": {
-        "header": {
-            "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-            "topic": {
-                "value": "test"
-            },
-        },
-        "content": {
-            "json": "{\"description\":\"Test\"}"
-        }
-    },
-    "connectionId": {
-        "value": "AYhRMfzMA62BvJn3paMczQ"
-    },
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "connectionId": "AYhRMfzMA62BvJn3paMczQ",
     "error": {
         "title": "string",
         "detail": "string"
+    },
+    "retryPolicy": {
+        "attempts": 3
     }
 }'
 ```
@@ -160,18 +142,13 @@ curl -X 'POST' \
 ***Request***
 Property | Type | Context |
 --- | --- | --- |
-message | object | The message entity used by Felis system. |
-message.header | object | the message header, containing the metadata of the message. |
-message.header.id | guid | the message global unique identifier. |
-message.header.topic | object | value object containing the topic of the message that throws an error. |
-message.header.topic.value | string | the actual value of the topic of the message that throws an error. |
-message.content | object | the message content. |
-message.content.json | string | Json string of the message that throws an error. |
-connectionId | object | the connectionId value object.    |
-connectionId.value | string | the actual value of the connectionId of the message that throws an error. |
+id | guid | the message global unique identifier. |
+connectionId | string | the actual value of the connectionId of the message that throws an error. |
 error | object | The object containing the error occurred. |
 error.title | string | The .NET exception message. |
 error.detail | string | The .NET exception stacktrace. |
+retryPolicy | object | The object containing the retry policy to apply to the message. |
+retryPolicy.attempts | int | The number of attempts to retry to send a message. |
 
 ***Response***
 Status code | Type | Context |
@@ -195,8 +172,7 @@ curl -X 'DELETE' \
 
 Property | Type | Context |
 --- | --- | --- |
-topic | object | value object containing the topic of the message queue to purge. |
-topic.value | string | the actual value of the topic of the message queue to purge. |
+topic | string | the actual value of the topic of the message queue to purge. |
 
 ***Response***
 
@@ -225,22 +201,18 @@ curl -X 'GET' \
       "ipAddress":"192.168.1.1",
       "hostname":"host",
       "isPublic":true,
-      "topics":[
-         {
-            "value":"topic"
-         }
-      ]
+      "topics":["topic"]
    }
 ]
 ```
 This endpoint returns an array of clients.
 
-Property | Type | Context                                                                                                     |
---- | --- |-------------------------------------------------------------------------------------------------------------|
-ipAddress | string | The ipAddress property of the consumer.                                                                     |
-hostname | string | The hostname property of the consumer.                                                                      |
-isPublic | boolean | This property tells the router whether the consumer is configured to be discovered by other clients or not. |
-topics | array<Topic> | This property contains the array of topics subscribed by the consumer.                                      |
+Property | Type          | Context                                                                                                     |
+--- |---------------|-------------------------------------------------------------------------------------------------------------|
+ipAddress | string        | The ipAddress property of the consumer.                                                                     |
+hostname | string        | The hostname property of the consumer.                                                                      |
+isPublic | boolean       | This property tells the router whether the consumer is configured to be discovered by other clients or not. |
+topics | array<string> | This property contains the array of topics subscribed by the consumer.                                      |
 
 **message/{topic}/ready**
 
@@ -259,13 +231,11 @@ curl -X 'GET' \
   {
     "header": {
       "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-      "topic": {
-        "value": "string"
-      },
+      "topic": "string",
       "timestamp": 0
     },
     "content": {
-      "json": "string"
+      "payload": "string"
     }
   }
 ]
@@ -276,10 +246,9 @@ Property | Type | Context |
 --- | --- | --- |
 header | object | the message header, containing the metadata of the message. |
 header.id | guid | the message global unique identifier. |
-header.topic | object | value object containing the topic of the message ready to be sent. |
-header.topic.value | string | the actual value of the topic of the message ready to be sent. |
+header.topic | string | the actual value of the topic of the message ready to be sent. |
 content | object | the message content. |
-content.json | string | Json string of the message ready to be sent. |
+content.payload | string | Json string of the message ready to be sent. |
 
 **message/{topic}/sent**
 
@@ -298,13 +267,11 @@ curl -X 'GET' \
   {
     "header": {
       "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-      "topic": {
-        "value": "string"
-      },
+      "topic": "string",
       "timestamp": 0
     },
     "content": {
-      "json": "string"
+      "payload": "string"
     }
   }
 ]
@@ -315,10 +282,9 @@ Property | Type | Context |
 --- | --- | --- |
 header | object | the message header, containing the metadata of the message. |
 header.id | guid | the message global unique identifier. |
-header.topic | object | value object containing the topic of the message ready to be sent. |
-header.topic.value | string | the actual value of the topic of the message ready to be sent. |
+header.topic | string | the actual value of the topic of the message ready to be sent. |
 content | object | the message content. |
-content.json | string | Json string of the message ready to be sent. |
+content.payload | string | Json string of the message ready to be sent. |
 
 **messages/{topic}/error**
 
@@ -342,37 +308,39 @@ curl -X 'GET' \
             "header": {
                 "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
                 "timestamp": 0,
-                "topic": {
-                    "value": "string"
-                }
+                "topic": "string"
             }
         },
-        "connectionId": {
-            "value": "AYhRMfzMA62BvJn3paMczQ"
-        },
-        "error": {
-            "title": "string",
-            "detail": "string"
-        }
+        "errors": [
+            "connectionId": "AYhRMfzMA62BvJn3paMczQ",
+            "details": [
+                {
+                    "title": "string",
+                    "detail": "string"
+                }
+            ]
+            "retryPolicy": {
+                "attempts": 1
+            }
+        ]
     }
 ]
 ```
 This endpoint returns an array of messages with related error and connection id where the error happened.
 
-Property | Type | Context                                                                  |
---- | --- |--------------------------------------------------------------------------|
-message | object | The message entity used by Felis system.                                 |
-message.header | object | the message header, containing the metadata of the message.              |
-message.header.id | guid | the message global unique identifier.                                    |
-message.header.topic | object | value object containing the topic of the message that throws an error.   |
-message.header.topic.value | string | the actual value of the topic of the message that throws an error.       |
-message.content | object | the message content.                                                     |
-message.content.json | string | Json string of the message that throws an error.                         |
-connectionId | object | the connectionId value object.    |
-connectionId.value | string | the actual value of the connectionId of the message that throws an error. |
-error | object | The object containing the error occurred.                                |
-error.title | string | The .NET exception message.                                              |
-error.detail | string | The .NET exception stacktrace.                                           |
+Property | Type         | Context                                                                   |
+--- |--------------|---------------------------------------------------------------------------|
+message | object       | The message entity used by Felis system.                                  |
+message.header | object       | the message header, containing the metadata of the message.               |
+message.header.id | guid         | the message global unique identifier.                                     |
+message.header.topic | string       | the actual value of the topic of the message that throws an error.        |
+message.content | object       | the message content.                                                      |
+message.content.payload | string       | Json string of the message that throws an error.                          |
+errors | array<object | array of the errors occurred on the message                               |
+errors.connectionId | string       | the actual value of the connectionId of the message that throws an error. |
+errors.details | array<object> | The array of object containing the error details occurred.                |
+errors.details.title | string       | The .NET exception message.                                               |
+errors.details.detail | string       | The .NET exception stacktrace.                                            |
 
 **messages/{topic}/consumed**
 
@@ -389,21 +357,8 @@ curl -X 'GET' \
 ```
 [
     {
-        "message": {
-            "content": {
-                "json": "string"
-            },
-            "header": {
-                "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                "timestamp": 0,
-                "topic": {
-                    "value": "string"
-                }
-            }
-        },
-        "connectionId": {
-            "value": "AYhRMfzMA62BvJn3paMczQ"
-        },
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "connectionId": "AYhRMfzMA62BvJn3paMczQ",
         "timestamp": 0
     }
 ]
@@ -412,15 +367,8 @@ This endpoint returns an array of messages that are consumed, with related conne
 
 Property | Type | Context                                                                         |
 --- | --- |---------------------------------------------------------------------------------|
-message | object | The message entity used by Felis system.                                        |
-message.header | object | the message header, containing the metadata of the message.                     |
-message.header.id | guid | the message global unique identifier.                                           |
-message.header.topic | object | value object containing the topic of the message consumed.          |
-message.header.topic.value | string | the actual value of the topic of the message consumed.                          |
-message.content | object | the message content.                                                            |
-message.content.json | string | Json string of the message consumed.                                            |
-connectionId | object | the connectionId value object.    |
-connectionId.value | string | the actual value of the connectionId of the message consumed. |
+id | guid | the message global unique identifier.                                           |
+connectionId | string | the actual value of the connectionId of the message consumed. |
 timestamp | long | The unix time in milliseconds that provides the consume time.                   |
 
 **consumers/{connectionId}/messages**
@@ -445,15 +393,11 @@ curl -X 'GET' \
             "header": {
                 "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
                 "timestamp": 0,
-                "topic": {
-                    "value": "string"
-                }
+                "topic": "string"
             }
         },
-        "connectionId": {
-            "value": "AYhRMfzMA62BvJn3paMczQ"
-        },
-	"timestamp": 0
+        "connectionId": "AYhRMfzMA62BvJn3paMczQ",
+	    "timestamp": 0
     }
 ]
 ```
@@ -464,12 +408,10 @@ Property | Type | Context |
 message | object | The message entity used by Felis system. |
 message.header | object | the message header, containing the metadata of the message. |
 message.header.id | guid | the message global unique identifier. |
-message.header.topic | object | value object containing the topic of the message consumed. |
-message.header.topic.value | string | the actual value of the topic of the message consumed. |
+message.header.topic | string | the actual value of the topic of the message consumed. |
 message.content | object | the message content. |
-message.content.json | string | Json string of the message consumed. |
-connectionId | object | the connectionId value object.    |
-connectionId.value | string | the actual value of the connectionId of the message consumed. |
+message.content.payload | string | Json string of the message consumed. |
+connectionId | string | the actual value of the connectionId of the message consumed. |
 timestamp | long | The unix time in milliseconds that provides the consume time. |
 
 **consumers/{connectionId}/messages/{topic}**
@@ -494,14 +436,10 @@ curl -X 'GET' \
             "header": {
                 "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
                 "timestamp": 0,
-                "topic": {
-                    "value": "string"
-                }
+                "topic": "string"
             }
         },
-        "connectionId": {
-            "value": "AYhRMfzMA62BvJn3paMczQ"
-        },
+        "connectionId": "AYhRMfzMA62BvJn3paMczQ",
 	"timestamp": 0
     }
 ]
@@ -513,12 +451,10 @@ Property | Type | Context |
 message | object | The message entity used by Felis system. |
 message.id | guid | the message global unique identifier. |
 message.header | object | the message header, containing the metadata of the message. |
-message.header.topic | object | value object containing the topic of the message consumed. |
-message.header.topic.value | string | the actual value of the topic of the message consumed. |
+message.header.topic | string | the actual value of the topic of the message consumed. |
 message.content | object | the message content. |
 message.content.json | string | Json string of the message consumed. |
-connectionId | object | the connectionId value object.    |
-connectionId.value | string | the actual value of the connectionId of the message consumed. |
+connectionId | string | the actual value of the connectionId of the message consumed. |
 timestamp | long | The unix time in milliseconds that provides the consume time. |
 
 

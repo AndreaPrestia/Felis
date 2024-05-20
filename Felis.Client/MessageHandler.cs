@@ -106,7 +106,7 @@ public sealed class MessageHandler : IAsyncDisposable
                         return;
                     }
 
-                    var consumerSearchResult = _consumerResolver.ResolveConsumerByTopic(topicType, messageIncoming.Content?.Json);
+                    var consumerSearchResult = _consumerResolver.ResolveConsumerByTopic(topicType, messageIncoming.Content?.Payload);
 
                     if (consumerSearchResult.Error)
                     {

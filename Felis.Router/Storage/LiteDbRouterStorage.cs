@@ -64,7 +64,7 @@ internal sealed class LiteDbRouterStorage : IRouterStorage
         ArgumentNullException.ThrowIfNull(message.Header.Topic);
         ArgumentException.ThrowIfNullOrWhiteSpace(message.Header.Topic);
         ArgumentNullException.ThrowIfNull(message.Content);
-        ArgumentException.ThrowIfNullOrWhiteSpace(message.Content.Json);
+        ArgumentException.ThrowIfNullOrWhiteSpace(message.Content.Payload);
 
         lock (_lock)
         {
@@ -75,7 +75,7 @@ internal sealed class LiteDbRouterStorage : IRouterStorage
                 Id = message.Header.Id,
                 Timestamp = message.Header.Timestamp,
                 Topic = message.Header.Topic,
-                Payload = message.Content.Json,
+                Payload = message.Content.Payload,
                 UpdatedAt = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(),
                 Status = MessageStatus.Queued
             });

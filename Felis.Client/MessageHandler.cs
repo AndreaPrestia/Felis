@@ -12,7 +12,7 @@ public sealed class MessageHandler : IAsyncDisposable
 {
     private readonly HubConnection? _hubConnection;
     private readonly ILogger<MessageHandler> _logger;
-    private List<Topic>? _topics;
+    private List<string>? _topics;
     private readonly HttpClient _httpClient;
     private RetryPolicy? _retryPolicy;
     private string? _friendlyName;
@@ -50,7 +50,7 @@ public sealed class MessageHandler : IAsyncDisposable
             var json = JsonSerializer.Serialize(payload);
 
             var responseMessage = await _httpClient.PostAsJsonAsync($"/messages/{topic}/dispatch",
-                new Message(new Header(Guid.NewGuid(), new Topic(topic), new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds()), new Content(json)),
+                new Message(new Header(Guid.NewGuid(), topic, new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds()), new Content(json)),
                 cancellationToken: cancellationToken);
 
             responseMessage.EnsureSuccessStatusCode();
@@ -77,12 +77,12 @@ public sealed class MessageHandler : IAsyncDisposable
 
         foreach (var topicType in topicsTypes)
         {
-            if (string.IsNullOrWhiteSpace(topicType.Key.Value))
+            if (string.IsNullOrWhiteSpace(topicType.Key))
             {
                 continue;
             }
             
-            _hubConnection.On<Message?>(topicType.Key.Value, async (messageIncoming) =>
+            _hubConnection.On<Message?>(topicType.Key, async (messageIncoming) =>
             {
                 try
                 {
@@ -93,7 +93,7 @@ public sealed class MessageHandler : IAsyncDisposable
                     }
 
                     if (messageIncoming.Header?.Topic == null ||
-                        string.IsNullOrWhiteSpace(messageIncoming.Header?.Topic?.Value))
+                        string.IsNullOrWhiteSpace(messageIncoming.Header?.Topic))
                     {
                         
                         _logger.LogWarning("No Topic provided in Header.");

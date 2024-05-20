@@ -18,7 +18,7 @@ internal sealed class RouterService
         _connectionManager = connectionManager;
     }
 
-    public bool Dispatch(Topic? topic, Message? message)
+    public bool Dispatch(string? topic, Message? message)
     {
         try
         {
@@ -27,19 +27,12 @@ internal sealed class RouterService
                 throw new ArgumentNullException(nameof(message));
             }
 
-            if (message.Header?.Topic == null)
+            if (string.IsNullOrWhiteSpace(message.Header?.Topic))
             {
                 throw new ArgumentNullException($"No Topic provided in Header");
             }
 
-            var topicValue = message.Header?.Topic?.Value;
-
-            if (string.IsNullOrWhiteSpace(topicValue))
-            {
-                throw new ArgumentNullException($"No Topic Value provided in Header");
-            }
-
-            if (!string.Equals(topicValue, topic?.Value, StringComparison.InvariantCultureIgnoreCase))
+            if (!string.Equals(message.Header?.Topic, topic, StringComparison.InvariantCultureIgnoreCase))
             {
                 throw new InvalidOperationException("The topic provided in message and route are not matching");
             }
@@ -126,18 +119,13 @@ internal sealed class RouterService
         }
     }
 
-    public bool PurgeReady(Topic? topic)
+    public bool PurgeReady(string? topic)
     {
         try
         {
-            if (topic == null)
+            if (string.IsNullOrWhiteSpace(topic))
             {
                 throw new ArgumentNullException(nameof(topic));
-            }
-
-            if (string.IsNullOrWhiteSpace(topic.Value))
-            {
-                throw new ArgumentNullException(nameof(topic.Value));
             }
 
             return _storage.ReadyMessagePurge(topic);
@@ -149,11 +137,11 @@ internal sealed class RouterService
         }
     }
 
-    public List<Consumer> Consumers(Topic? topic)
+    public List<Consumer> Consumers(string? topic)
     {
         try
         {
-            if (topic == null)
+            if (string.IsNullOrWhiteSpace(topic))
             {
                 throw new ArgumentNullException(nameof(topic));
             }
@@ -167,11 +155,11 @@ internal sealed class RouterService
         }
     }
 
-    public List<Message> ReadyMessageList(Topic? topic = null)
+    public List<Message> ReadyMessageList(string? topic = null)
     {
         try
         {
-            if (topic == null)
+            if (string.IsNullOrWhiteSpace(topic))
             {
                 throw new ArgumentNullException(nameof(topic));
             }
@@ -185,11 +173,11 @@ internal sealed class RouterService
         }
     }
 
-    public List<Message> SentMessageList(Topic? topic = null)
+    public List<Message> SentMessageList(string? topic = null)
     {
         try
         {
-            if (topic == null)
+            if (string.IsNullOrWhiteSpace(topic))
             {
                 throw new ArgumentNullException(nameof(topic));
             }
@@ -203,7 +191,7 @@ internal sealed class RouterService
         }
     }
 
-    public List<ErrorMessage> ErrorMessageList(Topic? topic = null)
+    public List<ErrorMessage> ErrorMessageList(string? topic = null)
     {
         try
         {
@@ -234,11 +222,11 @@ internal sealed class RouterService
         }
     }
 
-    public List<ConsumedMessage> ConsumedMessageList(Topic topic)
+    public List<ConsumedMessage> ConsumedMessageList(string topic)
     {
         try
         {
-            if (topic == null)
+            if (string.IsNullOrWhiteSpace(topic))
             {
                 throw new ArgumentNullException(nameof(topic));
             }
@@ -252,7 +240,7 @@ internal sealed class RouterService
         }
     }
     
-    public List<ConsumedMessage> ConsumedMessageList(ConnectionId connectionId, Topic topic)
+    public List<ConsumedMessage> ConsumedMessageList(ConnectionId connectionId, string topic)
     {
         try
         {
@@ -261,7 +249,7 @@ internal sealed class RouterService
                 throw new ArgumentNullException(nameof(connectionId));
             }
             
-            if (topic == null)
+            if (string.IsNullOrWhiteSpace(topic))
             {
                 throw new ArgumentNullException(nameof(topic));
             }

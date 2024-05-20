@@ -1,7 +1,7 @@
 ﻿namespace Felis.Core.Models;
 
-public record Consumer(string FriendlyName, string? Hostname, string? IpAddress, List<Topic> Topics)
+public record Consumer(string FriendlyName, string? Hostname, string? IpAddress, List<string> Topics)
 {
-    public List<Topic> Topics { get; set; } = Topics;
+    public List<string> Topics { get; set; } = Topics;
 }
 

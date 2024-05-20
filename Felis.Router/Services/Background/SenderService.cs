@@ -33,9 +33,9 @@ namespace Felis.Router.Services.Background
                     {
                         var message = _routerStorage.ReadyMessageGet();
 
-                        if (message == null || string.IsNullOrWhiteSpace(message.Header?.Topic?.Value)) continue;
+                        if (message == null || string.IsNullOrWhiteSpace(message.Header?.Topic)) continue;
 
-                        _logger.LogInformation($"Sending message {message.Header?.Id} for topic {message.Header?.Topic?.Value}");
+                        _logger.LogInformation($"Sending message {message.Header?.Id} for topic {message.Header?.Topic}");
 
                         if (message.Header?.Topic == null)
                         {
@@ -47,11 +47,11 @@ namespace Felis.Router.Services.Background
 
                         if (connectionId == null || string.IsNullOrWhiteSpace(connectionId.Value))
                         {
-                            _logger.LogWarning($"No connectionId available for topic {message.Header?.Topic?.Value}");
+                            _logger.LogWarning($"No connectionId available for topic {message.Header?.Topic}");
                             continue;
                         }
                         
-                        await _hubContext.Clients.Client(connectionId.Value).SendAsync(message.Header?.Topic?.Value!, message, stoppingToken);
+                        await _hubContext.Clients.Client(connectionId.Value).SendAsync(message.Header?.Topic!, message, stoppingToken);
 
                         var messageSentSet = _routerStorage.SentMessageAdd(message);
 

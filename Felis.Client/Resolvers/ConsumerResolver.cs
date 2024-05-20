@@ -1,9 +1,8 @@
-﻿using System.Reflection;
-using System.Text.Json;
-using Felis.Client.Attributes;
+﻿using Felis.Client.Attributes;
 using Felis.Core;
-using Felis.Core.Models;
 using Microsoft.Extensions.DependencyInjection;
+using System.Reflection;
+using System.Text.Json;
 
 namespace Felis.Client.Resolvers;
 
@@ -16,7 +15,7 @@ internal sealed class ConsumerResolver
         _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
     }
 
-    internal ConsumerResolveResult ResolveConsumerByTopic(KeyValuePair<Topic, Type> topicType, string? messagePayload)
+    internal ConsumerResolveResult ResolveConsumerByTopic(KeyValuePair<string, Type> topicType, string? messagePayload)
     {
         try
         {
@@ -28,7 +27,7 @@ internal sealed class ConsumerResolver
         }
     }
     
-    internal Dictionary<Topic, Type> GetTypesForTopics()
+    internal Dictionary<string, Type> GetTypesForTopics()
     {
         var topicTypes = AppDomain.CurrentDomain.GetAssemblies()
             .SelectMany(assembly => assembly.GetTypes())
@@ -36,13 +35,13 @@ internal sealed class ConsumerResolver
                            type.GetInterfaces().Any(i =>
                                i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IConsume<>))).SelectMany(t =>
                 t.GetCustomAttributes<TopicAttribute>()
-                    .Select(x => new KeyValuePair<Topic, Type>(new Topic(x.Value), t)))
+                    .Select(x => new KeyValuePair<string, Type>(x.Value!, t)))
             .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
         return topicTypes;
     }
     
-    private ConsumerResolveResult GetConsumer(KeyValuePair<Topic, Type> topicType, string? messagePayload)
+    private ConsumerResolveResult GetConsumer(KeyValuePair<string, Type> topicType, string? messagePayload)
     {
         if (topicType.Key == null)
         {
@@ -58,7 +57,7 @@ internal sealed class ConsumerResolver
 
         if (processParameterInfo == null)
         {
-            throw new InvalidOperationException($"Not found parameter of Consumer.Process for topic {topicType.Key.Value}");
+            throw new InvalidOperationException($"Not found parameter of Consumer.Process for topic {topicType.Key}");
         }
 
         var parameterType = processParameterInfo.ParameterType;
@@ -72,7 +71,7 @@ internal sealed class ConsumerResolver
 
         if (services == null || !services.Any())
         {
-            throw new ApplicationException($"No consumers registered for topic {topicType.Key.Value}");
+            throw new ApplicationException($"No consumers registered for topic {topicType.Key}");
         }
 
         var service = services.FirstOrDefault(e => e != null && e.GetType().FullName == topicType.Value.FullName);

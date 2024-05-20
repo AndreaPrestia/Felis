@@ -9,7 +9,7 @@ internal class LoadBalancingService
 {
     private readonly ILogger<LoadBalancingService> _logger;
     private readonly ConnectionManager _connectionManager;
-    private readonly ConcurrentDictionary<Topic, int> _currentIndexDictionary = new();
+    private readonly ConcurrentDictionary<string, int> _currentIndexDictionary = new();
 
     public LoadBalancingService(ILogger<LoadBalancingService> logger, ConnectionManager connectionManager)
     {
@@ -17,13 +17,13 @@ internal class LoadBalancingService
         _connectionManager = connectionManager ?? throw  new ArgumentNullException(nameof(connectionManager));
     }
 
-    public ConnectionId? GetNextConnectionId(Topic topic)
+    public ConnectionId? GetNextConnectionId(string topic)
     {
         var connectionIds = _connectionManager.GetConnectionIds(topic);
         
         if (!connectionIds.Any())
         {
-            _logger.LogInformation($"No consumers found for topic {topic.Value}");
+            _logger.LogInformation($"No consumers found for topic {topic}");
             return null;
         }
 
@@ -31,7 +31,7 @@ internal class LoadBalancingService
         {
            var added = _currentIndexDictionary.TryAdd(topic, 0);
            
-           _logger.LogDebug($"Index for topic {topic.Value} added {added}");
+           _logger.LogDebug($"Index for topic {topic} added {added}");
         }
 
         var currentIndex = _currentIndexDictionary[topic];
@@ -42,7 +42,7 @@ internal class LoadBalancingService
 
         var updated = _currentIndexDictionary.TryUpdate(topic, updatedIndex, currentIndex);
         
-        _logger.LogDebug($"Index for connectionId to use at the next run for topic {topic.Value} is {currentIndex} updated {updated}");
+        _logger.LogDebug($"Index for connectionId to use at the next run for topic {topic} is {currentIndex} updated {updated}");
         
         return connectionId;
     }

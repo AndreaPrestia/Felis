@@ -7,25 +7,25 @@ namespace Felis.Router.Managers
 		private static readonly Dictionary<Consumer, List<ConnectionId>> ConnectionMap = new();
 		private static readonly string ConsumerConnectionMapLocker = string.Empty;
 
-		public List<Consumer> GetConnectedConsumers(Topic topic)
+		public List<Consumer> GetConnectedConsumers(string topic)
 		{
 			List<Consumer> consumers;
 
 			lock (ConsumerConnectionMapLocker)
 			{
-				consumers = ConnectionMap.Select(x => x.Key).Where(x => x.Topics.Select(t => t.Value).ToList().Contains(topic.Value)).ToList();
+				consumers = ConnectionMap.Select(x => x.Key).Where(x => x.Topics.Select(t => t).ToList().Contains(topic)).ToList();
 			}
 
 			return consumers;
 		}
 
-		public List<ConnectionId> GetConnectionIds(Topic topic)
+		public List<ConnectionId> GetConnectionIds(string topic)
 		{
 			List<ConnectionId> connectionIds;
 
 			lock (ConsumerConnectionMapLocker)
 			{
-				connectionIds = ConnectionMap.Where(x => x.Key.Topics.Select(t => t.Value).ToList().Contains(topic.Value)).SelectMany(e => e.Value).ToList();
+				connectionIds = ConnectionMap.Where(x => x.Key.Topics.Select(t => t).ToList().Contains(topic)).SelectMany(e => e.Value).ToList();
 			}
 
 			return connectionIds;

@@ -7,15 +7,15 @@ internal interface IRouterStorage
     bool ConsumedMessageAdd(ConsumedMessage? consumedMessage);
     bool ReadyMessageAdd(Message? message);
     Message? ReadyMessageGet();
-    List<Message> ReadyMessageList(Topic? topic = null);
+    List<Message> ReadyMessageList(string? topic = null);
     bool SentMessageAdd(Message? message);
-    List<Message> SentMessageList(Topic? topic = null);
+    List<Message> SentMessageList(string? topic = null);
     List<ConsumedMessage> ConsumedMessageList(ConnectionId connectionId);
-    List<ConsumedMessage> ConsumedMessageList(Topic topic);
-    List<ConsumedMessage> ConsumedMessageList(ConnectionId connectionId, Topic topic);
-    bool ReadyMessagePurge(Topic? topic);
+    List<ConsumedMessage> ConsumedMessageList(string topic);
+    List<ConsumedMessage> ConsumedMessageList(ConnectionId connectionId, string topic);
+    bool ReadyMessagePurge(string topic);
     bool ReadyMessagePurge(int? timeToLiveMinutes);
     bool ErrorMessageAdd(ErrorMessageRequest? message);
     ErrorMessage? ErrorMessageGet();
-    List<ErrorMessage> ErrorMessageList(Topic? topic = null);
+    List<ErrorMessage> ErrorMessageList(string? topic = null);
 }

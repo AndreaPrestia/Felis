@@ -19,7 +19,7 @@ internal sealed class RouterHub : Hub
         _felisConnectionManager = felisConnectionManager ?? throw new ArgumentNullException(nameof(felisConnectionManager));
     }
 
-    public string SetConnectionId(List<Topic> topics, string friendlyName)
+    public string SetConnectionId(List<string> topics, string friendlyName)
     {
         try
         {

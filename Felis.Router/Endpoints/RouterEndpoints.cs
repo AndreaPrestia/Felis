@@ -19,9 +19,11 @@ internal static class RouterEndpoints
 
                   return !result ? Results.BadRequest("Failed operation") : Results.Created("/dispatch", message);
               }).WithName("MessageDispatch").Produces<CreatedResult>(StatusCodes.Status201Created)
-           .Produces<BadRequestResult>(StatusCodes.Status400BadRequest)
-           .Produces<UnauthorizedResult>(StatusCodes.Status401Unauthorized)
-           .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
+           .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
+           .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
+           .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)
+           .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
+           .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
         endpointRouteBuilder.MapPost("/messages/{id}/consume",
                  ([FromServices] RouterService service, [FromRoute] Guid id,
@@ -31,9 +33,11 @@ internal static class RouterEndpoints
 
                      return !result ? Results.BadRequest("Failed operation") : Results.Created("/consume", message);
                  }).WithName("MessageConsume").Produces<CreatedResult>(StatusCodes.Status201Created)
-            .Produces<BadRequestResult>(StatusCodes.Status400BadRequest)
-            .Produces<UnauthorizedResult>(StatusCodes.Status401Unauthorized)
-            .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
+            .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
+            .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
+            .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)
+            .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
+            .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
         endpointRouteBuilder.MapPost("/messages/{id}/error",
                 ([FromServices] RouterService service, [FromRoute] Guid id,
@@ -43,9 +47,11 @@ internal static class RouterEndpoints
 
                     return !result ? Results.BadRequest("Failed operation") : Results.Created("/error", message);
                 }).WithName("ErrorMessageAdd").Produces<CreatedResult>(StatusCodes.Status201Created)
-            .Produces<BadRequestResult>(StatusCodes.Status400BadRequest)
-            .Produces<UnauthorizedResult>(StatusCodes.Status401Unauthorized)
-            .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
+            .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
+            .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
+            .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)
+            .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
+            .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
         endpointRouteBuilder.MapDelete("/messages/{topic}/ready/purge",
                 ([FromServices] RouterService service, [FromRoute] string? topic) =>
@@ -54,9 +60,11 @@ internal static class RouterEndpoints
 
                     return !result ? Results.BadRequest("Failed operation") : Results.NoContent();
                 }).WithName("ReadyMessagePurge").Produces<NoContentResult>(StatusCodes.Status204NoContent)
-            .Produces<BadRequestResult>(StatusCodes.Status400BadRequest)
-            .Produces<UnauthorizedResult>(StatusCodes.Status401Unauthorized)
-            .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
+            .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
+            .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
+            .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)
+            .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
+            .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
         endpointRouteBuilder.MapGet("/messages/{topic}/consumers",
                 ([FromServices] RouterService service, [FromRoute] string? topic) =>
@@ -65,9 +73,11 @@ internal static class RouterEndpoints
 
                     return Results.Ok(result);
                 }).WithName("ConsumerList").Produces<List<Consumer>>()
-            .Produces<BadRequestResult>(StatusCodes.Status400BadRequest)
-            .Produces<UnauthorizedResult>(StatusCodes.Status401Unauthorized)
-            .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
+            .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
+            .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
+            .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)
+            .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
+            .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
         endpointRouteBuilder.MapGet("/messages/{topic}/ready",
                 ([FromServices] RouterService service, [FromRoute] string? topic) =>
@@ -76,9 +86,11 @@ internal static class RouterEndpoints
 
                     return Results.Ok(result);
                 }).WithName("ReadyMessageList").Produces<List<Message>>()
-            .Produces<BadRequestResult>(StatusCodes.Status400BadRequest)
-            .Produces<UnauthorizedResult>(StatusCodes.Status401Unauthorized)
-            .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
+            .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
+            .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
+            .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)
+            .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
+            .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
         endpointRouteBuilder.MapGet("/messages/{topic}/sent",
                 ([FromServices] RouterService service, [FromRoute] string? topic) =>
@@ -87,9 +99,11 @@ internal static class RouterEndpoints
 
                     return Results.Ok(result);
                 }).WithName("SentMessageList").Produces<List<Message>>()
-            .Produces<BadRequestResult>(StatusCodes.Status400BadRequest)
-            .Produces<UnauthorizedResult>(StatusCodes.Status401Unauthorized)
-            .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
+            .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
+            .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
+            .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)
+            .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
+            .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
         endpointRouteBuilder.MapGet("/messages/{topic}/error",
                 ([FromServices] RouterService service, [FromRoute] string? topic) =>
@@ -98,9 +112,11 @@ internal static class RouterEndpoints
 
                     return Results.Ok(result);
                 }).WithName("ErrorMessageList").Produces<List<ErrorMessage>>()
-            .Produces<BadRequestResult>(StatusCodes.Status400BadRequest)
-            .Produces<UnauthorizedResult>(StatusCodes.Status401Unauthorized)
-            .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
+            .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
+            .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
+            .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)
+            .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
+            .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
         endpointRouteBuilder.MapGet("/messages/{topic}/consumed",
                 ([FromServices] RouterService service, [FromRoute] string topic) =>
@@ -109,9 +125,11 @@ internal static class RouterEndpoints
 
                     return Results.Ok(result);
                 }).WithName("ConsumedMessageList").Produces<List<ConsumedMessage>>()
-            .Produces<BadRequestResult>(StatusCodes.Status400BadRequest)
-            .Produces<UnauthorizedResult>(StatusCodes.Status401Unauthorized)
-            .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
+            .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
+            .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
+            .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)
+            .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
+            .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
         endpointRouteBuilder.MapGet("/consumers/{connectionId}/messages",
                 ([FromServices] RouterService service, [FromRoute] string connectionId) =>
@@ -120,9 +138,11 @@ internal static class RouterEndpoints
 
                     return Results.Ok(result);
                 }).WithName("ConsumedMessageListByConnectionId").Produces<List<ConsumedMessage>>()
-            .Produces<BadRequestResult>(StatusCodes.Status400BadRequest)
-            .Produces<UnauthorizedResult>(StatusCodes.Status401Unauthorized)
-            .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
+            .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
+            .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
+            .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)
+            .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
+            .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
         endpointRouteBuilder.MapGet("/consumers/{connectionId}/messages/{topic}", ([FromServices] RouterService service,
                 [FromRoute] string connectionId, [FromRoute] string topic) =>
@@ -131,9 +151,11 @@ internal static class RouterEndpoints
 
             return Results.Ok(result);
         }).WithName("ConsumedMessageListByConnectionIdAndTopic").Produces<List<ConsumedMessage>>()
-            .Produces<BadRequestResult>(StatusCodes.Status400BadRequest)
-            .Produces<UnauthorizedResult>(StatusCodes.Status401Unauthorized)
-            .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
+            .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
+            .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
+            .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)
+            .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
+            .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
     }
 }
 

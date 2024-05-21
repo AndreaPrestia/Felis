@@ -3,6 +3,7 @@ using Felis.Router.Configurations;
 using Felis.Router.Endpoints;
 using Felis.Router.Hubs;
 using Felis.Router.Managers;
+using Felis.Router.Middlewares;
 using Felis.Router.Services;
 using Felis.Router.Services.Background;
 using Felis.Router.Storage;
@@ -12,7 +13,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.OpenApi.Models;
 
 namespace Felis.Router;
@@ -21,6 +21,10 @@ public static class Extensions
 {
     public static void UseFelisRouter(this IApplicationBuilder app)
     {
+        app.UseMiddleware<ErrorMiddleware>();
+
+        app.UseRouting();
+
         app.UseEndpoints(endpoints =>
         {
             endpoints.MapHub<RouterHub>("/felis/router");

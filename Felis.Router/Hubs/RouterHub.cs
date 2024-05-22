@@ -19,7 +19,7 @@ internal sealed class RouterHub : Hub
         _connectionManager = connectionManager ?? throw new ArgumentNullException(nameof(connectionManager));
     }
 
-    public string SetConnectionId(List<string> topics, string friendlyName)
+    public string SetConnectionId(List<string> topics, bool unique)
     {
         try
         {
@@ -32,7 +32,7 @@ internal sealed class RouterHub : Hub
 
             var clientHostname = Dns.GetHostEntry(clientIp).HostName;
 
-            _connectionManager.KeepConsumerConnection(new Consumer(friendlyName, clientHostname, clientIp.ToString(), topics), Context.ConnectionId);
+            _connectionManager.KeepConsumerConnection(new Consumer(clientHostname, clientIp.ToString(), topics, unique), Context.ConnectionId);
             return Context.ConnectionId;
         }
         catch (Exception ex)

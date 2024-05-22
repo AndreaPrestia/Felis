@@ -18,14 +18,22 @@ internal class LoadBalancingService
 
     public string? GetNextConnectionId(string topic)
     {
-        var connectionIds = _connectionManager.GetConnectionIds(topic);
+        var connectionEntities = _connectionManager.GetConnectionIds(topic);
         
-        if (!connectionIds.Any())
+        if (!connectionEntities.Any())
         {
             _logger.LogInformation($"No consumers found for topic {topic}");
             return null;
         }
 
+        var uniqueConsumer = connectionEntities.Where(x => x.Consumer.Unique).MinBy(x => x.Timestamp);
+
+        if (uniqueConsumer != null)
+        {
+            _logger.LogInformation($"Found unique consumer {uniqueConsumer.ConnectionId} for topic {topic}");
+            return uniqueConsumer.ConnectionId;
+        }
+        
         if (!_currentIndexDictionary.ContainsKey(topic))
         {
            var added = _currentIndexDictionary.TryAdd(topic, 0);
@@ -35,14 +43,14 @@ internal class LoadBalancingService
 
         var currentIndex = _currentIndexDictionary[topic];
         
-        var connectionId = connectionIds.ElementAt(currentIndex);
+        var connectionEntity = connectionEntities.ElementAt(currentIndex);
 
-        var updatedIndex = (currentIndex + 1) % connectionIds.Count;
+        var updatedIndex = (currentIndex + 1) % connectionEntities.Count;
 
         var updated = _currentIndexDictionary.TryUpdate(topic, updatedIndex, currentIndex);
         
         _logger.LogDebug($"Index for connectionId to use at the next run for topic {topic} is {currentIndex} updated {updated}");
         
-        return connectionId;
+        return connectionEntity.ConnectionId;
     }
 }

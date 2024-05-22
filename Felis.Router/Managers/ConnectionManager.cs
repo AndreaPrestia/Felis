@@ -1,61 +1,66 @@
 ﻿using Felis.Core.Models;
+using Felis.Router.Entities;
 
 namespace Felis.Router.Managers
 {
-	internal sealed class ConnectionManager 
-	{
-		private static readonly Dictionary<Consumer, List<string>> ConnectionMap = new();
-		private static readonly string ConsumerConnectionMapLocker = string.Empty;
+    internal sealed class ConnectionManager
+    {
+        private static readonly List<ConsumerConnectionEntity> ConnectionMap = new();
+        private static readonly string ConsumerConnectionMapLocker = string.Empty;
 
-		public List<Consumer> GetConnectedConsumers(string topic)
-		{
-			List<Consumer> consumers;
+        public List<Consumer> GetConnectedConsumers(string topic)
+        {
+            List<Consumer> consumers;
 
-			lock (ConsumerConnectionMapLocker)
-			{
-				consumers = ConnectionMap.Select(x => x.Key).Where(x => x.Topics.Select(t => t).ToList().Contains(topic)).ToList();
-			}
+            lock (ConsumerConnectionMapLocker)
+            {
+                consumers = ConnectionMap.Select(x => x.Consumer)
+                    .Where(x => x.Topics.Select(t => t).ToList().Contains(topic)).ToList();
+            }
 
-			return consumers;
-		}
+            return consumers;
+        }
 
-		public List<string> GetConnectionIds(string topic)
-		{
-			List<string> connectionIds;
+        public List<ConsumerConnectionEntity> GetConnectionIds(string topic)
+        {
+            List<ConsumerConnectionEntity> consumerConnections;
 
-			lock (ConsumerConnectionMapLocker)
-			{
-				connectionIds = ConnectionMap.Where(x => x.Key.Topics.Select(t => t).ToList().Contains(topic)).SelectMany(e => e.Value).ToList();
-			}
+            lock (ConsumerConnectionMapLocker)
+            {
+                consumerConnections = ConnectionMap
+                    .Where(x => x.Consumer.Topics.Select(t => t).ToList().Contains(topic)).ToList();
+            }
 
-			return connectionIds;
-		}
+            return consumerConnections;
+        }
 
-		public void KeepConsumerConnection(Consumer consumer, string connectionId)
-		{
-			lock (ConsumerConnectionMapLocker)
-			{
-				if (!ConnectionMap.ContainsKey(consumer))
-				{
-                    ConnectionMap[consumer] = new List<string>();
-				}
-                ConnectionMap[consumer].Add(connectionId);
-			}
-		}
+        public void KeepConsumerConnection(Consumer consumer, string connectionId)
+        {
+            lock (ConsumerConnectionMapLocker)
+            {
+                if (ConnectionMap.All(x =>
+                        !x.ConnectionId.Equals(connectionId, StringComparison.InvariantCultureIgnoreCase)))
+                {
+                    ConnectionMap.Add(new ConsumerConnectionEntity()
+                    {
+                        Consumer = consumer,
+                        ConnectionId = connectionId,
+                    });
+                }
+            }
+        }
 
-		public void RemoveConsumerConnections(string connectionId)
-		{
-			lock (ConsumerConnectionMapLocker)
-			{
-			   var consumers = ConnectionMap.Where(x => x.Value.Contains(connectionId)).ToList();
+        public void RemoveConsumerConnections(string connectionId)
+        {
+            lock (ConsumerConnectionMapLocker)
+            {
+                var consumers = ConnectionMap.Where(x =>
+                    !x.ConnectionId.Equals(connectionId, StringComparison.InvariantCultureIgnoreCase)).ToList();
 
-			   if (!consumers.Any()) return;
-			   
-			   foreach (var consumer in consumers)
-			   {
-                   ConnectionMap.Remove(consumer.Key);
-			   }
-			}
-		}
-	}
+                if (consumers.Count == 0) return;
+
+                consumers.ForEach(consumer => ConnectionMap.Remove(consumer));
+            }
+        }
+    }
 }

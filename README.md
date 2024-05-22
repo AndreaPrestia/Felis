@@ -200,8 +200,8 @@ curl -X 'GET' \
    {
       "ipAddress":"192.168.1.1",
       "hostname":"host",
-      "isPublic":true,
-      "topics":["topic"]
+      "topics":["topic"],
+      "unique": false
    }
 ]
 ```
@@ -211,8 +211,8 @@ Property | Type          | Context                                              
 --- |---------------|-------------------------------------------------------------------------------------------------------------|
 ipAddress | string        | The ipAddress property of the consumer.                                                                     |
 hostname | string        | The hostname property of the consumer.                                                                      |
-isPublic | boolean       | This property tells the router whether the consumer is configured to be discovered by other clients or not. |
 topics | array<string> | This property contains the array of topics subscribed by the consumer.                                      |
+unique | boolean       | This property tells the router whether the consumer is configured to be unique.                             |
 
 **message/{topic}/ready**
 
@@ -499,16 +499,17 @@ This application contains a class, called TestConsumer, that implements the Cons
 
 Just add the following line of code:
 ```
-builder.AddFelisClient("https://localhost:7103", 15, 5);
+builder.AddFelisClient("https://localhost:7103", false 15, 5);
 ```
 
 The signature of **AddFelisClient** method is made of:
 
-Parameter | Type | Context                                                                                                                                                                                                                                            |
---- | --- |----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-routerEndpoint | string | The FelisRouter endpoint that the client must subscribe.                                                                                                                                                                                           |
-pooledConnectionLifetimeMinutes | int | The internal http client PooledConnectionLifetimeMinutes. Not mandatory. Default value is 15.                                                                                                                                                      |
-maxAttempts | int | It tells the router the maximum number of attempts that should be made to resend a message in the error queue, according to the retry policy that you want to apply. All the attempts are logged in the router. Not mandatory, default value is 0. |
+Parameter | Type    | Context                                                                                                                                                                                                                                          |
+--- |---------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+routerEndpoint | string  | The FelisRouter endpoint that the client must subscribe.                                                                                                                                                                                         |
+unique | boolean | Tells to the FelisRouter if the consumer is unique.                                                                                                                                                                                              |
+pooledConnectionLifetimeMinutes | int     | The internal http client PooledConnectionLifetimeMinutes. Not mandatory. Default value is 15.                                                                                                                                                    |
+maxAttempts | int     | It tells the router the maximum number of attempts that should be made to resend a message in the error queue, according to the retry policy that you want to apply. All the attempts are logged in the router. Not mandatory, default value is 0. |
 
 **How do I use a consumer?**
 

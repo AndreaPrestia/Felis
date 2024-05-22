@@ -15,7 +15,7 @@ public sealed class MessageHandler : IAsyncDisposable
     private List<string>? _topics;
     private readonly HttpClient _httpClient;
     private RetryPolicy? _retryPolicy;
-    private string? _friendlyName;
+    private bool _unique;
     private readonly ConsumerResolver _consumerResolver;
 
     public MessageHandler(HubConnection? hubConnection, ILogger<MessageHandler> logger,HttpClient httpClient, IServiceScopeFactory serviceScopeFactory)
@@ -61,7 +61,7 @@ public sealed class MessageHandler : IAsyncDisposable
         }
     }
 
-    public async Task SubscribeAsync(string friendlyName, RetryPolicy? retryPolicy, CancellationToken cancellationToken = default)
+    public async Task SubscribeAsync(RetryPolicy? retryPolicy, bool unique, CancellationToken cancellationToken = default)
     {
         if (_hubConnection == null)
         {
@@ -69,7 +69,7 @@ public sealed class MessageHandler : IAsyncDisposable
         }
 
         _retryPolicy = retryPolicy;
-        _friendlyName = friendlyName;
+        _unique = unique;
         
         var topicsTypes = _consumerResolver.GetTypesForTopics();
 
@@ -171,7 +171,7 @@ public sealed class MessageHandler : IAsyncDisposable
                 await _hubConnection?.StartAsync(cancellationToken)!;
             }
 
-            await _hubConnection?.InvokeAsync("SetConnectionId", _topics, _friendlyName, cancellationToken)!;
+            await _hubConnection?.InvokeAsync("SetConnectionId", _topics, _unique,  cancellationToken)!;
         }
         catch (Exception ex)
         {

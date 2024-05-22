@@ -11,12 +11,12 @@ namespace Felis.Router.Hubs;
 internal sealed class RouterHub : Hub
 {
     private readonly ILogger<RouterHub> _logger;
-    private readonly ConnectionManager _felisConnectionManager;
+    private readonly ConnectionManager _connectionManager;
 
-    public RouterHub(ILogger<RouterHub> logger, ConnectionManager felisConnectionManager)
+    public RouterHub(ILogger<RouterHub> logger, ConnectionManager connectionManager)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _felisConnectionManager = felisConnectionManager ?? throw new ArgumentNullException(nameof(felisConnectionManager));
+        _connectionManager = connectionManager ?? throw new ArgumentNullException(nameof(connectionManager));
     }
 
     public string SetConnectionId(List<string> topics, string friendlyName)
@@ -32,7 +32,7 @@ internal sealed class RouterHub : Hub
 
             var clientHostname = Dns.GetHostEntry(clientIp).HostName;
 
-            _felisConnectionManager.KeepConsumerConnection(new Consumer(friendlyName, clientHostname, clientIp.ToString(), topics), Context.ConnectionId);
+            _connectionManager.KeepConsumerConnection(new Consumer(friendlyName, clientHostname, clientIp.ToString(), topics), Context.ConnectionId);
             return Context.ConnectionId;
         }
         catch (Exception ex)
@@ -46,7 +46,7 @@ internal sealed class RouterHub : Hub
     {
         try
         {
-            _felisConnectionManager.RemoveConsumerConnections(connectionId);
+            _connectionManager.RemoveConsumerConnections(connectionId);
         }
         catch (Exception ex)
         {

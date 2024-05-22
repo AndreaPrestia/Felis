@@ -23,7 +23,7 @@ internal sealed class RouterHub : Hub
     {
         try
         {
-            var clientIp = Context.GetHttpContext()?.Connection.RemoteIpAddress;
+            var clientIp = Context.GetHttpContext()?.Connection.RemoteIpAddress?.MapToIPv4();
 
             if (clientIp == null)
             {

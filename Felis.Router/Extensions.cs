@@ -1,5 +1,4 @@
 ﻿using Felis.Router.Abstractions;
-using Felis.Router.Configurations;
 using Felis.Router.Endpoints;
 using Felis.Router.Hubs;
 using Felis.Router.Managers;
@@ -11,7 +10,6 @@ using LiteDB;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.OpenApi.Models;
 
@@ -38,25 +36,8 @@ public static class Extensions
             "Felis Router v1"));
     }
 
-    public static void AddFelisRouter(this IServiceCollection services, IConfiguration configuration)
+    public static void AddFelisRouter(this IServiceCollection services)
     {
-        services.AddFelisRouterBase(configuration);
-        services.AddSingleton<ILiteDatabase>(_ => new LiteDatabase("Felis.db"));
-        services.AddSingleton<IRouterStorage, LiteDbRouterStorage>();
-    }
-
-    private static void AddFelisRouterBase(this IServiceCollection services, IConfiguration configuration)
-    {
-        services.Configure<RouterConfiguration>(configuration.GetSection(
-            RouterConfiguration.FelisRouter));
-
-        var routerConfiguration = configuration.GetSection(RouterConfiguration.FelisRouter).Get<RouterConfiguration>() ?? throw new ApplicationException($"{RouterConfiguration.FelisRouter} configuration not provided");
-
-        if (routerConfiguration.MessageConfiguration == null)
-        {
-            throw new ApplicationException("FelisRouter:MessageConfiguration not provided");
-        }
-
         services.Configure<JsonOptions>(options =>
         {
             options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
@@ -67,12 +48,13 @@ public static class Extensions
         AddServices(services);
 
         AddSwagger(services);
+        services.AddSingleton<ILiteDatabase>(_ => new LiteDatabase("Felis.db"));
+        services.AddSingleton<IRouterStorage, LiteDbRouterStorage>();
     }
 
     private static void AddServices(IServiceCollection serviceCollection)
     {
         serviceCollection.AddHostedService<RequeueService>();
-        serviceCollection.AddHostedService<CleanService>();
         serviceCollection.AddHostedService<SenderService>();
         serviceCollection.AddSingleton<ConnectionManager>();
         serviceCollection.AddSingleton<RouterService>();
@@ -99,20 +81,5 @@ public static class Extensions
                 }
             });
         });
-    }
-   
-    public static IServiceCollection AddRange(this IServiceCollection current, IServiceCollection main)
-    {
-        if (current == null)
-        {
-            throw new ArgumentNullException(nameof(current));
-        }
-
-        foreach (var service in main)
-        {
-            current.Add(service);
-        }
-
-        return current;
     }
 }

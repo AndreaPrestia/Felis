@@ -2,7 +2,7 @@ using Felis.Router;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddFelisRouter(builder.Configuration);
+builder.Services.AddFelisRouter();
 
 var app = builder.Build();
 

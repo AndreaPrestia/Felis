@@ -230,26 +230,6 @@ internal sealed class LiteDbRouterStorage : IRouterStorage
         }
     }
 
-    public bool ReadyMessagePurge(int? timeToLiveMinutes)
-    {
-        if (!timeToLiveMinutes.HasValue || timeToLiveMinutes <= 0)
-        {
-            return false;
-        }
-
-        lock (_lock)
-        {
-            var messageCollection = _database.GetCollection<MessageEntity>("messages");
-
-            var deleteResult = messageCollection.DeleteMany(m => m.Timestamp <
-                                                                 new DateTimeOffset(DateTime.UtcNow)
-                                                                     .AddMinutes(-timeToLiveMinutes.Value)
-                                                                     .ToUnixTimeMilliseconds());
-
-            return deleteResult > 0;
-        }
-    }
-
     public bool ErrorMessageAdd(ErrorMessageRequest? message)
     {
         ArgumentNullException.ThrowIfNull(message);

@@ -1,5 +1,4 @@
 ﻿using Felis.Router.Abstractions;
-using Felis.Router.Configurations;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -10,15 +9,12 @@ internal sealed class RequeueService : BackgroundService
 {
     private readonly IRouterStorage _routerStorage;
     private readonly ILogger<RequeueService> _logger;
-    private readonly RouterConfiguration _configuration;
     private readonly RouterService _routerService;
 
-    public RequeueService(IRouterStorage routerStorage, ILogger<RequeueService> logger,
-        IOptionsMonitor<RouterConfiguration> configuration, RouterService routerService)
+    public RequeueService(IRouterStorage routerStorage, ILogger<RequeueService> logger, RouterService routerService)
     {
         _routerStorage = routerStorage ?? throw new ArgumentNullException(nameof(routerStorage));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _configuration = configuration.CurrentValue ?? throw new ArgumentNullException(nameof(configuration));
         _routerService = routerService ?? throw new ArgumentNullException(nameof(routerService));
     }
 
@@ -26,17 +22,8 @@ internal sealed class RequeueService : BackgroundService
     {
         try
         {
-            var minutesForRequeue = _configuration.MessageConfiguration?.MinutesForEveryRequeue;
-
-            if (!minutesForRequeue.HasValue || minutesForRequeue <= 0)
-            {
-                _logger.LogWarning(
-                    "MinutesForEveryRequeue not correctly configured. The FelisStorageRequeueService won't process.");
-                return;
-            }
-
             var timer = new PeriodicTimer(
-                TimeSpan.FromMinutes(minutesForRequeue.Value));
+                TimeSpan.FromSeconds(30));
             while (await timer.WaitForNextTickAsync(stoppingToken))
             {
                 try

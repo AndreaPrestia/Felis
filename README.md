@@ -457,29 +457,6 @@ message.content.json | string | Json string of the message consumed. |
 connectionId | string | the actual value of the connectionId of the message consumed. |
 timestamp | long | The unix time in milliseconds that provides the consume time. |
 
-
-**Configuration**
-
-Add this section to appsettings.json. 
-
-```
-"FelisRouter": {
-    "MessageConfiguration": {
-      "TimeToLiveMinutes": 5,
-      "MinutesForEveryClean": 2,
-      "MinutesForEveryRequeue": 2
-    }
-  }
-```
-The configuration is made of:
-
-Property | Type | Context |
---- | --- | --- |
-MessageConfiguration | object | The message configuration. |
-MessageConfiguration.TimeToLiveMinutes | int | The TTL for a message in the router queue. |
-MessageConfiguration.MinutesForEveryClean | int | It makes the queue cleaner run every N minutes. |
-MessageConfiguration.MinutesForEveryRequeue | int | It makes the re-queue service run every N minutes. |
-
 **Program.cs**
 
 Add these two lines of code:

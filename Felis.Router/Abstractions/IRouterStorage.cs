@@ -14,7 +14,6 @@ internal interface IRouterStorage
     List<ConsumedMessage> ConsumedMessageList(string topic);
     List<ConsumedMessage> ConsumedMessageList(string connectionId, string topic);
     bool ReadyMessagePurge(string topic);
-    bool ReadyMessagePurge(int? timeToLiveMinutes);
     bool ErrorMessageAdd(ErrorMessageRequest? message);
     ErrorMessage? ErrorMessageGet();
     List<ErrorMessage> ErrorMessageList(string? topic = null);

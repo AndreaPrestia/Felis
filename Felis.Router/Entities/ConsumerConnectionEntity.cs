@@ -2,7 +2,7 @@
 
 namespace Felis.Router.Entities;
 
-public class ConsumerConnectionEntity
+internal class ConsumerConnectionEntity
 {
     public string ConnectionId { get; set; } = string.Empty;
     public Consumer Consumer { get; set; } = null!;

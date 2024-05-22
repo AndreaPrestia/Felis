@@ -1,7 +1,6 @@
 ﻿using Felis.Router.Abstractions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace Felis.Router.Services.Background;
 
@@ -38,10 +37,10 @@ internal sealed class RequeueService : BackgroundService
                         continue;
                     }
  
-                    var dispatchResult = _routerService.Dispatch(errorMessage.Message?.Header?.Topic, errorMessage.Message);
+                    var dispatchResult = _routerService.Dispatch(errorMessage.Message.Header?.Topic, errorMessage.Message);
 
                     _logger.LogInformation(
-                        $"{(dispatchResult ? "Dispatched" : "Not dispatched")} message for Topic {errorMessage.Message?.Header?.Topic}");
+                        $"{(dispatchResult ? "Dispatched" : "Not dispatched")} message for Topic {errorMessage.Message.Header?.Topic}");
                 }
                 catch (Exception ex)
                 {

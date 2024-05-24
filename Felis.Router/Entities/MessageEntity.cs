@@ -8,7 +8,7 @@ internal sealed class MessageEntity
     public long Timestamp { get; set; }
     public long UpdatedAt { get; set; }
     public MessageStatus Status { get; set; }
-    public List<MessageError> Errors { get; set; } = new();
+    public List<MessageError> Errors { get; } = new();
     public List<MessageAcknowledgement> Ack { get; set; } = new();
     public List<MessageRetry> Retries { get; set; } = new();
 }
@@ -48,9 +48,9 @@ internal class MessageRetry
 
 internal enum MessageStatus
 {
-    Queued,
-    Ready, 
+    Ready,
     Sent, 
-    Error,
-    Rejected
+    Consumed,
+    Processed,
+    Error
 }

@@ -31,8 +31,22 @@ internal static class RouterEndpoints
                  {
                      var result = service.Consume(id, message);
 
-                     return !result ? Results.BadRequest("Failed operation") : Results.Created("/consume", message);
-                 }).WithName("MessageConsume").Produces<CreatedResult>(StatusCodes.Status201Created)
+                     return !result ? Results.BadRequest("Failed operation") : Results.NoContent();
+                 }).WithName("MessageConsume").Produces<NoContentResult>(StatusCodes.Status204NoContent)
+            .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
+            .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
+            .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)
+            .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
+            .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
+        
+        endpointRouteBuilder.MapPost("/messages/{id}/process",
+                ([FromServices] RouterService service, [FromRoute] Guid id,
+                    [FromBody] ProcessedMessage message) =>
+                {
+                    var result = service.Process(id, message);
+
+                    return !result ? Results.BadRequest("Failed operation") : Results.NoContent();
+                }).WithName("MessageProcess").Produces<NoContentResult>(StatusCodes.Status204NoContent)
             .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
             .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
             .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)
@@ -45,8 +59,8 @@ internal static class RouterEndpoints
                 {
                     var result = service.Error(id, message);
 
-                    return !result ? Results.BadRequest("Failed operation") : Results.Created("/error", message);
-                }).WithName("ErrorMessageAdd").Produces<CreatedResult>(StatusCodes.Status201Created)
+                    return !result ? Results.BadRequest("Failed operation") : Results.NoContent();
+                }).WithName("ErrorMessageAdd").Produces<NoContentResult>(StatusCodes.Status204NoContent)
             .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
             .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
             .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)

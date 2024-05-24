@@ -23,7 +23,7 @@ internal sealed class RouterHub : Hub
     {
         try
         {
-            var clientIp = Context.GetHttpContext()?.Connection.RemoteIpAddress?.MapToIPv4();
+            var clientIp = Context.GetHttpContext()?.Connection.RemoteIpAddress;
 
             if (clientIp == null)
             {
@@ -32,7 +32,7 @@ internal sealed class RouterHub : Hub
 
             var clientHostname = Dns.GetHostEntry(clientIp).HostName;
 
-            _connectionManager.KeepConsumerConnection(new Consumer(clientHostname, clientIp.ToString(), topics, unique), Context.ConnectionId);
+            _connectionManager.KeepConsumerConnection(new Consumer(clientHostname, clientIp.MapToIPv4().ToString(), topics, unique), Context.ConnectionId);
             return Context.ConnectionId;
         }
         catch (Exception ex)

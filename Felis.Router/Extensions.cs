@@ -54,7 +54,6 @@ public static class Extensions
 
     private static void AddServices(IServiceCollection serviceCollection)
     {
-        serviceCollection.AddHostedService<RequeueService>();
         serviceCollection.AddHostedService<SenderService>();
         serviceCollection.AddSingleton<ConnectionManager>();
         serviceCollection.AddSingleton<RouterService>();

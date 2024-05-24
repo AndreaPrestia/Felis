@@ -119,6 +119,41 @@ internal sealed class RouterService
         }
     }
 
+    public bool Process(Guid id, ProcessedMessage? processedMessage)
+    {
+        try
+        {
+            if (processedMessage == null)
+            {
+                throw new ArgumentNullException(nameof(processedMessage));
+            }
+
+            if (processedMessage.Id != id)
+            {
+                throw new InvalidOperationException("The id provided in message and route are not matching");
+            }
+
+            if (processedMessage.Id != id)
+            {
+                throw new InvalidOperationException("The id provided in message and route are not matching");
+            }
+
+            var result = _storage.ProcessedMessageAdd(processedMessage);
+
+            if (!result)
+            {
+                _logger.LogWarning("Cannot add processed message in storage.");
+            }
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, ex.Message);
+            return false;
+        }
+    }
+
     public bool PurgeReady(string? topic)
     {
         try

@@ -42,13 +42,50 @@ internal sealed class LiteDbRouterStorage : IRouterStorage
                 return false;
             }
 
+            messageFound.Status = MessageStatus.Consumed;
+
             messageFound.Ack.Add(new MessageAcknowledgement()
             {
+                MessageId = consumedMessage.Id,
                 ConnectionId = consumedMessage.ConnectionId,
                 Timestamp = consumedMessage.Timestamp
             });
 
             var updateResult = messageCollection.Update(consumedMessage.Id, messageFound);
+            messageFound.UpdatedAt = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
+
+            _logger.LogDebug($"Update result {updateResult}");
+
+            return updateResult;
+        }
+    }
+
+    public bool ProcessedMessageAdd(ProcessedMessage? processedMessage)
+    {
+        ArgumentNullException.ThrowIfNull(processedMessage);
+        ArgumentException.ThrowIfNullOrWhiteSpace(processedMessage.ConnectionId);
+
+        lock (_lock)
+        {
+            if (processedMessage.Id == Guid.Empty)
+            {
+                throw new ArgumentException(nameof(processedMessage.Id));
+            }
+
+            var messageCollection = _database.GetCollection<MessageEntity>("messages");
+
+            var messageFound = messageCollection.FindById(processedMessage.Id);
+
+            if (messageFound == null)
+            {
+                _logger.LogWarning($"Message {processedMessage.Id} not found");
+                return false;
+            }
+
+            messageFound.Status = MessageStatus.Processed;
+            messageFound.UpdatedAt = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
+
+            var updateResult = messageCollection.Update(processedMessage.Id, messageFound);
 
             _logger.LogDebug($"Update result {updateResult}");
 
@@ -67,16 +104,16 @@ internal sealed class LiteDbRouterStorage : IRouterStorage
 
         lock (_lock)
         {
-            var readyCollection = _database.GetCollection<MessageEntity>("messages");
+            var messageCollection = _database.GetCollection<MessageEntity>("messages");
 
-            readyCollection.Insert(message.Header.Id, new MessageEntity()
+            messageCollection.Insert(message.Header.Id, new MessageEntity()
             {
                 Id = message.Header.Id,
                 Timestamp = message.Header.Timestamp,
                 Topic = message.Header.Topic,
                 Payload = message.Content.Payload,
                 UpdatedAt = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(),
-                Status = MessageStatus.Queued
+                Status = MessageStatus.Ready
             });
 
             return true;
@@ -89,20 +126,13 @@ internal sealed class LiteDbRouterStorage : IRouterStorage
         {
             var messageCollection = _database.GetCollection<MessageEntity>("messages");
 
-            var messageFound = messageCollection.Query().Where(x => x.Status == MessageStatus.Queued).OrderBy(e => e.Timestamp).FirstOrDefault();
+            var messageFound = messageCollection.Query().Where(x => x.Status == MessageStatus.Ready).OrderBy(e => e.Timestamp).FirstOrDefault();
 
             if (messageFound == null)
             {
                 _logger.LogWarning("No Queued message found to send");
                 return null;
             }
-
-            messageFound.Status = MessageStatus.Ready;
-            messageFound.UpdatedAt = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
-
-            var updateResult = messageCollection.Update(messageFound.Id, messageFound);
-
-            _logger.LogDebug($"Update result {updateResult}");
 
             return new Message(new Header(messageFound.Id, messageFound.Topic, messageFound.Timestamp), new Content(messageFound.Payload));
         }
@@ -291,9 +321,25 @@ internal sealed class LiteDbRouterStorage : IRouterStorage
                     ConnectionId = message.ConnectionId,
                     Timestamp = message.Timestamp
                 });
+                
+                var messageRetries = messageFound.Errors.All(x => x.RetryPolicy == null) ? new List<MessageRetry>() : messageFound.Retries.ToList();
+
+                var firstRetryToApply = messageRetries.Where(x => x.Sent == null).MinBy(x => x.Timestamp);
+
+                if (messageRetries.Count == 0 || firstRetryToApply == null)
+                {
+                    messageFound.Status = MessageStatus.Error;
+                }
+                else
+                {
+                    messageFound.Status = MessageStatus.Ready;
+                }
+            }
+            else
+            {
+                messageFound.Status = MessageStatus.Error;
             }
 
-            messageFound.Status = MessageStatus.Error;
             messageFound.UpdatedAt = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
 
             var updateResult = messageCollection.Update(messageFound.Id, messageFound);
@@ -301,42 +347,6 @@ internal sealed class LiteDbRouterStorage : IRouterStorage
             _logger.LogDebug($"Update result {updateResult}");
 
             return updateResult;
-        }
-    }
-
-    public ErrorMessage? ErrorMessageGet()
-    {
-        lock (_lock)
-        {
-            var messageCollection = _database.GetCollection<MessageEntity>("messages");
-
-            var errorMessage = messageCollection.Query().Where(x => x.Status == MessageStatus.Error).OrderBy(e => e.Timestamp).FirstOrDefault();
-
-            if (errorMessage == null)
-            {
-                _logger.LogWarning("No error message found to send");
-                return null;
-            }
-
-            var messageRetries = errorMessage.Errors.All(x => x.RetryPolicy == null) ? new List<MessageRetry>() : errorMessage.Retries.ToList();
-
-            var firstRetryToApply = messageRetries.Where(x => x.Sent == null).MinBy(x => x.Timestamp);
-
-            if (messageRetries.Count == 0 || firstRetryToApply == null)
-            {
-                errorMessage.Status = MessageStatus.Rejected;
-                errorMessage.UpdatedAt = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
-
-                var updateRejectedResult = messageCollection.Update(errorMessage.Id, errorMessage);
-
-                _logger.LogDebug($"Update result {updateRejectedResult}");
-
-                return null;
-            }
-
-            var errorDetails = errorMessage.Errors.Where(e => e.ConnectionId == firstRetryToApply.ConnectionId).ToList();
-
-            return new ErrorMessage(errorMessage.Id, new Message(new Header(errorMessage.Id, errorMessage.Topic, errorMessage.Timestamp), new Content(errorMessage.Payload)), errorDetails.Select(ed => new ErrorMessageDetail(ed.ConnectionId, ed.Details.Select(d => new ErrorDetail(d.Title, d.Detail)).ToList(), ed.RetryPolicy != null ? new RetryPolicy(ed.RetryPolicy.Attempts) : null)).ToList());
         }
     }
 

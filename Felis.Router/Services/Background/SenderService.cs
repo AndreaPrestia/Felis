@@ -26,7 +26,7 @@ namespace Felis.Router.Services.Background
             try
             {
                 var timer = new PeriodicTimer(
-                    TimeSpan.FromSeconds(10));
+                    TimeSpan.FromSeconds(30));
                 while (await timer.WaitForNextTickAsync(stoppingToken))
                 {
                     try

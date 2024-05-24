@@ -17,6 +17,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.Client.Test", "Exampl
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.Client.Second.Test", "Examples\Felis.Client.Second.Test\Felis.Client.Second.Test.csproj", "{60AE21D8-22ED-44C4-8FA3-CAD685E9A2BA}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Images", "Images", "{1AF83B20-B6BF-40A3-8DE3-8977167E9514}"
+	ProjectSection(SolutionItems) = preProject
+		Images\Felis.drawio.png = Images\Felis.drawio.png
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

@@ -16,7 +16,7 @@ namespace Felis.Client;
 
 public static class Extensions
 {
-	public static void AddFelisClient(this IHostBuilder builder, string routerEndpoint, string friendlyName, int pooledConnectionLifeTimeMinutes = 15, int maxAttempts = 0)
+	public static void AddFelisClient(this IHostBuilder builder, string routerEndpoint, bool unique = false, int pooledConnectionLifeTimeMinutes = 15, int maxAttempts = 0)
 	{
 		if (string.IsNullOrWhiteSpace(routerEndpoint))
 		{
@@ -63,7 +63,7 @@ public static class Extensions
 
 			var messageHandler = serviceProvider.GetService<MessageHandler>();
 
-			messageHandler?.SubscribeAsync(friendlyName, maxAttempts > 0 ? new RetryPolicy(maxAttempts) : null).Wait();
+			messageHandler?.SubscribeAsync(maxAttempts > 0 ? new RetryPolicy(maxAttempts) : null, unique).Wait();
 		});
 	}
 	

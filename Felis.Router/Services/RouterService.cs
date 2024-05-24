@@ -1,24 +1,24 @@
 ﻿using Felis.Core.Models;
+using Felis.Router.Abstractions;
 using Felis.Router.Managers;
-using Felis.Router.Storage;
 using Microsoft.Extensions.Logging;
 
 namespace Felis.Router.Services;
 
-internal sealed class FelisRouterService
+internal sealed class RouterService
 {
-    private readonly ILogger<FelisRouterService> _logger;
-    private readonly FelisRouterStorage _storage;
-    private readonly FelisConnectionManager _felisConnectionManager;
+    private readonly ILogger<RouterService> _logger;
+    private readonly IRouterStorage _storage;
+    private readonly ConnectionManager _connectionManager;
 
-    public FelisRouterService(ILogger<FelisRouterService> logger, FelisRouterStorage storage, FelisConnectionManager felisConnectionManager)
+    public RouterService(ILogger<RouterService> logger, IRouterStorage storage, ConnectionManager connectionManager)
     {
         _logger = logger;
         _storage = storage;
-        _felisConnectionManager = felisConnectionManager;
+        _connectionManager = connectionManager;
     }
 
-    public Task<bool> Dispatch(Topic? topic, Message? message)
+    public bool Dispatch(string? topic, Message? message)
     {
         try
         {
@@ -27,19 +27,12 @@ internal sealed class FelisRouterService
                 throw new ArgumentNullException(nameof(message));
             }
 
-            if (message.Header?.Topic == null)
+            if (string.IsNullOrWhiteSpace(message.Header?.Topic))
             {
                 throw new ArgumentNullException($"No Topic provided in Header");
             }
 
-            var topicValue = message.Header?.Topic?.Value;
-
-            if (string.IsNullOrWhiteSpace(topicValue))
-            {
-                throw new ArgumentNullException($"No Topic Value provided in Header");
-            }
-
-            if (!string.Equals(topicValue, topic?.Value, StringComparison.InvariantCultureIgnoreCase))
+            if (!string.Equals(message.Header?.Topic, topic, StringComparison.InvariantCultureIgnoreCase))
             {
                 throw new InvalidOperationException("The topic provided in message and route are not matching");
             }
@@ -49,19 +42,19 @@ internal sealed class FelisRouterService
             if (!result)
             {
                 _logger.LogWarning("Cannot add message in storage.");
-                return Task.FromResult(result);
+                return result;
             }
 
-            return Task.FromResult(result);
+            return result;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, ex.Message);
-            return Task.FromResult(false);
+            return false;
         }
     }
 
-    public Task<bool> Consume(Guid id, ConsumedMessage? consumedMessage)
+    public bool Consume(Guid id, ConsumedMessage? consumedMessage)
     {
         try
         {
@@ -69,8 +62,13 @@ internal sealed class FelisRouterService
             {
                 throw new ArgumentNullException(nameof(consumedMessage));
             }
-            
-            if (consumedMessage.Message?.Header?.Id != id)
+
+            if (consumedMessage.Id != id)
+            {
+                throw new InvalidOperationException("The id provided in message and route are not matching");
+            }
+
+            if (consumedMessage.Id != id)
             {
                 throw new InvalidOperationException("The id provided in message and route are not matching");
             }
@@ -82,16 +80,16 @@ internal sealed class FelisRouterService
                 _logger.LogWarning("Cannot add consumed message in storage.");
             }
 
-            return Task.FromResult(result);
+            return result;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, ex.Message);
-            return Task.FromResult(false);
+            return false;
         }
     }
 
-    public Task<bool> Error(Guid id, ErrorMessage? errorMessage)
+    public bool Error(Guid id, ErrorMessageRequest? errorMessage)
     {
         try
         {
@@ -100,7 +98,7 @@ internal sealed class FelisRouterService
                 throw new ArgumentNullException(nameof(errorMessage));
             }
 
-            if (errorMessage.Message?.Header?.Id != id)
+            if (errorMessage.Id != id)
             {
                 throw new InvalidOperationException("The id provided in message and route are not matching");
             }
@@ -112,161 +110,173 @@ internal sealed class FelisRouterService
                 _logger.LogWarning("Cannot add error message in storage.");
             }
 
-            return Task.FromResult(result);
+            return result;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, ex.Message);
-            return Task.FromResult(false);
+            return false;
         }
     }
 
-    public Task<bool> PurgeReady(Topic? topic)
+    public bool Process(Guid id, ProcessedMessage? processedMessage)
     {
         try
         {
-            if (topic == null)
+            if (processedMessage == null)
+            {
+                throw new ArgumentNullException(nameof(processedMessage));
+            }
+
+            if (processedMessage.Id != id)
+            {
+                throw new InvalidOperationException("The id provided in message and route are not matching");
+            }
+
+            if (processedMessage.Id != id)
+            {
+                throw new InvalidOperationException("The id provided in message and route are not matching");
+            }
+
+            var result = _storage.ProcessedMessageAdd(processedMessage);
+
+            if (!result)
+            {
+                _logger.LogWarning("Cannot add processed message in storage.");
+            }
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, ex.Message);
+            return false;
+        }
+    }
+
+    public bool PurgeReady(string? topic)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(topic))
             {
                 throw new ArgumentNullException(nameof(topic));
             }
 
-            if (string.IsNullOrWhiteSpace(topic.Value))
-            {
-                throw new ArgumentNullException(nameof(topic.Value));
-            }
-
-            return Task.FromResult(_storage.ReadyMessagePurge(topic));
+            return _storage.ReadyMessagePurge(topic);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, ex.Message);
-            return Task.FromResult(false);
+            return false;
         }
     }
 
-    public Task<List<Consumer>> Consumers(Topic? topic)
+    public List<Consumer> Consumers(string? topic)
     {
         try
         {
-            if (topic == null)
-            {
-                throw new ArgumentNullException(nameof(topic));
-            }
-            
-            return Task.FromResult(_felisConnectionManager.GetConnectedConsumers(topic));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, ex.Message);
-            return Task.FromResult(new List<Consumer>());
-        }
-    }
-
-    public Task<List<Message?>> ReadyMessageList(Topic? topic = null)
-    {
-        try
-        {
-            if (topic == null)
-            {
-                throw new ArgumentNullException(nameof(topic));
-            }
-            
-            return Task.FromResult(_storage.ReadyMessageList(topic));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, ex.Message);
-            return Task.FromResult(new List<Message?>());
-        }
-    }
-
-    public Task<List<Message?>> SentMessageList(Topic? topic = null)
-    {
-        try
-        {
-            if (topic == null)
-            {
-                throw new ArgumentNullException(nameof(topic));
-            }
-
-            return Task.FromResult(_storage.SentMessageList(topic));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, ex.Message);
-            return Task.FromResult(new List<Message?>());
-        }
-    }
-
-    public Task<List<ErrorMessage>> ErrorMessageList(Topic? topic = null)
-    {
-        try
-        {
-            return Task.FromResult(_storage.ErrorMessageList(topic));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, ex.Message);
-            return Task.FromResult(new List<ErrorMessage>());
-        }
-    }
-
-    public Task<List<ConsumedMessage?>> ConsumedMessageList(ConnectionId connectionId)
-    {
-        try
-        {
-            if (connectionId == null)
-            {
-                throw new ArgumentNullException(nameof(connectionId));
-            }
-            
-            return Task.FromResult(_storage.ConsumedMessageList(connectionId));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, ex.Message);
-            return Task.FromResult(new List<ConsumedMessage?>());
-        }
-    }
-
-    public Task<List<ConsumedMessage?>> ConsumedMessageList(Topic topic)
-    {
-        try
-        {
-            if (topic == null)
+            if (string.IsNullOrWhiteSpace(topic))
             {
                 throw new ArgumentNullException(nameof(topic));
             }
             
-            return Task.FromResult(_storage.ConsumedMessageList(topic));
+            return _connectionManager.GetConnectedConsumers(topic);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, ex.Message);
-            return Task.FromResult(new List<ConsumedMessage?>());
+            return new List<Consumer>();
+        }
+    }
+
+    public List<Message> ReadyMessageList(string? topic = null)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(topic))
+            {
+                throw new ArgumentNullException(nameof(topic));
+            }
+            
+            return _storage.ReadyMessageList(topic);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, ex.Message);
+            return new List<Message>();
+        }
+    }
+
+    public List<Message> SentMessageList(string? topic = null)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(topic))
+            {
+                throw new ArgumentNullException(nameof(topic));
+            }
+
+            return _storage.SentMessageList(topic);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, ex.Message);
+            return new List<Message>();
+        }
+    }
+
+    public List<ErrorMessage> ErrorMessageList(string? topic = null)
+    {
+        try
+        {
+            return _storage.ErrorMessageList(topic);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, ex.Message);
+            return new List<ErrorMessage>();
+        }
+    }
+
+    public List<ConsumedMessage> ConsumedMessageList(string topic)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(topic))
+            {
+                throw new ArgumentNullException(nameof(topic));
+            }
+            
+            return _storage.ConsumedMessageList(topic);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, ex.Message);
+            return new List<ConsumedMessage>();
         }
     }
     
-    public Task<List<ConsumedMessage?>> ConsumedMessageList(ConnectionId connectionId, Topic topic)
+    public List<ConsumedMessage> ConsumedMessageList(string connectionId, string topic)
     {
         try
         {
-            if (connectionId == null)
+            if (string.IsNullOrWhiteSpace(connectionId))
             {
                 throw new ArgumentNullException(nameof(connectionId));
             }
             
-            if (topic == null)
+            if (string.IsNullOrWhiteSpace(topic))
             {
                 throw new ArgumentNullException(nameof(topic));
             }
             
-            return Task.FromResult(_storage.ConsumedMessageList(connectionId, topic));
+            return _storage.ConsumedMessageList(connectionId, topic);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, ex.Message);
-            return Task.FromResult(new List<ConsumedMessage?>());
+            return new List<ConsumedMessage>();
         }
     }
 }

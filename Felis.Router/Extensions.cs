@@ -1,57 +1,64 @@
-﻿using Felis.Router.Configurations;
+﻿using Felis.Router.Abstractions;
+using Felis.Router.Endpoints;
 using Felis.Router.Hubs;
 using Felis.Router.Managers;
+using Felis.Router.Middlewares;
 using Felis.Router.Services;
 using Felis.Router.Services.Background;
 using Felis.Router.Storage;
+using LiteDB;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
 
 namespace Felis.Router;
 
 public static class Extensions
 {
-    public static void AddFelisRouter(this IHostBuilder builder)
+    public static void UseFelisRouter(this IApplicationBuilder app)
     {
-        builder.ConfigureServices((context, services) =>
+        app.UseMiddleware<ErrorMiddleware>();
+
+        app.UseRouting();
+
+        app.UseEndpoints(endpoints =>
         {
-            services.Configure<FelisRouterConfiguration>(context.Configuration.GetSection(
-                FelisRouterConfiguration.FelisRouter));
-
-            var configuration = context.Configuration.GetSection(FelisRouterConfiguration.FelisRouter).Get<FelisRouterConfiguration>() ?? throw new ApplicationException($"{FelisRouterConfiguration.FelisRouter} configuration not provided");
-
-            if (configuration.MessageConfiguration == null)
-            {
-                throw new ApplicationException("FelisRouter:MessageConfiguration not provided");
-            }
-
-            services.Configure<JsonOptions>(options =>
-            {
-                options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
-            });
-
-            services.AddSignalR();
-
-            AddServices(services);
-
-            AddSwagger(services);
+            endpoints.MapHub<RouterHub>("/felis/router");
+            endpoints.MapRouterEndpoints();
+            endpoints.MapGet("/", () => "Felis Router is up and running!").ExcludeFromDescription();
         });
+
+        app.UseSwagger();
+
+        app.UseSwaggerUI(options => options.SwaggerEndpoint("/swagger/v1/swagger.json",
+            "Felis Router v1"));
+    }
+
+    public static void AddFelisRouter(this IServiceCollection services)
+    {
+        services.Configure<JsonOptions>(options =>
+        {
+            options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+        });
+
+        services.AddSignalR();
+
+        AddServices(services);
+
+        AddSwagger(services);
+        services.AddSingleton<ILiteDatabase>(_ => new LiteDatabase("Felis.db"));
+        services.AddSingleton<IRouterStorage, LiteDbRouterStorage>();
     }
 
     private static void AddServices(IServiceCollection serviceCollection)
     {
-        serviceCollection.AddHostedService<FelisStorageRequeueService>();
-        serviceCollection.AddHostedService<FelisStorageCleanService>();
-        serviceCollection.AddHostedService<FelisSenderService>();
-        serviceCollection.AddSingleton<FelisConnectionManager>();
-        serviceCollection.AddSingleton<FelisRouterStorage>();
-        serviceCollection.AddSingleton<FelisRouterService>();
-        serviceCollection.AddSingleton<FelisRouterHub>();
-        serviceCollection.AddSingleton<FelisLoadBalancingService>();
+        serviceCollection.AddHostedService<SenderService>();
+        serviceCollection.AddSingleton<ConnectionManager>();
+        serviceCollection.AddSingleton<RouterService>();
+        serviceCollection.AddSingleton<RouterHub>();
+        serviceCollection.AddSingleton<LoadBalancingService>();
     }
 
     private static void AddSwagger(IServiceCollection serviceCollection)
@@ -73,34 +80,5 @@ public static class Extensions
                 }
             });
         });
-    }
-    
-    public static void UseFelisRouter(this WebApplication app)
-    {
-        app.MapHub<FelisRouterHub>("/felis/router");
-
-        app.UseSwagger();
-
-        app.UseSwaggerUI(options => options.SwaggerEndpoint("/swagger/v1/swagger.json",
-            $"Felis Router v1"));
-
-        InitIApiRouterInstances(app);
-    }
-
-    private static void InitIApiRouterInstances(WebApplication app)
-    {
-        AppDomain.CurrentDomain.GetAssemblies().First(x => x.GetName().Name == "Felis.Router")
-            .GetTypes().Where(t =>
-                t.IsSubclassOf(typeof(ApiRouter)) && t is { IsInterface: false and false, IsAbstract: false }).ToList().ForEach(t =>
-            {
-                var instance = (ApiRouter)Activator.CreateInstance(t)!;
-
-                if (instance == null!)
-                {
-                    throw new ApplicationException($"Cannot create an instance of {t.Name}");
-                }
-
-                instance.Init(app);
-            });
     }
 }

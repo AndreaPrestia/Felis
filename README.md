@@ -1,6 +1,8 @@
 # Felis
 A message broker totally written in .NET, based on SignalR.
 
+![Felis.drawio.png](Images%2FFelis.drawio.png)
+
 The Felis project is composed of two parts:
 
 - **Router**, containing the logic for dispatching, storing and validating messages.
@@ -21,6 +23,7 @@ The ten endpoints are:
 
 - messages/{topic}/dispatch
 - messages/{id}/consume
+- messages/{id}/process
 - messages/{id}/error
 - messages/{topic}/ready/purge
 - messages/{topic}/consumers
@@ -73,6 +76,8 @@ Status code | Type | Context |
 400 | BadRequestResult | When a validation or something not related to the authorization process fails. |
 401 | UnauthorizedResult | When an operation fails due to missing authorization. |
 403 | ForbiddenResult | When an operation fails because it is not allowed in the context. |
+409 | Conflict | When an operation fails because it conflicts with another one. |
+500 | Internal server error | When an operation fails for another reason. |
 
 **messages/{id}/consume**
 
@@ -84,37 +89,61 @@ curl -X 'POST' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
   -d '{
-    "message": {
-        "header": {
-            "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-            "topic": "test"
-        },
-        "content": {
-            "payload": "{\"description\":\"Test\"}"
-        }
-    },
-    "connectionId": "AYhRMfzMA62BvJn3paMczQ"
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "connectionId": "AYhRMfzMA62BvJn3paMczQ",
+    "timestamp": 1716564304386
 }'
 ```
 
 ***Request***
 Property | Type | Context |
 --- | --- | --- |
-message | object | The message entity used by Felis system. |
-message.header | object | the message header, containing the metadata of the message. |
-message.header.id | guid | the message global unique identifier. |
-message.header.topic | string | the content of the topic of the message to dispatch. |
-message.content | object | the message content. |
-message.content.payload | string | Json string of the consumed message. |
+id | guid | the message global unique identifier. |
 connectionId | string | the actual value of the connectionId of the message that throws an error. |
+timestamp | long | the timestamp from client. |
 
 ***Response***
 Status code | Type | Context |
 --- | --- | --- |
-201 | CreatedResult object | When the request is successfully processed. |
+204 | NoContentResult | When the request is successfully processed. |
 400 | BadRequestResult | When a validation or something not related to the authorization process fails. |
 401 | UnauthorizedResult | When an operation fails due to missing authorization. |
 403 | ForbiddenResult | When an operation fails because it is not allowed in the context. |
+409 | Conflict | When an operation fails because it conflicts with another one. |
+500 | Internal server error | When an operation fails for another reason. |
+
+**messages/{id}/process**
+
+This endpoint informs Felis when a client successfully processed a message. 
+
+```
+curl -X 'POST' \
+  'https://localhost:7110/messages/3fa85f64-5717-4562-b3fc-2c963f66afa6/process' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "connectionId": "AYhRMfzMA62BvJn3paMczQ",
+    "timestamp": 1716564304386
+}'
+```
+
+***Request***
+Property | Type | Context |
+--- | --- | --- |
+id | guid | the message global unique identifier. |
+connectionId | string | the actual value of the connectionId of the message that throws an error. |
+timestamp | long | the timestamp from client. |
+
+***Response***
+Status code | Type | Context |
+--- | --- | --- |
+204 | NoContentResult | When the request is successfully processed. |
+400 | BadRequestResult | When a validation or something not related to the authorization process fails. |
+401 | UnauthorizedResult | When an operation fails due to missing authorization. |
+403 | ForbiddenResult | When an operation fails because it is not allowed in the context. |
+409 | Conflict | When an operation fails because it conflicts with another one. |
+500 | Internal server error | When an operation fails for another reason. |
 
 **messages/{id}/error**
 
@@ -153,10 +182,12 @@ retryPolicy.attempts | int | The number of attempts to retry to send a message. 
 ***Response***
 Status code | Type | Context |
 --- | --- | --- |
-201 | CreatedResult object | When the request is successfully processed. |
+204 | NoContentResult | When the request is successfully processed. |
 400 | BadRequestResult | When a validation or something not related to the authorization process fails. |
 401 | UnauthorizedResult | When an operation fails due to missing authorization. |
 403 | ForbiddenResult | When an operation fails because it is not allowed in the context. |
+409 | Conflict | When an operation fails because it conflicts with another one. |
+500 | Internal server error | When an operation fails for another reason. |
 
 **messages/{topic}/ready/purge**
 
@@ -182,6 +213,8 @@ Status code | Type | Context |
 400 | BadRequestResult | When a validation or something not related to the authorization process fails. |
 401 | UnauthorizedResult | When an operation fails due to missing authorization. |
 403 | ForbiddenResult | When an operation fails because it is not allowed in the context. |
+409 | Conflict | When an operation fails because it conflicts with another one. |
+500 | Internal server error | When an operation fails for another reason. |
 
 **messages/{topic}/consumers**
 
@@ -194,6 +227,17 @@ curl -X 'GET' \
 ```
 
 ***Response***
+
+Status code | Type                  | Context |
+--- |-----------------------| --- |
+200 | Array<Consumer>       | When the request is successfully processed. |
+400 | BadRequestResult      | When a validation or something not related to the authorization process fails. |
+401 | UnauthorizedResult    | When an operation fails due to missing authorization. |
+403 | ForbiddenResult       | When an operation fails because it is not allowed in the context. |
+409 | Conflict              | When an operation fails because it conflicts with another one. |
+500 | Internal server error | When an operation fails for another reason. |
+
+****Response content****
 
 ```
 [
@@ -225,6 +269,17 @@ curl -X 'GET' \
 ```
 
 ***Response***
+
+Status code | Type                  | Context |
+--- |-----------------------| --- |
+200 | Array<Message>        | When the request is successfully processed. |
+400 | BadRequestResult      | When a validation or something not related to the authorization process fails. |
+401 | UnauthorizedResult    | When an operation fails due to missing authorization. |
+403 | ForbiddenResult       | When an operation fails because it is not allowed in the context. |
+409 | Conflict              | When an operation fails because it conflicts with another one. |
+500 | Internal server error | When an operation fails for another reason. |
+
+****Response content****
 
 ```
 [
@@ -262,6 +317,17 @@ curl -X 'GET' \
 
 ***Response***
 
+Status code | Type                  | Context |
+--- |-----------------------| --- |
+200 | Array<Message>        | When the request is successfully processed. |
+400 | BadRequestResult      | When a validation or something not related to the authorization process fails. |
+401 | UnauthorizedResult    | When an operation fails due to missing authorization. |
+403 | ForbiddenResult       | When an operation fails because it is not allowed in the context. |
+409 | Conflict              | When an operation fails because it conflicts with another one. |
+500 | Internal server error | When an operation fails for another reason. |
+
+****Response content****
+
 ```
 [
   {
@@ -297,6 +363,17 @@ curl -X 'GET' \
 ```
 
 ***Response***
+
+Status code | Type                  | Context |
+--- |-----------------------| --- |
+200 | Array<ErrorMessage>   | When the request is successfully processed. |
+400 | BadRequestResult      | When a validation or something not related to the authorization process fails. |
+401 | UnauthorizedResult    | When an operation fails due to missing authorization. |
+403 | ForbiddenResult       | When an operation fails because it is not allowed in the context. |
+409 | Conflict              | When an operation fails because it conflicts with another one. |
+500 | Internal server error | When an operation fails for another reason. |
+
+****Response content****
 
 ```
 [
@@ -354,6 +431,17 @@ curl -X 'GET' \
 
 ***Response***
 
+Status code | Type                   | Context |
+--- |------------------------| --- |
+200 | Array<ConsumedMessage> | When the request is successfully processed. |
+400 | BadRequestResult       | When a validation or something not related to the authorization process fails. |
+401 | UnauthorizedResult     | When an operation fails due to missing authorization. |
+403 | ForbiddenResult        | When an operation fails because it is not allowed in the context. |
+409 | Conflict               | When an operation fails because it conflicts with another one. |
+500 | Internal server error  | When an operation fails for another reason. |
+
+****Response content****
+
 ```
 [
     {
@@ -382,6 +470,17 @@ curl -X 'GET' \
 ```
 
 ***Response***
+
+Status code | Type                  | Context |
+--- |-----------------------| --- |
+200 | Array<Message>        | When the request is successfully processed. |
+400 | BadRequestResult      | When a validation or something not related to the authorization process fails. |
+401 | UnauthorizedResult    | When an operation fails due to missing authorization. |
+403 | ForbiddenResult       | When an operation fails because it is not allowed in the context. |
+409 | Conflict              | When an operation fails because it conflicts with another one. |
+500 | Internal server error | When an operation fails for another reason. |
+
+****Response content****
 
 ```
 [
@@ -425,6 +524,17 @@ curl -X 'GET' \
   ```
 
 ***Response***
+
+Status code | Type                  | Context |
+--- |-----------------------| --- |
+200 | Array<Message>        | When the request is successfully processed. |
+400 | BadRequestResult      | When a validation or something not related to the authorization process fails. |
+401 | UnauthorizedResult    | When an operation fails due to missing authorization. |
+403 | ForbiddenResult       | When an operation fails because it is not allowed in the context. |
+409 | Conflict              | When an operation fails because it conflicts with another one. |
+500 | Internal server error | When an operation fails for another reason. |
+
+****Response content****
 
 ```
 [

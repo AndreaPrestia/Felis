@@ -18,6 +18,10 @@ public static class Extensions
 {
     public static void UseFelisRouter(this IApplicationBuilder app)
     {
+        app.UseWhen(context => context.Request.Path.ToString().StartsWith("/messages")
+                               || context.Request.Path.ToString().Contains("/consumers")
+                               || context.Request.Path.ToString().Contains("/felis/router"),
+            appBranch => { appBranch.UseMiddleware<AuthorizationMiddleware>(); });
         app.UseMiddleware<ErrorMiddleware>();
 
         app.UseRouting();
@@ -35,7 +39,7 @@ public static class Extensions
             "Felis Router v1"));
     }
 
-    public static void AddFelisRouter(this IServiceCollection services)
+    public static void AddFelisRouter(this IServiceCollection services, string username, string password)
     {
         services.Configure<JsonOptions>(options =>
         {
@@ -51,11 +55,11 @@ public static class Extensions
         services.AddSingleton<ILiteDatabase>(provider => new LiteDatabase("Felis.db"));
 
         services.AddSingleton(_ => new RouterManager(
-                _.GetRequiredService<ILogger<RouterManager>>(),
-                _.GetRequiredService<MessageService>(),
-                _.GetRequiredService<ConnectionService>(),
-                _.GetRequiredService<QueueService>()
-            ));
+            _.GetRequiredService<ILogger<RouterManager>>(),
+            _.GetRequiredService<MessageService>(),
+            _.GetRequiredService<ConnectionService>(),
+            _.GetRequiredService<QueueService>()
+        ));
     }
 
     private static void AddServices(IServiceCollection serviceCollection)

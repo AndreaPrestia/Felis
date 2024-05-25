@@ -44,7 +44,7 @@ internal sealed class ConnectionService
                 ConnectionMap.Add(new ConsumerConnectionEntity()
                 {
                     Consumer = consumer,
-                    ConnectionId = connectionId,
+                    ConnectionId = connectionId
                 });
             }
         }

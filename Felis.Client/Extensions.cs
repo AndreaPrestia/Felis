@@ -14,12 +14,12 @@ namespace Felis.Client;
 
 public static class Extensions
 {
-	public static void AddFelisClient(this IHostBuilder builder, string routerEndpoint, bool unique = false, int pooledConnectionLifeTimeMinutes = 15, int maxAttempts = 0)
+	public static void AddFelisClient(this IHostBuilder builder, string connectionString, bool unique = false, int pooledConnectionLifeTimeMinutes = 15, int maxAttempts = 0)
 	{
-		if (string.IsNullOrWhiteSpace(routerEndpoint))
+		if (string.IsNullOrWhiteSpace(connectionString))
 		{
 			throw new ApplicationException(
-				"No routerEndpoint provided. The subscription to Felis Router cannot be done");
+				"No connectionString provided. The subscription to Felis Router cannot be done");
 		}
 		
         builder.ConfigureServices((_, serviceCollection) =>
@@ -29,8 +29,14 @@ public static class Extensions
 			hubConnectionBuilder.Services.AddSingleton<IConnectionFactory>(
 				new HttpConnectionFactory(Options.Create(new HttpConnectionOptions()), NullLoggerFactory.Instance));
 
+			var uri = new Uri(connectionString);
+
+			var credentials = uri.UserInfo;
+
+			var routerEndpoint = $"{uri.Scheme}://{uri.Authority}";
+			
 			serviceCollection.AddSingleton(hubConnectionBuilder
-				.WithUrl($"{routerEndpoint}/felis/router",
+				.WithUrl($"{connectionString}/felis/router",
 					options => { options.Transports = HttpTransportType.WebSockets; })
 				.WithAutomaticReconnect()
 				.Build());
@@ -53,7 +59,7 @@ public static class Extensions
 
 			var messageHandler = serviceProvider.GetService<MessageHandler>();
 
-			messageHandler?.SubscribeAsync(maxAttempts > 0 ? new RetryPolicy(maxAttempts) : null, unique).Wait();
+			messageHandler?.SubscribeAsync(maxAttempts > 0 ? new RetryPolicy(maxAttempts) : null, unique, credentials).Wait();
 		});
 	}
 	

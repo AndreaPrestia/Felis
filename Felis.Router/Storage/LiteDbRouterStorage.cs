@@ -6,10 +6,11 @@ using Microsoft.Extensions.Logging;
 
 namespace Felis.Router.Storage;
 
-internal sealed class LiteDbRouterStorage : IRouterStorage
+internal sealed class LiteDbRouterStorage : IRouterStorage, IDisposable
 {
     private readonly ILiteDatabase _database;
     private readonly ILogger<LiteDbRouterStorage> _logger;
+    private readonly ILiteCollection<MessageEntity> _messageCollection;
     private readonly object _lock = new();
 
     public LiteDbRouterStorage(ILiteDatabase database, ILogger<LiteDbRouterStorage> logger)
@@ -18,9 +19,11 @@ internal sealed class LiteDbRouterStorage : IRouterStorage
         ArgumentNullException.ThrowIfNull(logger);
         _database = database;
         _logger = logger;
+        _messageCollection = _database.GetCollection<MessageEntity>("messages");
+        _messageCollection.EnsureIndex(x => x.EnqueuedAt);
     }
 
-    public bool ConsumedMessageAdd(ConsumedMessage? consumedMessage)
+    public MessageStatus ConsumedMessageAdd(ConsumedMessage? consumedMessage)
     {
         ArgumentNullException.ThrowIfNull(consumedMessage);
         ArgumentException.ThrowIfNullOrWhiteSpace(consumedMessage.ConnectionId);
@@ -32,14 +35,12 @@ internal sealed class LiteDbRouterStorage : IRouterStorage
                 throw new ArgumentException(nameof(consumedMessage.Id));
             }
 
-            var messageCollection = _database.GetCollection<MessageEntity>("messages");
-
-            var messageFound = messageCollection.FindById(consumedMessage.Id);
+            var messageFound = _messageCollection.FindById(consumedMessage.Id);
 
             if (messageFound == null)
             {
                 _logger.LogWarning($"Message {consumedMessage.Id} not found");
-                return false;
+                return MessageStatus.Error;
             }
 
             messageFound.Status = MessageStatus.Consumed;
@@ -51,16 +52,18 @@ internal sealed class LiteDbRouterStorage : IRouterStorage
                 Timestamp = consumedMessage.Timestamp
             });
 
-            var updateResult = messageCollection.Update(consumedMessage.Id, messageFound);
+            messageFound.Status = MessageStatus.Consumed;
             messageFound.UpdatedAt = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
+
+            var updateResult = _messageCollection.Update(consumedMessage.Id, messageFound);
 
             _logger.LogDebug($"Update result {updateResult}");
 
-            return updateResult;
+            return messageFound.Status;
         }
     }
 
-    public bool ProcessedMessageAdd(ProcessedMessage? processedMessage)
+    public MessageStatus ProcessedMessageAdd(ProcessedMessage? processedMessage)
     {
         ArgumentNullException.ThrowIfNull(processedMessage);
         ArgumentException.ThrowIfNullOrWhiteSpace(processedMessage.ConnectionId);
@@ -72,69 +75,67 @@ internal sealed class LiteDbRouterStorage : IRouterStorage
                 throw new ArgumentException(nameof(processedMessage.Id));
             }
 
-            var messageCollection = _database.GetCollection<MessageEntity>("messages");
-
-            var messageFound = messageCollection.FindById(processedMessage.Id);
+            var messageFound = _messageCollection.FindById(processedMessage.Id);
 
             if (messageFound == null)
             {
                 _logger.LogWarning($"Message {processedMessage.Id} not found");
-                return false;
+                return MessageStatus.Error;
             }
 
             messageFound.Status = MessageStatus.Processed;
             messageFound.UpdatedAt = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
 
-            var updateResult = messageCollection.Update(processedMessage.Id, messageFound);
+            var updateResult = _messageCollection.Update(processedMessage.Id, messageFound);
 
             _logger.LogDebug($"Update result {updateResult}");
 
-            return updateResult;
+            return messageFound.Status;
         }
     }
 
-    public bool ReadyMessageAdd(Message? message)
+    public MessageStatus ReadyMessageAdd(MessageRequest? message)
     {
         ArgumentNullException.ThrowIfNull(message);
-        ArgumentNullException.ThrowIfNull(message.Header);
-        ArgumentNullException.ThrowIfNull(message.Header.Topic);
-        ArgumentException.ThrowIfNullOrWhiteSpace(message.Header.Topic);
-        ArgumentNullException.ThrowIfNull(message.Content);
-        ArgumentException.ThrowIfNullOrWhiteSpace(message.Content.Payload);
+        ArgumentException.ThrowIfNullOrWhiteSpace(message.Topic);
+        ArgumentException.ThrowIfNullOrWhiteSpace(message.Payload);
 
         lock (_lock)
         {
-            var messageCollection = _database.GetCollection<MessageEntity>("messages");
+            var timestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
 
-            messageCollection.Insert(message.Header.Id, new MessageEntity()
+            _messageCollection.Insert(message.Id, new MessageEntity()
             {
-                Id = message.Header.Id,
-                Timestamp = message.Header.Timestamp,
-                Topic = message.Header.Topic,
-                Payload = message.Content.Payload,
-                UpdatedAt = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(),
+                Id = message.Id,
+                Timestamp = timestamp,
+                Topic = message.Topic,
+                Payload = message.Payload,
+                UpdatedAt = timestamp,
                 Status = MessageStatus.Ready
             });
 
-            return true;
+            return MessageStatus.Ready;
         }
     }
 
-    public Message? ReadyMessageGet()
+    public Message? MessageGet(Guid messageId)
     {
+        if(messageId == Guid.Empty)
+        {
+            throw new ArgumentException(nameof(messageId));
+        }
+
         lock (_lock)
         {
-            var messageCollection = _database.GetCollection<MessageEntity>("messages");
-
-            var messageFound = messageCollection.Query().Where(x => x.Status == MessageStatus.Ready).OrderBy(e => e.Timestamp).FirstOrDefault();
+            var messageFound = _messageCollection.FindById(messageId);
 
             if (messageFound == null)
             {
-                _logger.LogWarning("No Queued message found to send");
+                _logger.LogWarning($"No message found with id {messageId}");
                 return null;
             }
 
-            return new Message(new Header(messageFound.Id, messageFound.Topic, messageFound.Timestamp), new Content(messageFound.Payload));
+            return new Message(new Header(messageFound.Id, messageFound.Topic, messageFound.Timestamp), new Content(messageFound.Payload), messageFound.Status.ToString());
         }
     }
 
@@ -142,49 +143,46 @@ internal sealed class LiteDbRouterStorage : IRouterStorage
     {
         lock (_lock)
         {
-            var messageCollection = _database.GetCollection<MessageEntity>("messages");
-
-            var messages = !string.IsNullOrWhiteSpace(topic) ? messageCollection.Query().Where(x => x.Topic == topic && x.Status == MessageStatus.Ready).OrderBy(x => x.Timestamp).ToList() : messageCollection.Query().Where(x => x.Status == MessageStatus.Ready).OrderBy(x => x.Timestamp).ToList();
+            var messages = !string.IsNullOrWhiteSpace(topic) ? _messageCollection.Query().Where(x => x.Topic == topic && x.Status == MessageStatus.Ready).OrderBy(x => x.Timestamp).ToList() : _messageCollection.Query().Where(x => x.Status == MessageStatus.Ready).OrderBy(x => x.Timestamp).ToList();
 
             return messages != null
                 ? messages.Select(m =>
-                    new Message(new Header(m.Id, m.Topic, m.Timestamp), new Content(m.Payload))).ToList()
+                    new Message(new Header(m.Id, m.Topic, m.Timestamp), new Content(m.Payload), m.Status.ToString())).ToList()
                 : new();
         }
     }
 
-    public bool SentMessageAdd(Message? message)
+    public MessageStatus SentMessageAdd(Guid messageId)
     {
-        ArgumentNullException.ThrowIfNull(message);
-        ArgumentNullException.ThrowIfNull(message.Header);
-        ArgumentNullException.ThrowIfNull(message.Header.Topic);
+        if(messageId == Guid.Empty)
+        {
+            throw new ArgumentException(nameof(messageId));
+        }
 
         lock (_lock)
         {
-            var messageCollection = _database.GetCollection<MessageEntity>("messages");
-
-            var messageFound = messageCollection.FindById(message.Header.Id);
+            var messageFound = _messageCollection.FindById(messageId);
 
             if (messageFound == null)
             {
-                _logger.LogWarning($"No message {message.Header.Id} with status {MessageStatus.Ready} not found. The send will not be set.");
-                return false;
+                _logger.LogWarning($"No message {messageId} with status {MessageStatus.Ready} not found. The send will not be set.");
+                return MessageStatus.Error;
             }
 
             if (messageFound.Status != MessageStatus.Ready)
             {
-                _logger.LogWarning($"Message {message.Header.Id} with status {messageFound.Status} found. The send will not be set.");
-                return false;
+                _logger.LogWarning($"Message {messageId} with status {messageFound.Status} found. The send will not be set.");
+                return MessageStatus.Error;
             }
 
             messageFound.Status = MessageStatus.Sent;
             messageFound.UpdatedAt = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
 
-            var updateResult = messageCollection.Update(messageFound.Id, messageFound);
+            var updateResult = _messageCollection.Update(messageFound.Id, messageFound);
 
             _logger.LogDebug($"Update result {updateResult}");
 
-            return true;
+            return messageFound.Status;
         }
     }
 
@@ -192,13 +190,11 @@ internal sealed class LiteDbRouterStorage : IRouterStorage
     {
         lock (_lock)
         {
-            var messageCollection = _database.GetCollection<MessageEntity>("messages");
-
-            var messages = !string.IsNullOrWhiteSpace(topic) ? messageCollection.Query().Where(x => x.Topic == topic && x.Status == MessageStatus.Sent).OrderBy(x => x.Timestamp).ToList() : messageCollection.Query().Where(x => x.Status == MessageStatus.Sent).OrderBy(x => x.Timestamp).ToList();
+            var messages = !string.IsNullOrWhiteSpace(topic) ? _messageCollection.Query().Where(x => x.Topic == topic && x.Status == MessageStatus.Sent).OrderBy(x => x.Timestamp).ToList() : _messageCollection.Query().Where(x => x.Status == MessageStatus.Sent).OrderBy(x => x.Timestamp).ToList();
 
             return messages != null
                 ? messages.Select(m =>
-                    new Message(new Header(m.Id, m.Topic, m.Timestamp), new Content(m.Payload))).ToList()
+                    new Message(new Header(m.Id, m.Topic, m.Timestamp), new Content(m.Payload), m.Status.ToString())).ToList()
                 : new();
         }
     }
@@ -207,9 +203,7 @@ internal sealed class LiteDbRouterStorage : IRouterStorage
     {
         lock (_lock)
         {
-            var messageCollection = _database.GetCollection<MessageEntity>("messages");
-
-            var messages = messageCollection.Query().Where(x => x.Ack.Any()).OrderBy(x => x.Timestamp).ToList();
+            var messages = _messageCollection.Query().Where(x => x.Ack.Any()).OrderBy(x => x.Timestamp).ToList();
 
             return messages != null
                 ? messages.SelectMany(x => x.Ack).Select(ack => new ConsumedMessage(ack.MessageId, ack.ConnectionId, ack.Timestamp)).ToList()
@@ -222,9 +216,7 @@ internal sealed class LiteDbRouterStorage : IRouterStorage
     {
         lock (_lock)
         {
-            var messageCollection = _database.GetCollection<MessageEntity>("messages");
-
-            var messages = messageCollection.Query().Where(x => x.Ack.Any() && x.Topic == topic).OrderBy(x => x.Timestamp).ToList();
+            var messages = _messageCollection.Query().Where(x => x.Ack.Any() && x.Topic == topic).OrderBy(x => x.Timestamp).ToList();
 
             return messages != null
                 ? messages.SelectMany(x => x.Ack).Select(ack => new ConsumedMessage(ack.MessageId, ack.ConnectionId, ack.Timestamp)).ToList()
@@ -236,9 +228,7 @@ internal sealed class LiteDbRouterStorage : IRouterStorage
     {
         lock (_lock)
         {
-            var messageCollection = _database.GetCollection<MessageEntity>("messages");
-
-            var messages = messageCollection.Query().Where(x => x.Ack.Any(ack => ack.ConnectionId == connectionId) && x.Topic == topic).OrderBy(x => x.Timestamp).ToList();
+            var messages = _messageCollection.Query().Where(x => x.Ack.Any(ack => ack.ConnectionId == connectionId) && x.Topic == topic).OrderBy(x => x.Timestamp).ToList();
 
             return messages != null
                 ? messages.SelectMany(x => x.Ack).Select(ack => new ConsumedMessage(ack.MessageId, ack.ConnectionId, ack.Timestamp)).ToList()
@@ -246,21 +236,19 @@ internal sealed class LiteDbRouterStorage : IRouterStorage
         }
     }
 
-    public bool ReadyMessagePurge(string topic)
+    public int ReadyMessagePurge(string topic)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(topic);
 
         lock (_lock)
         {
-            var messageCollection = _database.GetCollection<MessageEntity>("messages");
+            var deleteResult = _messageCollection.DeleteMany(x => x.Status == MessageStatus.Ready && x.Topic == topic);
 
-            var deleteResult = messageCollection.DeleteMany(x => x.Status == MessageStatus.Ready && x.Topic == topic);
-
-            return deleteResult > 0;
+            return deleteResult;
         }
     }
 
-    public bool ErrorMessageAdd(ErrorMessageRequest? message)
+    public MessageStatus ErrorMessageAdd(ErrorMessageRequest? message)
     {
         ArgumentNullException.ThrowIfNull(message);
         ArgumentNullException.ThrowIfNull(message.ConnectionId);
@@ -273,17 +261,15 @@ internal sealed class LiteDbRouterStorage : IRouterStorage
         {
             if (message.Id == Guid.Empty)
             {
-                return false;
+                return MessageStatus.Error;
             }
 
-            var messageCollection = _database.GetCollection<MessageEntity>("messages");
-
-            var messageFound = messageCollection.FindById(message.Id);
+            var messageFound = _messageCollection.FindById(message.Id);
 
             if (messageFound == null)
             {
                 _logger.LogWarning($"Message {message.Id} not found. No error processing will be done.");
-                return false;
+                return MessageStatus.Error;
             }
 
             var hasRetryPolicy = message.RetryPolicy is { Attempts: > 0 };
@@ -342,11 +328,11 @@ internal sealed class LiteDbRouterStorage : IRouterStorage
 
             messageFound.UpdatedAt = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
 
-            var updateResult = messageCollection.Update(messageFound.Id, messageFound);
+            var updateResult = _messageCollection.Update(messageFound.Id, messageFound);
 
             _logger.LogDebug($"Update result {updateResult}");
 
-            return updateResult;
+            return messageFound.Status;
         }
     }
 
@@ -354,13 +340,16 @@ internal sealed class LiteDbRouterStorage : IRouterStorage
     {
         lock (_lock)
         {
-            var messageCollection = _database.GetCollection<MessageEntity>("messages");
-
             var messages = topic != null && !string.IsNullOrWhiteSpace(topic)
-                ? messageCollection.Query().Where(x => x.Status == MessageStatus.Error && x.Topic == topic).ToList()
-                : messageCollection.Query().Where(x => x.Status == MessageStatus.Error).ToList();
+                ? _messageCollection.Query().Where(x => x.Status == MessageStatus.Error && x.Topic == topic).ToList()
+                : _messageCollection.Query().Where(x => x.Status == MessageStatus.Error).ToList();
 
-            return messages.Select(m => new ErrorMessage(m.Id, new Message(new Header(m.Id, m.Topic, m.Timestamp), new Content(m.Payload)), m.Errors.Select(d => new ErrorMessageDetail(d.ConnectionId, d.Details.Select(dt => new ErrorDetail(dt.Title, dt.Detail)).ToList(), d.RetryPolicy != null ? new RetryPolicy(d.RetryPolicy.Attempts) : null)).ToList())).ToList();
+            return messages.Select(m => new ErrorMessage(m.Id, new Message(new Header(m.Id, m.Topic, m.Timestamp), new Content(m.Payload), m.Status.ToString()), m.Errors.Select(d => new ErrorMessageDetail(d.ConnectionId, d.Details.Select(dt => new ErrorDetail(dt.Title, dt.Detail)).ToList(), d.RetryPolicy != null ? new RetryPolicy(d.RetryPolicy.Attempts) : null)).ToList())).ToList();
         }
+    }
+
+    public void Dispose()
+    {
+        _database.Dispose();
     }
 }

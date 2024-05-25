@@ -1,24 +1,27 @@
 ﻿using Felis.Core.Models;
 using Felis.Router.Abstractions;
+using Felis.Router.Entities;
 using Felis.Router.Managers;
 using Microsoft.Extensions.Logging;
 
 namespace Felis.Router.Services;
 
-internal sealed class RouterService
+internal sealed class MessageService
 {
-    private readonly ILogger<RouterService> _logger;
+    private readonly ILogger<MessageService> _logger;
     private readonly IRouterStorage _storage;
     private readonly ConnectionManager _connectionManager;
+    private readonly QueueService _queueService;
 
-    public RouterService(ILogger<RouterService> logger, IRouterStorage storage, ConnectionManager connectionManager)
+    public MessageService(ILogger<MessageService> logger, IRouterStorage storage, ConnectionManager connectionManager, QueueService queueService)
     {
         _logger = logger;
         _storage = storage;
         _connectionManager = connectionManager;
+        _queueService = queueService;
     }
 
-    public bool Dispatch(string? topic, Message? message)
+    public MessageStatus Dispatch(string? topic, MessageRequest? message)
     {
         try
         {
@@ -27,34 +30,36 @@ internal sealed class RouterService
                 throw new ArgumentNullException(nameof(message));
             }
 
-            if (string.IsNullOrWhiteSpace(message.Header?.Topic))
+            if (string.IsNullOrWhiteSpace(message.Topic))
             {
-                throw new ArgumentNullException($"No Topic provided in Header");
+                throw new ArgumentNullException($"No Topic provided");
             }
 
-            if (!string.Equals(message.Header?.Topic, topic, StringComparison.InvariantCultureIgnoreCase))
+            if (!string.Equals(message.Topic, topic, StringComparison.InvariantCultureIgnoreCase))
             {
                 throw new InvalidOperationException("The topic provided in message and route are not matching");
             }
 
             var result = _storage.ReadyMessageAdd(message);
 
-            if (!result)
+            if (result == MessageStatus.Error)
             {
                 _logger.LogWarning("Cannot add message in storage.");
                 return result;
             }
+
+            _queueService.Enqueue(message.Id);
 
             return result;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, ex.Message);
-            return false;
+            return MessageStatus.Error;
         }
     }
 
-    public bool Consume(Guid id, ConsumedMessage? consumedMessage)
+    public MessageStatus Consume(Guid id, ConsumedMessage? consumedMessage)
     {
         try
         {
@@ -75,7 +80,7 @@ internal sealed class RouterService
 
             var result = _storage.ConsumedMessageAdd(consumedMessage);
 
-            if (!result)
+            if (result == MessageStatus.Error)
             {
                 _logger.LogWarning("Cannot add consumed message in storage.");
             }
@@ -85,11 +90,11 @@ internal sealed class RouterService
         catch (Exception ex)
         {
             _logger.LogError(ex, ex.Message);
-            return false;
+            return MessageStatus.Error;
         }
     }
 
-    public bool Error(Guid id, ErrorMessageRequest? errorMessage)
+    public MessageStatus Error(Guid id, ErrorMessageRequest? errorMessage)
     {
         try
         {
@@ -105,9 +110,15 @@ internal sealed class RouterService
             
             var result = _storage.ErrorMessageAdd(errorMessage);
 
-            if (!result)
+            if (result == MessageStatus.Error)
             {
                 _logger.LogWarning("Cannot add error message in storage.");
+            }
+    
+            if (result == MessageStatus.Ready)
+            {
+                _queueService.Enqueue(id);
+                _logger.LogDebug($"Re-enqueued message {id}");
             }
 
             return result;
@@ -115,11 +126,11 @@ internal sealed class RouterService
         catch (Exception ex)
         {
             _logger.LogError(ex, ex.Message);
-            return false;
+            return MessageStatus.Error;
         }
     }
 
-    public bool Process(Guid id, ProcessedMessage? processedMessage)
+    public MessageStatus Process(Guid id, ProcessedMessage? processedMessage)
     {
         try
         {
@@ -140,7 +151,7 @@ internal sealed class RouterService
 
             var result = _storage.ProcessedMessageAdd(processedMessage);
 
-            if (!result)
+            if (result == MessageStatus.Error)
             {
                 _logger.LogWarning("Cannot add processed message in storage.");
             }
@@ -150,11 +161,11 @@ internal sealed class RouterService
         catch (Exception ex)
         {
             _logger.LogError(ex, ex.Message);
-            return false;
+            return MessageStatus.Error;
         }
     }
 
-    public bool PurgeReady(string? topic)
+    public int PurgeReady(string? topic)
     {
         try
         {
@@ -168,7 +179,7 @@ internal sealed class RouterService
         catch (Exception ex)
         {
             _logger.LogError(ex, ex.Message);
-            return false;
+            return -1;
         }
     }
 

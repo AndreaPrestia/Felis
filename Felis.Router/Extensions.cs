@@ -56,9 +56,10 @@ public static class Extensions
     {
         serviceCollection.AddHostedService<SenderService>();
         serviceCollection.AddSingleton<ConnectionManager>();
-        serviceCollection.AddSingleton<RouterService>();
+        serviceCollection.AddSingleton<MessageService>();
         serviceCollection.AddSingleton<RouterHub>();
         serviceCollection.AddSingleton<LoadBalancingService>();
+        serviceCollection.AddSingleton<QueueService>();
     }
 
     private static void AddSwagger(IServiceCollection serviceCollection)

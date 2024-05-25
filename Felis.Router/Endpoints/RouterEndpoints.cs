@@ -2,6 +2,7 @@
 using Felis.Router.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 
@@ -12,12 +13,12 @@ internal static class RouterEndpoints
     internal static void MapRouterEndpoints(this IEndpointRouteBuilder endpointRouteBuilder)
     {
         endpointRouteBuilder.MapPost("/messages/{topic}/dispatch",
-              ([FromServices] RouterService service, [FromRoute] string? topic,
-                   [FromBody] Message message) =>
+              ([FromServices] MessageService service, [FromRoute] string? topic,
+                   [FromBody] MessageRequest message) =>
               {
                   var result = service.Dispatch(topic, message);
 
-                  return !result ? Results.BadRequest("Failed operation") : Results.Created("/dispatch", message);
+                  return result == Entities.MessageStatus.Error ? Results.BadRequest("Failed operation") : Results.Created("/dispatch", message);
               }).WithName("MessageDispatch").Produces<CreatedResult>(StatusCodes.Status201Created)
            .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
            .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
@@ -26,12 +27,12 @@ internal static class RouterEndpoints
            .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
         endpointRouteBuilder.MapPost("/messages/{id}/consume",
-                 ([FromServices] RouterService service, [FromRoute] Guid id,
+                 ([FromServices] MessageService service, [FromRoute] Guid id,
                     [FromBody] ConsumedMessage message) =>
                  {
                      var result = service.Consume(id, message);
 
-                     return !result ? Results.BadRequest("Failed operation") : Results.NoContent();
+                     return result == Entities.MessageStatus.Error ? Results.BadRequest("Failed operation") : Results.NoContent();
                  }).WithName("MessageConsume").Produces<NoContentResult>(StatusCodes.Status204NoContent)
             .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
             .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
@@ -40,12 +41,12 @@ internal static class RouterEndpoints
             .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
         
         endpointRouteBuilder.MapPost("/messages/{id}/process",
-                ([FromServices] RouterService service, [FromRoute] Guid id,
+                ([FromServices] MessageService service, [FromRoute] Guid id,
                     [FromBody] ProcessedMessage message) =>
                 {
                     var result = service.Process(id, message);
 
-                    return !result ? Results.BadRequest("Failed operation") : Results.NoContent();
+                    return result == Entities.MessageStatus.Error ? Results.BadRequest("Failed operation") : Results.NoContent();
                 }).WithName("MessageProcess").Produces<NoContentResult>(StatusCodes.Status204NoContent)
             .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
             .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
@@ -54,12 +55,12 @@ internal static class RouterEndpoints
             .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
         endpointRouteBuilder.MapPost("/messages/{id}/error",
-                ([FromServices] RouterService service, [FromRoute] Guid id,
+                ([FromServices] MessageService service, [FromRoute] Guid id,
                     [FromBody] ErrorMessageRequest message) =>
                 {
                     var result = service.Error(id, message);
 
-                    return !result ? Results.BadRequest("Failed operation") : Results.NoContent();
+                    return result == Entities.MessageStatus.Error ? Results.BadRequest("Failed operation") : Results.NoContent();
                 }).WithName("ErrorMessageAdd").Produces<NoContentResult>(StatusCodes.Status204NoContent)
             .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
             .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
@@ -68,12 +69,12 @@ internal static class RouterEndpoints
             .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
         endpointRouteBuilder.MapDelete("/messages/{topic}/ready/purge",
-                ([FromServices] RouterService service, [FromRoute] string? topic) =>
+                ([FromServices] MessageService service, [FromRoute] string? topic) =>
                 {
                     var result = service.PurgeReady(topic);
 
-                    return !result ? Results.BadRequest("Failed operation") : Results.NoContent();
-                }).WithName("ReadyMessagePurge").Produces<NoContentResult>(StatusCodes.Status204NoContent)
+                    return Results.Ok(result);
+                }).WithName("ReadyMessagePurge").Produces<Ok<int>>(StatusCodes.Status200OK)
             .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
             .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
             .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)
@@ -81,7 +82,7 @@ internal static class RouterEndpoints
             .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
         endpointRouteBuilder.MapGet("/messages/{topic}/consumers",
-                ([FromServices] RouterService service, [FromRoute] string? topic) =>
+                ([FromServices] MessageService service, [FromRoute] string? topic) =>
                 {
                     var result = service.Consumers(topic);
 
@@ -94,7 +95,7 @@ internal static class RouterEndpoints
             .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
         endpointRouteBuilder.MapGet("/messages/{topic}/ready",
-                ([FromServices] RouterService service, [FromRoute] string? topic) =>
+                ([FromServices] MessageService service, [FromRoute] string? topic) =>
                 {
                     var result = service.ReadyMessageList(topic);
 
@@ -107,7 +108,7 @@ internal static class RouterEndpoints
             .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
         endpointRouteBuilder.MapGet("/messages/{topic}/sent",
-                ([FromServices] RouterService service, [FromRoute] string? topic) =>
+                ([FromServices] MessageService service, [FromRoute] string? topic) =>
                 {
                     var result = service.SentMessageList(topic);
 
@@ -120,7 +121,7 @@ internal static class RouterEndpoints
             .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
         endpointRouteBuilder.MapGet("/messages/{topic}/error",
-                ([FromServices] RouterService service, [FromRoute] string? topic) =>
+                ([FromServices] MessageService service, [FromRoute] string? topic) =>
                 {
                     var result = service.ErrorMessageList(topic);
 
@@ -133,7 +134,7 @@ internal static class RouterEndpoints
             .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
         endpointRouteBuilder.MapGet("/messages/{topic}/consumed",
-                ([FromServices] RouterService service, [FromRoute] string topic) =>
+                ([FromServices] MessageService service, [FromRoute] string topic) =>
                 {
                     var result = service.ConsumedMessageList(topic);
 
@@ -146,7 +147,7 @@ internal static class RouterEndpoints
             .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
         endpointRouteBuilder.MapGet("/consumers/{connectionId}/messages",
-                ([FromServices] RouterService service, [FromRoute] string connectionId) =>
+                ([FromServices] MessageService service, [FromRoute] string connectionId) =>
                 {
                     var result = service.ConsumedMessageList(connectionId);
 
@@ -158,7 +159,7 @@ internal static class RouterEndpoints
             .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
             .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
-        endpointRouteBuilder.MapGet("/consumers/{connectionId}/messages/{topic}", ([FromServices] RouterService service,
+        endpointRouteBuilder.MapGet("/consumers/{connectionId}/messages/{topic}", ([FromServices] MessageService service,
                 [FromRoute] string connectionId, [FromRoute] string topic) =>
         {
             var result = service.ConsumedMessageList(connectionId, topic);

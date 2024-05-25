@@ -1,6 +1,8 @@
 ﻿namespace Felis.Core.Models;
 
-public record Message(Header? Header, Content? Content);
+public record MessageRequest(Guid Id, string Topic, string Payload);
+
+public record Message(Header? Header, Content? Content, string Status);
 
 public record Header(Guid Id, string Topic, long Timestamp);
 

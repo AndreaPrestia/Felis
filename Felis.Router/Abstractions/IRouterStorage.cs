@@ -1,20 +1,21 @@
 ﻿using Felis.Core.Models;
+using Felis.Router.Entities;
 
 namespace Felis.Router.Abstractions;
 
 internal interface IRouterStorage
 {
-    bool ConsumedMessageAdd(ConsumedMessage? consumedMessage);
-    bool ProcessedMessageAdd(ProcessedMessage? processedMessage);
-    bool ReadyMessageAdd(Message? message);
-    Message? ReadyMessageGet();
+    MessageStatus ConsumedMessageAdd(ConsumedMessage? consumedMessage);
+    MessageStatus ProcessedMessageAdd(ProcessedMessage? processedMessage);
+    MessageStatus ReadyMessageAdd(MessageRequest? message);
+    Message? MessageGet(Guid messageId);
     List<Message> ReadyMessageList(string? topic = null);
-    bool SentMessageAdd(Message? message);
+    MessageStatus SentMessageAdd(Guid messageId);
     List<Message> SentMessageList(string? topic = null);
     List<ConsumedMessage> ConsumedMessageListByConnectionId(string connectionId);
     List<ConsumedMessage> ConsumedMessageList(string topic);
     List<ConsumedMessage> ConsumedMessageList(string connectionId, string topic);
-    bool ReadyMessagePurge(string topic);
-    bool ErrorMessageAdd(ErrorMessageRequest? message);
+    int ReadyMessagePurge(string topic);
+    MessageStatus ErrorMessageAdd(ErrorMessageRequest? message);
     List<ErrorMessage> ErrorMessageList(string? topic = null);
 }

@@ -7,6 +7,7 @@ internal sealed class MessageEntity
     public string Payload { get; set; } = "{}";
     public long Timestamp { get; set; }
     public long UpdatedAt { get; set; }
+    public long EnqueuedAt { get; set; }
     public MessageStatus Status { get; set; }
     public List<MessageError> Errors { get; } = new();
     public List<MessageAcknowledgement> Ack { get; set; } = new();

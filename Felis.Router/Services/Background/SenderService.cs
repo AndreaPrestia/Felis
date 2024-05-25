@@ -1,5 +1,7 @@
 ﻿using Felis.Router.Entities;
+using Felis.Router.Enums;
 using Felis.Router.Hubs;
+using LiteDB;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -35,9 +37,9 @@ namespace Felis.Router.Services.Background
                     {
                         var queueItem = _queueService.Dequeue();
 
-                        if (queueItem == null || queueItem.MessageId == Guid.Empty) continue;
+                        if (queueItem == null || queueItem.Id == Guid.Empty) continue;
 
-                        var messageId = queueItem.MessageId;
+                        var messageId = queueItem.Id;
 
                         var message = _messageService.Get(messageId);
 
@@ -67,7 +69,8 @@ namespace Felis.Router.Services.Background
 
                         if (connectionId == null || string.IsNullOrWhiteSpace(connectionId))
                         {
-                            _logger.LogWarning($"No connectionId available for topic {topic}");
+                            _logger.LogWarning($"No connectionId available for topic {topic}. Message {messageId} will be requeued.");
+                            _queueService.Enqueue(messageId);
                             continue;
                         }
                         

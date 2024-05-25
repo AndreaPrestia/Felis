@@ -1,4 +1,7 @@
-﻿namespace Felis.Router.Entities;
+﻿using Felis.Router.Enums;
+using LiteDB;
+
+namespace Felis.Router.Entities;
 
 internal sealed class MessageEntity
 {
@@ -45,13 +48,4 @@ internal class MessageRetry
     public string ConnectionId { get; set; } = string.Empty;
     public long Timestamp { get; set; }
     public long? Sent { get; set; }
-}
-
-internal enum MessageStatus
-{
-    Ready,
-    Sent, 
-    Consumed,
-    Processed,
-    Error
 }

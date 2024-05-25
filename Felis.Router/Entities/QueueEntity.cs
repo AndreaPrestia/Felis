@@ -1,8 +1,10 @@
-﻿namespace Felis.Router.Entities;
+﻿using LiteDB;
+
+namespace Felis.Router.Entities;
 
 internal sealed class QueueEntity
 {
-    public Guid MessageId { get; set; }
+    public Guid Id { get; set; }
     public long Timestamp { get; set; }
 }
 

@@ -1,5 +1,6 @@
 ﻿using Felis.Core.Models;
 using Felis.Router.Entities;
+using Felis.Router.Enums;
 using LiteDB;
 using Microsoft.Extensions.Logging;
 
@@ -222,7 +223,7 @@ internal sealed class MessageService : IDisposable
                 return null;
             }
 
-            return new Message(new Header(messageFound.Id, messageFound.Topic, messageFound.Timestamp), new Content(messageFound.Payload), messageFound.Status.ToString());
+            return new Message(new Header(Guid.Parse(messageFound.Id.ToString()), messageFound.Topic, messageFound.Timestamp), new Content(messageFound.Payload), messageFound.Status.ToString());
         }
     }
 
@@ -280,7 +281,7 @@ internal sealed class MessageService : IDisposable
 
             return messages != null
                 ? messages.Select(m =>
-                    new Message(new Header(m.Id, m.Topic, m.Timestamp), new Content(m.Payload), m.Status.ToString())).ToList()
+                    new Message(new Header(Guid.Parse(m.Id.ToString()), m.Topic, m.Timestamp), new Content(m.Payload), m.Status.ToString())).ToList()
                 : new();
         }
     }
@@ -293,7 +294,7 @@ internal sealed class MessageService : IDisposable
 
             return messages != null
                 ? messages.Select(m =>
-                    new Message(new Header(m.Id, m.Topic, m.Timestamp), new Content(m.Payload), m.Status.ToString())).ToList()
+                    new Message(new Header(Guid.Parse(m.Id.ToString()), m.Topic, m.Timestamp), new Content(m.Payload), m.Status.ToString())).ToList()
                 : new();
         }
     }
@@ -306,7 +307,7 @@ internal sealed class MessageService : IDisposable
                 ? _messageCollection.Query().Where(x => x.Status == MessageStatus.Error && x.Topic == topic).ToList()
                 : _messageCollection.Query().Where(x => x.Status == MessageStatus.Error).ToList();
 
-            return messages.Select(m => new ErrorMessage(m.Id, new Message(new Header(m.Id, m.Topic, m.Timestamp), new Content(m.Payload), m.Status.ToString()), m.Errors.Select(d => new ErrorMessageDetail(d.ConnectionId, d.Details.Select(dt => new ErrorDetail(dt.Title, dt.Detail)).ToList(), d.RetryPolicy != null ? new RetryPolicy(d.RetryPolicy.Attempts) : null)).ToList())).ToList();
+            return messages.Select(m => new ErrorMessage(Guid.Parse(m.Id.ToString()), new Message(new Header(Guid.Parse(m.Id.ToString()), m.Topic, m.Timestamp), new Content(m.Payload), m.Status.ToString()), m.Errors.Select(d => new ErrorMessageDetail(d.ConnectionId, d.Details.Select(dt => new ErrorDetail(dt.Title, dt.Detail)).ToList(), d.RetryPolicy != null ? new RetryPolicy(d.RetryPolicy.Attempts) : null)).ToList())).ToList();
         }
     }
 

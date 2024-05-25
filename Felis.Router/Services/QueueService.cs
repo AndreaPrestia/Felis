@@ -27,11 +27,11 @@ namespace Felis.Router.Services
             {
                 var item = new QueueEntity
                 {
-                    MessageId = messageId,
+                    Id = messageId,
                     Timestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds()
                 };
 
-                _queueCollection.Insert(item);
+                _queueCollection.Insert(messageId, item);
             }
         }
 
@@ -42,25 +42,9 @@ namespace Felis.Router.Services
                 var item = _queueCollection.FindOne(Query.All("Timestamp", Query.Ascending));
                 if (item != null)
                 {
-                    _queueCollection.Delete(item.MessageId);
+                    _queueCollection.Delete(item.Id);
                 }
                 return item;
-            }
-        }
-
-        public QueueEntity? Peek()
-        {
-            lock (_lock)
-            {
-                return _queueCollection.FindOne(Query.All("Timestamp", Query.Ascending));
-            }
-        }
-
-        public int Count()
-        {
-            lock (_lock)
-            {
-                return _queueCollection.Count();
             }
         }
 

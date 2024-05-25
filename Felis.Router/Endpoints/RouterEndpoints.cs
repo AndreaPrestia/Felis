@@ -1,4 +1,5 @@
 ﻿using Felis.Core.Models;
+using Felis.Router.Enums;
 using Felis.Router.Managers;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -18,7 +19,7 @@ internal static class RouterEndpoints
               {
                   var result = manager.Dispatch(topic, message);
 
-                  return result == Entities.MessageStatus.Error ? Results.BadRequest("Failed operation") : Results.Created("/dispatch", message);
+                  return result == MessageStatus.Error ? Results.BadRequest("Failed operation") : Results.Created("/dispatch", message);
               }).WithName("MessageDispatch").Produces<CreatedResult>(StatusCodes.Status201Created)
            .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
            .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
@@ -32,7 +33,7 @@ internal static class RouterEndpoints
                  {
                      var result = manager.Consume(id, message);
 
-                     return result == Entities.MessageStatus.Error ? Results.BadRequest("Failed operation") : Results.NoContent();
+                     return result == MessageStatus.Error ? Results.BadRequest("Failed operation") : Results.NoContent();
                  }).WithName("MessageConsume").Produces<NoContentResult>(StatusCodes.Status204NoContent)
             .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
             .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
@@ -46,7 +47,7 @@ internal static class RouterEndpoints
                 {
                     var result = manager.Process(id, message);
 
-                    return result == Entities.MessageStatus.Error ? Results.BadRequest("Failed operation") : Results.NoContent();
+                    return result == MessageStatus.Error ? Results.BadRequest("Failed operation") : Results.NoContent();
                 }).WithName("MessageProcess").Produces<NoContentResult>(StatusCodes.Status204NoContent)
             .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
             .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
@@ -60,7 +61,7 @@ internal static class RouterEndpoints
                 {
                     var result = manager.Error(id, message);
 
-                    return result == Entities.MessageStatus.Error ? Results.BadRequest("Failed operation") : Results.NoContent();
+                    return result == MessageStatus.Error ? Results.BadRequest("Failed operation") : Results.NoContent();
                 }).WithName("ErrorMessageAdd").Produces<NoContentResult>(StatusCodes.Status204NoContent)
             .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
             .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)

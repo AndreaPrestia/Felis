@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
 
 namespace Felis.Router;
@@ -46,7 +47,15 @@ public static class Extensions
         AddServices(services);
 
         AddSwagger(services);
-        services.AddSingleton<ILiteDatabase>(_ => new LiteDatabase("Felis.db"));
+
+        services.AddSingleton<ILiteDatabase>(provider => new LiteDatabase("Felis.db"));
+
+        services.AddSingleton(_ => new RouterManager(
+                _.GetRequiredService<ILogger<RouterManager>>(),
+                _.GetRequiredService<MessageService>(),
+                _.GetRequiredService<ConnectionService>(),
+                _.GetRequiredService<QueueService>()
+            ));
     }
 
     private static void AddServices(IServiceCollection serviceCollection)

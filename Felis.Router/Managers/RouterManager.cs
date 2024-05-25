@@ -1,24 +1,25 @@
 ﻿using Felis.Core.Models;
-using Felis.Router.Entities;
+using Felis.Router.Enums;
 using Felis.Router.Services;
 using Microsoft.Extensions.Logging;
 
 namespace Felis.Router.Managers;
 
-internal sealed class RouterManager
+public sealed class RouterManager
 {
     private readonly ILogger<RouterManager> _logger;
     private readonly ConnectionService _connectionService;
     private readonly MessageService _messageService;
     private readonly QueueService _queueService;
 
-    public RouterManager(ILogger<RouterManager> logger, MessageService messageService, ConnectionService connectionService, QueueService queueService)
+    internal RouterManager(ILogger<RouterManager> logger, MessageService messageService, ConnectionService connectionService, QueueService queueService)
     {
         _logger = logger;
         _messageService = messageService;
         _connectionService = connectionService;
         _queueService = queueService;
     }
+
     public MessageStatus Dispatch(string? topic, MessageRequest? message)
     {
         try

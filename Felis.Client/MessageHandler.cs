@@ -16,6 +16,7 @@ public sealed class MessageHandler : IAsyncDisposable
     private readonly HttpClient _httpClient;
     private RetryPolicy? _retryPolicy;
     private bool _unique;
+    private string _credentials;
     private readonly ConsumerResolver _consumerResolver;
 
     public MessageHandler(HubConnection? hubConnection, ILogger<MessageHandler> logger,HttpClient httpClient, IServiceScopeFactory serviceScopeFactory)
@@ -61,7 +62,7 @@ public sealed class MessageHandler : IAsyncDisposable
         }
     }
 
-    public async Task SubscribeAsync(RetryPolicy? retryPolicy, bool unique, CancellationToken cancellationToken = default)
+    public async Task SubscribeAsync(RetryPolicy? retryPolicy, bool unique, string credentials, CancellationToken cancellationToken = default)
     {
         if (_hubConnection == null)
         {
@@ -70,6 +71,7 @@ public sealed class MessageHandler : IAsyncDisposable
 
         _retryPolicy = retryPolicy;
         _unique = unique;
+        _credentials = credentials;
         
         var topicsTypes = _consumerResolver.GetTypesForTopics();
 

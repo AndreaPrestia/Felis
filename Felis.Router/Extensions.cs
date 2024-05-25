@@ -50,9 +50,11 @@ public static class Extensions
 
         AddServices(services);
 
+        services.AddSingleton<CredentialService>(_ => new CredentialService(username, password));
+
         AddSwagger(services);
 
-        services.AddSingleton<ILiteDatabase>(provider => new LiteDatabase("Felis.db"));
+        services.AddSingleton<ILiteDatabase>(_ => new LiteDatabase("Felis.db"));
 
         services.AddSingleton(_ => new RouterManager(
             _.GetRequiredService<ILogger<RouterManager>>(),

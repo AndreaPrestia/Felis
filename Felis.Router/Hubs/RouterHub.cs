@@ -1,9 +1,9 @@
-﻿using System.Net;
-using Felis.Core.Models;
-using Felis.Router.Managers;
+﻿using Felis.Core.Models;
+using Felis.Router.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
+using System.Net;
 
 namespace Felis.Router.Hubs;
 
@@ -11,12 +11,12 @@ namespace Felis.Router.Hubs;
 internal sealed class RouterHub : Hub
 {
     private readonly ILogger<RouterHub> _logger;
-    private readonly ConnectionManager _connectionManager;
+    private readonly ConnectionService _connectionService;
 
-    public RouterHub(ILogger<RouterHub> logger, ConnectionManager connectionManager)
+    public RouterHub(ILogger<RouterHub> logger, ConnectionService connectionService)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _connectionManager = connectionManager ?? throw new ArgumentNullException(nameof(connectionManager));
+        _connectionService = connectionService ?? throw new ArgumentNullException(nameof(connectionService));
     }
 
     public string SetConnectionId(List<string> topics, bool unique)
@@ -32,7 +32,7 @@ internal sealed class RouterHub : Hub
 
             var clientHostname = Dns.GetHostEntry(clientIp).HostName;
 
-            _connectionManager.KeepConsumerConnection(new Consumer(clientHostname, clientIp.MapToIPv4().ToString(), topics, unique), Context.ConnectionId);
+            _connectionService.KeepConsumerConnection(new Consumer(clientHostname, clientIp.MapToIPv4().ToString(), topics, unique), Context.ConnectionId);
             return Context.ConnectionId;
         }
         catch (Exception ex)
@@ -46,7 +46,7 @@ internal sealed class RouterHub : Hub
     {
         try
         {
-            _connectionManager.RemoveConsumerConnections(connectionId);
+            _connectionService.RemoveConsumerConnections(connectionId);
         }
         catch (Exception ex)
         {

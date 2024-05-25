@@ -1,293 +1,354 @@
 ﻿using Felis.Core.Models;
-using Felis.Router.Abstractions;
 using Felis.Router.Entities;
-using Felis.Router.Managers;
+using LiteDB;
 using Microsoft.Extensions.Logging;
 
 namespace Felis.Router.Services;
 
-internal sealed class MessageService
+internal sealed class MessageService : IDisposable
 {
+    private readonly ILiteDatabase _database;
     private readonly ILogger<MessageService> _logger;
-    private readonly IRouterStorage _storage;
-    private readonly ConnectionManager _connectionManager;
-    private readonly QueueService _queueService;
+    private readonly ILiteCollection<MessageEntity> _messageCollection;
+    private readonly object _lock = new();
 
-    public MessageService(ILogger<MessageService> logger, IRouterStorage storage, ConnectionManager connectionManager, QueueService queueService)
+    public MessageService(ILiteDatabase database, ILogger<MessageService> logger)
     {
+        ArgumentNullException.ThrowIfNull(database);
+        ArgumentNullException.ThrowIfNull(logger);
+        _database = database;
         _logger = logger;
-        _storage = storage;
-        _connectionManager = connectionManager;
-        _queueService = queueService;
+        _messageCollection = _database.GetCollection<MessageEntity>("messages");
+        _messageCollection.EnsureIndex(x => x.EnqueuedAt);
     }
 
-    public MessageStatus Dispatch(string? topic, MessageRequest? message)
+    public MessageStatus Add(MessageRequest? message)
     {
-        try
+        ArgumentNullException.ThrowIfNull(message);
+        ArgumentException.ThrowIfNullOrWhiteSpace(message.Topic);
+        ArgumentException.ThrowIfNullOrWhiteSpace(message.Payload);
+
+        lock (_lock)
         {
-            if (message == null)
+            var timestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
+
+            _messageCollection.Insert(message.Id, new MessageEntity()
             {
-                throw new ArgumentNullException(nameof(message));
-            }
+                Id = message.Id,
+                Timestamp = timestamp,
+                Topic = message.Topic,
+                Payload = message.Payload,
+                UpdatedAt = timestamp,
+                Status = MessageStatus.Ready
+            });
 
-            if (string.IsNullOrWhiteSpace(message.Topic))
-            {
-                throw new ArgumentNullException($"No Topic provided");
-            }
-
-            if (!string.Equals(message.Topic, topic, StringComparison.InvariantCultureIgnoreCase))
-            {
-                throw new InvalidOperationException("The topic provided in message and route are not matching");
-            }
-
-            var result = _storage.ReadyMessageAdd(message);
-
-            if (result == MessageStatus.Error)
-            {
-                _logger.LogWarning("Cannot add message in storage.");
-                return result;
-            }
-
-            _queueService.Enqueue(message.Id);
-
-            return result;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, ex.Message);
-            return MessageStatus.Error;
+            return MessageStatus.Ready;
         }
     }
 
-    public MessageStatus Consume(Guid id, ConsumedMessage? consumedMessage)
+    public MessageStatus Consume(ConsumedMessage? consumedMessage)
     {
-        try
+        ArgumentNullException.ThrowIfNull(consumedMessage);
+        ArgumentException.ThrowIfNullOrWhiteSpace(consumedMessage.ConnectionId);
+
+        lock (_lock)
         {
-            if (consumedMessage == null)
+            if (consumedMessage.Id == Guid.Empty)
             {
-                throw new ArgumentNullException(nameof(consumedMessage));
+                throw new ArgumentException(nameof(consumedMessage.Id));
             }
 
-            if (consumedMessage.Id != id)
+            var messageFound = _messageCollection.FindById(consumedMessage.Id);
+
+            if (messageFound == null)
             {
-                throw new InvalidOperationException("The id provided in message and route are not matching");
+                _logger.LogWarning($"Message {consumedMessage.Id} not found");
+                return MessageStatus.Error;
             }
 
-            if (consumedMessage.Id != id)
+            messageFound.Status = MessageStatus.Consumed;
+
+            messageFound.Ack.Add(new MessageAcknowledgement()
             {
-                throw new InvalidOperationException("The id provided in message and route are not matching");
-            }
+                MessageId = consumedMessage.Id,
+                ConnectionId = consumedMessage.ConnectionId,
+                Timestamp = consumedMessage.Timestamp
+            });
 
-            var result = _storage.ConsumedMessageAdd(consumedMessage);
+            messageFound.Status = MessageStatus.Consumed;
+            messageFound.UpdatedAt = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
 
-            if (result == MessageStatus.Error)
-            {
-                _logger.LogWarning("Cannot add consumed message in storage.");
-            }
+            var updateResult = _messageCollection.Update(consumedMessage.Id, messageFound);
 
-            return result;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, ex.Message);
-            return MessageStatus.Error;
+            _logger.LogDebug($"Update result {updateResult}");
+
+            return messageFound.Status;
         }
     }
 
-    public MessageStatus Error(Guid id, ErrorMessageRequest? errorMessage)
+    public MessageStatus Error(ErrorMessageRequest? message)
     {
-        try
+        ArgumentNullException.ThrowIfNull(message);
+        ArgumentNullException.ThrowIfNull(message.ConnectionId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(message.ConnectionId);
+        ArgumentNullException.ThrowIfNull(message.Error);
+        ArgumentException.ThrowIfNullOrWhiteSpace(message.Error.Detail);
+        ArgumentException.ThrowIfNullOrWhiteSpace(message.Error.Title);
+
+        lock (_lock)
         {
-            if (errorMessage == null)
+            if (message.Id == Guid.Empty)
             {
-                throw new ArgumentNullException(nameof(errorMessage));
+                return MessageStatus.Error;
             }
 
-            if (errorMessage.Id != id)
-            {
-                throw new InvalidOperationException("The id provided in message and route are not matching");
-            }
-            
-            var result = _storage.ErrorMessageAdd(errorMessage);
+            var messageFound = _messageCollection.FindById(message.Id);
 
-            if (result == MessageStatus.Error)
+            if (messageFound == null)
             {
-                _logger.LogWarning("Cannot add error message in storage.");
-            }
-    
-            if (result == MessageStatus.Ready)
-            {
-                _queueService.Enqueue(id);
-                _logger.LogDebug($"Re-enqueued message {id}");
+                _logger.LogWarning($"Message {message.Id} not found. No error processing will be done.");
+                return MessageStatus.Error;
             }
 
-            return result;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, ex.Message);
-            return MessageStatus.Error;
+            var hasRetryPolicy = message.RetryPolicy is { Attempts: > 0 };
+
+            var error = messageFound.Errors.FirstOrDefault(x => x.ConnectionId == message.ConnectionId);
+
+            if (error == null)
+            {
+                error = new MessageError()
+                {
+                    ConnectionId = message.ConnectionId
+                };
+
+                messageFound.Errors.Add(error);
+            }
+
+            error.Details.Add(new()
+            {
+                Title = message.Error.Title,
+                Detail = message.Error.Detail,
+                Timestamp = message.Timestamp
+            });
+
+            error.RetryPolicy = hasRetryPolicy
+            ? new MessageRetryPolicy()
+            {
+                Attempts = message.RetryPolicy!.Attempts
+            }
+            : null;
+
+            if (hasRetryPolicy)
+            {
+                messageFound.Retries.Add(new MessageRetry()
+                {
+                    ConnectionId = message.ConnectionId,
+                    Timestamp = message.Timestamp
+                });
+
+                var messageRetries = messageFound.Errors.All(x => x.RetryPolicy == null) ? new List<MessageRetry>() : messageFound.Retries.ToList();
+
+                var firstRetryToApply = messageRetries.Where(x => x.Sent == null).MinBy(x => x.Timestamp);
+
+                if (messageRetries.Count == 0 || firstRetryToApply == null)
+                {
+                    messageFound.Status = MessageStatus.Error;
+                }
+                else
+                {
+                    messageFound.Status = MessageStatus.Ready;
+                }
+            }
+            else
+            {
+                messageFound.Status = MessageStatus.Error;
+            }
+
+            messageFound.UpdatedAt = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
+
+            var updateResult = _messageCollection.Update(messageFound.Id, messageFound);
+
+            _logger.LogDebug($"Update result {updateResult}");
+
+            return messageFound.Status;
         }
     }
 
-    public MessageStatus Process(Guid id, ProcessedMessage? processedMessage)
+    public MessageStatus Process(ProcessedMessage? processedMessage)
     {
-        try
+        ArgumentNullException.ThrowIfNull(processedMessage);
+        ArgumentException.ThrowIfNullOrWhiteSpace(processedMessage.ConnectionId);
+
+        lock (_lock)
         {
-            if (processedMessage == null)
+            if (processedMessage.Id == Guid.Empty)
             {
-                throw new ArgumentNullException(nameof(processedMessage));
+                throw new ArgumentException(nameof(processedMessage.Id));
             }
 
-            if (processedMessage.Id != id)
+            var messageFound = _messageCollection.FindById(processedMessage.Id);
+
+            if (messageFound == null)
             {
-                throw new InvalidOperationException("The id provided in message and route are not matching");
+                _logger.LogWarning($"Message {processedMessage.Id} not found");
+                return MessageStatus.Error;
             }
 
-            if (processedMessage.Id != id)
-            {
-                throw new InvalidOperationException("The id provided in message and route are not matching");
-            }
+            messageFound.Status = MessageStatus.Processed;
+            messageFound.UpdatedAt = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
 
-            var result = _storage.ProcessedMessageAdd(processedMessage);
+            var updateResult = _messageCollection.Update(processedMessage.Id, messageFound);
 
-            if (result == MessageStatus.Error)
-            {
-                _logger.LogWarning("Cannot add processed message in storage.");
-            }
+            _logger.LogDebug($"Update result {updateResult}");
 
-            return result;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, ex.Message);
-            return MessageStatus.Error;
+            return messageFound.Status;
         }
     }
 
-    public int PurgeReady(string? topic)
+    public Message? Get(Guid messageId)
     {
-        try
+        if (messageId == Guid.Empty)
         {
-            if (string.IsNullOrWhiteSpace(topic))
+            throw new ArgumentException(nameof(messageId));
+        }
+
+        lock (_lock)
+        {
+            var messageFound = _messageCollection.FindById(messageId);
+
+            if (messageFound == null)
             {
-                throw new ArgumentNullException(nameof(topic));
+                _logger.LogWarning($"No message found with id {messageId}");
+                return null;
             }
 
-            return _storage.ReadyMessagePurge(topic);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, ex.Message);
-            return -1;
+            return new Message(new Header(messageFound.Id, messageFound.Topic, messageFound.Timestamp), new Content(messageFound.Payload), messageFound.Status.ToString());
         }
     }
 
-    public List<Consumer> Consumers(string? topic)
+    public MessageStatus Send(Guid messageId)
     {
-        try
+        if (messageId == Guid.Empty)
         {
-            if (string.IsNullOrWhiteSpace(topic))
-            {
-                throw new ArgumentNullException(nameof(topic));
-            }
-            
-            return _connectionManager.GetConnectedConsumers(topic);
+            throw new ArgumentException(nameof(messageId));
         }
-        catch (Exception ex)
+
+        lock (_lock)
         {
-            _logger.LogError(ex, ex.Message);
-            return new List<Consumer>();
+            var messageFound = _messageCollection.FindById(messageId);
+
+            if (messageFound == null)
+            {
+                _logger.LogWarning($"No message {messageId} with status {MessageStatus.Ready} not found. The send will not be set.");
+                return MessageStatus.Error;
+            }
+
+            if (messageFound.Status != MessageStatus.Ready)
+            {
+                _logger.LogWarning($"Message {messageId} with status {messageFound.Status} found. The send will not be set.");
+                return MessageStatus.Error;
+            }
+
+            messageFound.Status = MessageStatus.Sent;
+            messageFound.UpdatedAt = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
+
+            var updateResult = _messageCollection.Update(messageFound.Id, messageFound);
+
+            _logger.LogDebug($"Update result {updateResult}");
+
+            return messageFound.Status;
         }
     }
 
-    public List<Message> ReadyMessageList(string? topic = null)
+    public int Purge(string topic)
     {
-        try
+        ArgumentException.ThrowIfNullOrWhiteSpace(topic);
+
+        lock (_lock)
         {
-            if (string.IsNullOrWhiteSpace(topic))
-            {
-                throw new ArgumentNullException(nameof(topic));
-            }
-            
-            return _storage.ReadyMessageList(topic);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, ex.Message);
-            return new List<Message>();
+            var deleteResult = _messageCollection.DeleteMany(x => x.Status == MessageStatus.Ready && x.Topic == topic);
+
+            return deleteResult;
         }
     }
 
-    public List<Message> SentMessageList(string? topic = null)
+    public List<Message> ReadyList(string? topic = null)
     {
-        try
+        lock (_lock)
         {
-            if (string.IsNullOrWhiteSpace(topic))
-            {
-                throw new ArgumentNullException(nameof(topic));
-            }
+            var messages = !string.IsNullOrWhiteSpace(topic) ? _messageCollection.Query().Where(x => x.Topic == topic && x.Status == MessageStatus.Ready).OrderBy(x => x.Timestamp).ToList() : _messageCollection.Query().Where(x => x.Status == MessageStatus.Ready).OrderBy(x => x.Timestamp).ToList();
 
-            return _storage.SentMessageList(topic);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, ex.Message);
-            return new List<Message>();
+            return messages != null
+                ? messages.Select(m =>
+                    new Message(new Header(m.Id, m.Topic, m.Timestamp), new Content(m.Payload), m.Status.ToString())).ToList()
+                : new();
         }
     }
 
-    public List<ErrorMessage> ErrorMessageList(string? topic = null)
+    public List<Message> SentList(string? topic = null)
     {
-        try
+        lock (_lock)
         {
-            return _storage.ErrorMessageList(topic);
+            var messages = !string.IsNullOrWhiteSpace(topic) ? _messageCollection.Query().Where(x => x.Topic == topic && x.Status == MessageStatus.Sent).OrderBy(x => x.Timestamp).ToList() : _messageCollection.Query().Where(x => x.Status == MessageStatus.Sent).OrderBy(x => x.Timestamp).ToList();
+
+            return messages != null
+                ? messages.Select(m =>
+                    new Message(new Header(m.Id, m.Topic, m.Timestamp), new Content(m.Payload), m.Status.ToString())).ToList()
+                : new();
         }
-        catch (Exception ex)
+    }
+
+    public List<ErrorMessage> ErrorList(string? topic = null)
+    {
+        lock (_lock)
         {
-            _logger.LogError(ex, ex.Message);
-            return new List<ErrorMessage>();
+            var messages = topic != null && !string.IsNullOrWhiteSpace(topic)
+                ? _messageCollection.Query().Where(x => x.Status == MessageStatus.Error && x.Topic == topic).ToList()
+                : _messageCollection.Query().Where(x => x.Status == MessageStatus.Error).ToList();
+
+            return messages.Select(m => new ErrorMessage(m.Id, new Message(new Header(m.Id, m.Topic, m.Timestamp), new Content(m.Payload), m.Status.ToString()), m.Errors.Select(d => new ErrorMessageDetail(d.ConnectionId, d.Details.Select(dt => new ErrorDetail(dt.Title, dt.Detail)).ToList(), d.RetryPolicy != null ? new RetryPolicy(d.RetryPolicy.Attempts) : null)).ToList())).ToList();
         }
     }
 
     public List<ConsumedMessage> ConsumedMessageList(string topic)
     {
-        try
+        lock (_lock)
         {
-            if (string.IsNullOrWhiteSpace(topic))
-            {
-                throw new ArgumentNullException(nameof(topic));
-            }
-            
-            return _storage.ConsumedMessageList(topic);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, ex.Message);
-            return new List<ConsumedMessage>();
+            var messages = _messageCollection.Query().Where(x => x.Ack.Any() && x.Topic == topic).OrderBy(x => x.Timestamp).ToList();
+
+            return messages != null
+                ? messages.SelectMany(x => x.Ack).Select(ack => new ConsumedMessage(ack.MessageId, ack.ConnectionId, ack.Timestamp)).ToList()
+                : new();
         }
     }
-    
-    public List<ConsumedMessage> ConsumedMessageList(string connectionId, string topic)
+
+    public List<ConsumedMessage> ConsumedListByConnectionId(string connectionId)
     {
-        try
+        lock (_lock)
         {
-            if (string.IsNullOrWhiteSpace(connectionId))
-            {
-                throw new ArgumentNullException(nameof(connectionId));
-            }
-            
-            if (string.IsNullOrWhiteSpace(topic))
-            {
-                throw new ArgumentNullException(nameof(topic));
-            }
-            
-            return _storage.ConsumedMessageList(connectionId, topic);
+            var messages = _messageCollection.Query().Where(x => x.Ack.Any(a => a.ConnectionId == connectionId)).OrderBy(x => x.Timestamp).ToList();
+
+            return messages != null
+                ? messages.SelectMany(x => x.Ack).Select(ack => new ConsumedMessage(ack.MessageId, ack.ConnectionId, ack.Timestamp)).ToList()
+                : new();
+
         }
-        catch (Exception ex)
+    }
+
+    public List<ConsumedMessage> ConsumedList(string connectionId, string topic)
+    {
+        lock (_lock)
         {
-            _logger.LogError(ex, ex.Message);
-            return new List<ConsumedMessage>();
+            var messages = _messageCollection.Query().Where(x => x.Ack.Any(ack => ack.ConnectionId == connectionId) && x.Topic == topic).OrderBy(x => x.Timestamp).ToList();
+
+            return messages != null
+                ? messages.SelectMany(x => x.Ack).Select(ack => new ConsumedMessage(ack.MessageId, ack.ConnectionId, ack.Timestamp)).ToList()
+                : new();
         }
+    }
+
+    public void Dispose()
+    {
+        _database.Dispose();
     }
 }

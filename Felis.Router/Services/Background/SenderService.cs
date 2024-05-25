@@ -1,5 +1,4 @@
-﻿using Felis.Router.Abstractions;
-using Felis.Router.Entities;
+﻿using Felis.Router.Entities;
 using Felis.Router.Hubs;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Hosting;
@@ -9,15 +8,15 @@ namespace Felis.Router.Services.Background
 {
     internal sealed class SenderService : BackgroundService
     {
-        private readonly IRouterStorage _routerStorage;
-        private readonly ILogger<SenderService> _logger;
-        private readonly IHubContext<RouterHub> _hubContext;
+        private readonly MessageService _messageService;
         private readonly LoadBalancingService _loadBalancingService;
         private readonly QueueService _queueService;
+        private readonly ILogger<SenderService> _logger;
+        private readonly IHubContext<RouterHub> _hubContext;
 
-        public SenderService(IRouterStorage routerStorage, ILogger<SenderService> logger, IHubContext<RouterHub> hubContext, LoadBalancingService loadBalancingService, QueueService queueService)
+        public SenderService(MessageService messageService, ILogger<SenderService> logger, IHubContext<RouterHub> hubContext, LoadBalancingService loadBalancingService, QueueService queueService)
         {
-            _routerStorage = routerStorage ?? throw new ArgumentNullException(nameof(routerStorage));
+            _messageService = messageService ?? throw new ArgumentNullException(nameof(messageService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _hubContext = hubContext ?? throw new ArgumentNullException(nameof(hubContext));
             _loadBalancingService = loadBalancingService ?? throw new ArgumentNullException(nameof(loadBalancingService));
@@ -40,7 +39,7 @@ namespace Felis.Router.Services.Background
 
                         var messageId = queueItem.MessageId;
 
-                        var message = _routerStorage.MessageGet(messageId);
+                        var message = _messageService.Get(messageId);
 
                         if(message == null)
                         {
@@ -74,7 +73,7 @@ namespace Felis.Router.Services.Background
                         
                         await _hubContext.Clients.Client(connectionId).SendAsync(topic, message, stoppingToken);
 
-                        var messageSentSet = _routerStorage.SentMessageAdd(messageId);
+                        var messageSentSet = _messageService.Send(messageId);
 
                         _logger.LogWarning($"Message {message.Header?.Id} sent {messageSentSet}.");
                     }

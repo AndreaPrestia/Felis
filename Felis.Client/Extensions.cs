@@ -1,11 +1,9 @@
 ﻿using Felis.Client.Resolvers;
 using Felis.Core;
 using Felis.Core.Models;
-using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.Http.Connections.Client;
-using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -26,14 +24,6 @@ public static class Extensions
 		
         builder.ConfigureServices((_, serviceCollection) =>
         {
-			serviceCollection.AddSignalR();
-			
-			serviceCollection.AddResponseCompression(opts =>
-			{
-				opts.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(
-					new[] { "application/octet-stream" });
-			});
-
 			var hubConnectionBuilder = new HubConnectionBuilder();
 
 			hubConnectionBuilder.Services.AddSingleton<IConnectionFactory>(

@@ -1,11 +1,9 @@
-﻿using Felis.Router.Abstractions;
-using Felis.Router.Endpoints;
+﻿using Felis.Router.Endpoints;
 using Felis.Router.Hubs;
 using Felis.Router.Managers;
 using Felis.Router.Middlewares;
 using Felis.Router.Services;
 using Felis.Router.Services.Background;
-using Felis.Router.Storage;
 using LiteDB;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -49,15 +47,14 @@ public static class Extensions
 
         AddSwagger(services);
         services.AddSingleton<ILiteDatabase>(_ => new LiteDatabase("Felis.db"));
-        services.AddSingleton<IRouterStorage, LiteDbRouterStorage>();
     }
 
     private static void AddServices(IServiceCollection serviceCollection)
     {
-        serviceCollection.AddHostedService<SenderService>();
-        serviceCollection.AddSingleton<ConnectionManager>();
-        serviceCollection.AddSingleton<MessageService>();
         serviceCollection.AddSingleton<RouterHub>();
+        serviceCollection.AddHostedService<SenderService>();
+        serviceCollection.AddSingleton<ConnectionService>();
+        serviceCollection.AddSingleton<MessageService>();
         serviceCollection.AddSingleton<LoadBalancingService>();
         serviceCollection.AddSingleton<QueueService>();
     }

@@ -15,6 +15,13 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.Router.Test", "Exampl
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.Client.Test", "Examples\Felis.Client.Test\Felis.Client.Test.csproj", "{F3874C95-AC03-48FC-9ED7-EC430A213EFF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.Client.Second.Test", "Examples\Felis.Client.Second.Test\Felis.Client.Second.Test.csproj", "{60AE21D8-22ED-44C4-8FA3-CAD685E9A2BA}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Images", "Images", "{1AF83B20-B6BF-40A3-8DE3-8977167E9514}"
+	ProjectSection(SolutionItems) = preProject
+		Images\Felis.drawio.png = Images\Felis.drawio.png
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -41,6 +48,10 @@ Global
 		{F3874C95-AC03-48FC-9ED7-EC430A213EFF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F3874C95-AC03-48FC-9ED7-EC430A213EFF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F3874C95-AC03-48FC-9ED7-EC430A213EFF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{60AE21D8-22ED-44C4-8FA3-CAD685E9A2BA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{60AE21D8-22ED-44C4-8FA3-CAD685E9A2BA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{60AE21D8-22ED-44C4-8FA3-CAD685E9A2BA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{60AE21D8-22ED-44C4-8FA3-CAD685E9A2BA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -51,5 +62,6 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{F3874C95-AC03-48FC-9ED7-EC430A213EFF} = {FE976AE8-F03F-4F08-9A08-29B02AEA49B1}
 		{BB7DFBE8-1065-4EF2-83EB-B7CED1B0A3EB} = {FE976AE8-F03F-4F08-9A08-29B02AEA49B1}
+		{60AE21D8-22ED-44C4-8FA3-CAD685E9A2BA} = {FE976AE8-F03F-4F08-9A08-29B02AEA49B1}
 	EndGlobalSection
 EndGlobal

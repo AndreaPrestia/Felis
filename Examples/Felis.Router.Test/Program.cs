@@ -2,12 +2,10 @@ using Felis.Router;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Host.AddFelisRouter();
+builder.Services.AddFelisRouter("gabriele", "paolini");
 
 var app = builder.Build();
 
 app.UseFelisRouter();
-
-app.MapGet("/", () => "Felis Router is up and running!").ExcludeFromDescription();
 
 app.Run();

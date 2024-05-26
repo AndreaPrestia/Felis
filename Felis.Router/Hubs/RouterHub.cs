@@ -1,25 +1,25 @@
-﻿using System.Net;
-using Felis.Core.Models;
-using Felis.Router.Managers;
+﻿using Felis.Core.Models;
+using Felis.Router.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
+using System.Net;
 
 namespace Felis.Router.Hubs;
 
 [Route("/felis/router")]
-internal sealed class FelisRouterHub : Hub
+internal sealed class RouterHub : Hub
 {
-    private readonly ILogger<FelisRouterHub> _logger;
-    private readonly FelisConnectionManager _felisConnectionManager;
+    private readonly ILogger<RouterHub> _logger;
+    private readonly ConnectionService _connectionService;
 
-    public FelisRouterHub(ILogger<FelisRouterHub> logger, FelisConnectionManager felisConnectionManager)
+    public RouterHub(ILogger<RouterHub> logger, ConnectionService connectionService)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _felisConnectionManager = felisConnectionManager ?? throw new ArgumentNullException(nameof(felisConnectionManager));
+        _connectionService = connectionService ?? throw new ArgumentNullException(nameof(connectionService));
     }
 
-    public string SetConnectionId(List<Topic> topics, string friendlyName)
+    public string SetConnectionId(List<string> topics, bool unique)
     {
         try
         {
@@ -32,8 +32,7 @@ internal sealed class FelisRouterHub : Hub
 
             var clientHostname = Dns.GetHostEntry(clientIp).HostName;
 
-            _felisConnectionManager.KeepConsumerConnection(new Consumer(friendlyName, clientHostname, clientIp.ToString(), topics),
-                new ConnectionId(Context.ConnectionId));
+            _connectionService.KeepConsumerConnection(new Consumer(clientHostname, clientIp.MapToIPv4().ToString(), topics, unique), Context.ConnectionId);
             return Context.ConnectionId;
         }
         catch (Exception ex)
@@ -43,11 +42,11 @@ internal sealed class FelisRouterHub : Hub
         }
     }
 
-    public void RemoveConnectionId(ConnectionId connectionId)
+    public void RemoveConnectionId(string connectionId)
     {
         try
         {
-            _felisConnectionManager.RemoveConsumerConnections(connectionId);
+            _connectionService.RemoveConsumerConnections(connectionId);
         }
         catch (Exception ex)
         {

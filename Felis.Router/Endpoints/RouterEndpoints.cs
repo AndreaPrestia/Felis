@@ -70,7 +70,7 @@ internal static class RouterEndpoints
             .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
         endpointRouteBuilder.MapDelete("/messages/{topic}/ready/purge",
-                ([FromServices] RouterManager manager, [FromRoute] string? topic) =>
+                ([FromServices] RouterManager manager, [FromRoute] string topic) =>
                 {
                     var result = manager.Purge(topic);
 

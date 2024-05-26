@@ -19,7 +19,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.Client.Second.Test", 
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Images", "Images", "{1AF83B20-B6BF-40A3-8DE3-8977167E9514}"
 	ProjectSection(SolutionItems) = preProject
-		Images\Felis.drawio.png = Images\Felis.drawio.png
+		Images\FelisDiagram.jpg = Images\FelisDiagram.jpg
 	EndProjectSection
 EndProject
 Global

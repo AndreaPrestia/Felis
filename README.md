@@ -653,9 +653,6 @@ Though there is room for further improvement, the project is fit for becoming a 
 
 **TODO**
 
-- Make it compliant with AMQP protocol.
-- Implement an authorization mechanism to make Felis available in public networks.
-- Code refactoring.
 - Unit testing.
 - Stress testing.
 - Clusterization design.

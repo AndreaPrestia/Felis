@@ -1,9 +1,9 @@
-﻿using Felis.Core.Models;
-using Felis.Router.Services;
+﻿using Felis.Router.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using System.Net;
+using Felis.Router.Models;
 
 namespace Felis.Router.Hubs;
 

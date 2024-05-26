@@ -1,6 +1,6 @@
-﻿using Felis.Core.Models;
-using Felis.Router.Enums;
+﻿using Felis.Router.Enums;
 using Felis.Router.Managers;
+using Felis.Router.Models;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;

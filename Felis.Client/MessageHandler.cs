@@ -1,10 +1,10 @@
 ﻿using Felis.Client.Resolvers;
-using Felis.Core.Models;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Felis.Client.Models;
 
 namespace Felis.Client;
 

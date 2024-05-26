@@ -1,5 +1,5 @@
-﻿using Felis.Core.Models;
-using Felis.Router.Enums;
+﻿using Felis.Router.Enums;
+using Felis.Router.Models;
 using Felis.Router.Services;
 using Microsoft.Extensions.Logging;
 

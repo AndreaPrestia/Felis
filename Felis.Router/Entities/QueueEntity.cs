@@ -1,6 +1,4 @@
-﻿using LiteDB;
-
-namespace Felis.Router.Entities;
+﻿namespace Felis.Router.Entities;
 
 internal sealed class QueueEntity
 {

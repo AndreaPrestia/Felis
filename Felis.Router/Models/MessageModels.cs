@@ -1,4 +1,4 @@
-﻿namespace Felis.Core.Models;
+﻿namespace Felis.Router.Models;
 
 public record MessageRequest(Guid Id, string Topic, string Payload);
 

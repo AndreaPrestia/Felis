@@ -1,5 +1,5 @@
-﻿using Felis.Core.Models;
-using Felis.Router.Entities;
+﻿using Felis.Router.Entities;
+using Felis.Router.Models;
 
 namespace Felis.Router.Services;
 

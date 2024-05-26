@@ -1,4 +1,4 @@
-﻿using Felis.Core.Models;
+﻿using Felis.Router.Models;
 
 namespace Felis.Router.Entities;
 

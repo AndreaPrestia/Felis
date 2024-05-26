@@ -1,6 +1,6 @@
-﻿using Felis.Core.Models;
-using Felis.Router.Entities;
+﻿using Felis.Router.Entities;
 using Felis.Router.Enums;
+using Felis.Router.Models;
 using LiteDB;
 using Microsoft.Extensions.Logging;
 

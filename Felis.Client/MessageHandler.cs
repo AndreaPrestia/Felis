@@ -1,10 +1,10 @@
 ﻿using Felis.Client.Resolvers;
-using Felis.Core.Models;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Felis.Client.Models;
 
 namespace Felis.Client;
 
@@ -18,14 +18,16 @@ public sealed class MessageHandler : IAsyncDisposable
     private bool _unique;
     private readonly ConsumerResolver _consumerResolver;
 
-    public MessageHandler(HubConnection? hubConnection, ILogger<MessageHandler> logger,HttpClient httpClient, IServiceScopeFactory serviceScopeFactory)
+    public MessageHandler(HubConnection? hubConnection, ILogger<MessageHandler> logger, HttpClient httpClient,
+        IServiceScopeFactory serviceScopeFactory)
     {
         _hubConnection = hubConnection ?? throw new ArgumentNullException(nameof(hubConnection));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         ArgumentNullException.ThrowIfNull(serviceScopeFactory);
         var scope = serviceScopeFactory.CreateScope();
-        _consumerResolver = scope.ServiceProvider.GetService<ConsumerResolver>() ?? throw new ArgumentNullException(nameof(ConsumerResolver));
+        _consumerResolver = scope.ServiceProvider.GetService<ConsumerResolver>() ??
+                            throw new ArgumentNullException(nameof(ConsumerResolver));
     }
 
     public async Task PublishAsync<T>(T payload, string? topic, CancellationToken cancellationToken = default)
@@ -59,7 +61,8 @@ public sealed class MessageHandler : IAsyncDisposable
         }
     }
 
-    public async Task SubscribeAsync(RetryPolicy? retryPolicy, bool unique, CancellationToken cancellationToken = default)
+    public async Task SubscribeAsync(RetryPolicy? retryPolicy, bool unique,
+        CancellationToken cancellationToken = default)
     {
         if (_hubConnection == null)
         {
@@ -68,7 +71,7 @@ public sealed class MessageHandler : IAsyncDisposable
 
         _retryPolicy = retryPolicy;
         _unique = unique;
-        
+
         var topicsTypes = _consumerResolver.GetTypesForTopics();
 
         _topics = topicsTypes.Select(x => x.Key).ToList();
@@ -79,7 +82,7 @@ public sealed class MessageHandler : IAsyncDisposable
             {
                 continue;
             }
-            
+
             _hubConnection.On<Message?>(topicType.Key, async (messageIncoming) =>
             {
                 try
@@ -93,7 +96,6 @@ public sealed class MessageHandler : IAsyncDisposable
                     if (messageIncoming.Header?.Topic == null ||
                         string.IsNullOrWhiteSpace(messageIncoming.Header?.Topic))
                     {
-                        
                         _logger.LogWarning("No Topic provided in Header.");
                         return;
                     }
@@ -104,16 +106,19 @@ public sealed class MessageHandler : IAsyncDisposable
                         return;
                     }
 
-                    var consumerSearchResult = _consumerResolver.ResolveConsumerByTopic(topicType, messageIncoming.Content?.Payload);
+                    var consumerSearchResult =
+                        _consumerResolver.ResolveConsumerByTopic(topicType, messageIncoming.Content?.Payload);
 
                     if (consumerSearchResult.Error)
                     {
                         _logger.LogError(consumerSearchResult.Exception, consumerSearchResult.Exception?.Message);
                         return;
                     }
-                    
-                    var responseMessage = await _httpClient.PostAsJsonAsync($"/messages/{messageIncoming.Header?.Id}/consume",
-                        new ConsumedMessage(messageIncoming.Header!.Id, _hubConnection.ConnectionId, new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds()),
+
+                    var responseMessage = await _httpClient.PostAsJsonAsync(
+                        $"/messages/{messageIncoming.Header?.Id}/consume",
+                        new ConsumedMessage(messageIncoming.Header!.Id, _hubConnection.ConnectionId,
+                            new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds()),
                         cancellationToken: cancellationToken);
 
                     responseMessage.EnsureSuccessStatusCode();
@@ -124,7 +129,8 @@ public sealed class MessageHandler : IAsyncDisposable
                     {
                         try
                         {
-                            consumerSearchResult.ProcessMethod?.Invoke(consumerSearchResult.Consumer, new[] { consumerSearchResult.DeserializedEntity });
+                            consumerSearchResult.ProcessMethod?.Invoke(consumerSearchResult.Consumer,
+                                new[] { consumerSearchResult.DeserializedEntity });
                         }
                         catch (Exception ex)
                         {
@@ -143,7 +149,7 @@ public sealed class MessageHandler : IAsyncDisposable
 
         await CheckHubConnectionStateAndStartIt(cancellationToken);
     }
-   
+
     public async ValueTask DisposeAsync()
     {
         if (_hubConnection != null)
@@ -169,10 +175,7 @@ public sealed class MessageHandler : IAsyncDisposable
                 await _hubConnection?.StartAsync(cancellationToken)!;
             }
 
-            if (string.IsNullOrWhiteSpace(_hubConnection?.ConnectionId))
-            {
-                await _hubConnection?.InvokeAsync("SetConnectionId", _topics, _unique,  cancellationToken)!;
-            }
+            await _hubConnection?.InvokeAsync("SetConnectionId", _topics, _unique, cancellationToken)!;
         }
         catch (Exception ex)
         {
@@ -189,7 +192,8 @@ public sealed class MessageHandler : IAsyncDisposable
 
             var responseMessage = await _httpClient.PostAsJsonAsync($"/messages/{message?.Header?.Id}/error",
                 new ErrorMessageRequest(message!.Header!.Id,
-                    _hubConnection.ConnectionId, new ErrorDetail(exception?.Message, exception?.StackTrace), _retryPolicy),
+                    _hubConnection.ConnectionId, new ErrorDetail(exception?.Message, exception?.StackTrace),
+                    _retryPolicy),
                 cancellationToken: cancellationToken);
 
             responseMessage.EnsureSuccessStatusCode();

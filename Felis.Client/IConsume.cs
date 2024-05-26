@@ -1,4 +1,4 @@
-﻿namespace Felis.Core;
+﻿namespace Felis.Client;
 
 public interface IConsume<in T> 
 {

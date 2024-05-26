@@ -3,8 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.8.34525.116
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Felis.Core", "Felis.Core\Felis.Core.csproj", "{1796AE4F-80D1-4786-93DF-3A046A3C8C3E}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Felis.Router", "Felis.Router\Felis.Router.csproj", "{EF2F82C1-9624-4F20-965C-19DB9018A141}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Felis.Client", "Felis.Client\Felis.Client.csproj", "{BC1FB777-0CB4-4381-9EF1-0210DD7F9C09}"
@@ -28,10 +26,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{1796AE4F-80D1-4786-93DF-3A046A3C8C3E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{1796AE4F-80D1-4786-93DF-3A046A3C8C3E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{1796AE4F-80D1-4786-93DF-3A046A3C8C3E}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{1796AE4F-80D1-4786-93DF-3A046A3C8C3E}.Release|Any CPU.Build.0 = Release|Any CPU
 		{EF2F82C1-9624-4F20-965C-19DB9018A141}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{EF2F82C1-9624-4F20-965C-19DB9018A141}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EF2F82C1-9624-4F20-965C-19DB9018A141}.Release|Any CPU.ActiveCfg = Release|Any CPU

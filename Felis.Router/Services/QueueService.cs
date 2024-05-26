@@ -1,56 +1,55 @@
 ﻿using Felis.Router.Entities;
 using LiteDB;
 
-namespace Felis.Router.Services
+namespace Felis.Router.Services;
+
+internal class QueueService : IDisposable
 {
-    internal class QueueService : IDisposable
+    private readonly ILiteDatabase _database;
+    private readonly ILiteCollection<QueueEntity> _queueCollection;
+    private readonly object _lock = new object();
+
+    public QueueService(ILiteDatabase database)
     {
-        private readonly ILiteDatabase _database;
-        private readonly ILiteCollection<QueueEntity> _queueCollection;
-        private readonly object _lock = new object();
+        _database = database;
+        _queueCollection = _database.GetCollection<QueueEntity>("queues");
+        _queueCollection.EnsureIndex(x => x.Timestamp);
+    }
 
-        public QueueService(ILiteDatabase database)
+    public void Enqueue(Guid messageId)
+    {
+        if(messageId == Guid.Empty)
         {
-            _database = database;
-            _queueCollection = _database.GetCollection<QueueEntity>("queues");
-            _queueCollection.EnsureIndex(x => x.Timestamp);
+            throw new ArgumentException(nameof(messageId));
         }
-
-        public void Enqueue(Guid messageId)
-        {
-            if(messageId == Guid.Empty)
-            {
-                throw new ArgumentException(nameof(messageId));
-            }
          
-            lock (_lock)
-            {
-                var item = new QueueEntity
-                {
-                    Id = messageId,
-                    Timestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds()
-                };
-
-                _queueCollection.Insert(messageId, item);
-            }
-        }
-
-        public QueueEntity? Dequeue()
+        lock (_lock)
         {
-            lock (_lock)
+            var item = new QueueEntity
             {
-                var item = _queueCollection.FindOne(Query.All("Timestamp", Query.Ascending));
-                if (item != null)
-                {
-                    _queueCollection.Delete(item.Id);
-                }
-                return item;
-            }
-        }
+                Id = messageId,
+                Timestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds()
+            };
 
-        public void Dispose()
-        {
-            _database.Dispose();
+            _queueCollection.Insert(messageId, item);
         }
+    }
+
+    public QueueEntity? Dequeue()
+    {
+        lock (_lock)
+        {
+            var item = _queueCollection.FindOne(Query.All("Timestamp", Query.Ascending));
+            if (item != null)
+            {
+                _queueCollection.Delete(item.Id);
+            }
+            return item;
+        }
+    }
+
+    public void Dispose()
+    {
+        _database.Dispose();
     }
 }

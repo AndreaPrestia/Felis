@@ -88,6 +88,7 @@ curl -X 'POST' \
   'https://localhost:7110/messages/3fa85f64-5717-4562-b3fc-2c963f66afa6/consume' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
+  -H 'Authorization: Basic dXNlcm5hbWU6cGFzc3dvcmQ=' \
   -d '{
     "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
     "connectionId": "AYhRMfzMA62BvJn3paMczQ",
@@ -121,6 +122,7 @@ curl -X 'POST' \
   'https://localhost:7110/messages/3fa85f64-5717-4562-b3fc-2c963f66afa6/process' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
+  -H 'Authorization: Basic dXNlcm5hbWU6cGFzc3dvcmQ=' \
   -d '{
     "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
     "connectionId": "AYhRMfzMA62BvJn3paMczQ",
@@ -155,6 +157,7 @@ curl -X 'POST' \
   'https://localhost:7110/messages/3fa85f64-5717-4562-b3fc-2c963f66afa6/error' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
+  -H 'Authorization: Basic dXNlcm5hbWU6cGFzc3dvcmQ=' \
   -d '{
     "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
     "connectionId": "AYhRMfzMA62BvJn3paMczQ",
@@ -197,6 +200,7 @@ This endpoint tells the router to purge the ready queue for a specific topic. It
 curl -X 'DELETE' \
   'https://localhost:7110/messages/topic/purge' \
   -H 'accept: application/json'
+  -H 'Authorization: Basic dXNlcm5hbWU6cGFzc3dvcmQ=' \
   ```
 
 ***Request***
@@ -224,6 +228,7 @@ This endpoint provides a list of the clients connected to Felis that consume a s
 curl -X 'GET' \
   'https://localhost:7110/messages/topic/consumers' \
   -H 'accept: application/json'
+  -H 'Authorization: Basic dXNlcm5hbWU6cGFzc3dvcmQ=' \
 ```
 
 ***Response***
@@ -266,6 +271,7 @@ This endpoint provides a list of the message ready to sent in Felis for a specif
 curl -X 'GET' \
   'https://localhost:7110/messages/topic/ready' \
   -H 'accept: application/json'
+  -H 'Authorization: Basic dXNlcm5hbWU6cGFzc3dvcmQ=' \
 ```
 
 ***Response***
@@ -313,6 +319,7 @@ This endpoint provides a list of the message sent in Felis for a specific topic 
 curl -X 'GET' \
   'https://localhost:7110/messages/topic/sent' \
   -H 'accept: application/json'
+  -H 'Authorization: Basic dXNlcm5hbWU6cGFzc3dvcmQ=' \
 ```
 
 ***Response***
@@ -360,6 +367,7 @@ This endpoint provides a list of the message that are gone in the error queue fo
 curl -X 'GET' \
   'https://localhost:7110/messages/topic/error' \
   -H 'accept: application/json'
+  -H 'Authorization: Basic dXNlcm5hbWU6cGFzc3dvcmQ=' \
 ```
 
 ***Response***
@@ -427,6 +435,7 @@ This endpoint provides a list of the message that are been consumed for a specif
 curl -X 'GET' \
   'https://localhost:7110/messages/topic/consumed' \
   -H 'accept: application/json'
+  -H 'Authorization: Basic dXNlcm5hbWU6cGFzc3dvcmQ=' \
 ```
 
 ***Response***
@@ -467,6 +476,7 @@ This endpoint provides a list of the message that are been consumed for the conn
 curl -X 'GET' \
   'https://localhost:7110/consumers/AYhRMfzMA62BvJn3paMczQ/messages' \
   -H 'accept: application/json'
+  -H 'Authorization: Basic dXNlcm5hbWU6cGFzc3dvcmQ=' \
 ```
 
 ***Response***
@@ -521,6 +531,7 @@ This endpoint provides a list of the message that are been consumed for the conn
 curl -X 'GET' \
   'https://localhost:7110/consumers/AYhRMfzMA62BvJn3paMczQ/messages/topic' \
   -H 'accept: application/json'
+  -H 'Authorization: Basic dXNlcm5hbWU6cGFzc3dvcmQ=' \
   ```
 
 ***Response***

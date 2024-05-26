@@ -49,6 +49,7 @@ curl -X 'POST' \
   'https://localhost:7110/messages/topic/dispatch' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
+  -H 'Authorization: Basic dXNlcm5hbWU6cGFzc3dvcmQ=' \
   -d '{
     "header": {
         "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",

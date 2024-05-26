@@ -1,7 +1,7 @@
 # Felis
 A message broker totally written in .NET, based on SignalR.
 
-![Felis.drawio.png](Images%2FFelis.drawio.png)
+![FelisDiagram.jpg](Images%2FFelisDiagram.jpg)
 
 The Felis project is composed of two parts:
 

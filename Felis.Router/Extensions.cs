@@ -8,6 +8,7 @@ using LiteDB;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
@@ -60,14 +61,16 @@ public static class Extensions
             _.GetRequiredService<ILogger<RouterManager>>(),
             _.GetRequiredService<MessageService>(),
             _.GetRequiredService<ConnectionService>(),
-            _.GetRequiredService<QueueService>()
+            _.GetRequiredService<QueueService>(),
+            _.GetRequiredService<LoadBalancingService>(),
+            _.GetRequiredService<IHubContext<RouterHub>>()
         ));
     }
 
     private static void AddServices(IServiceCollection serviceCollection)
     {
         serviceCollection.AddSingleton<RouterHub>();
-        serviceCollection.AddHostedService<SenderService>();
+        serviceCollection.AddHostedService<DispatcherService>();
         serviceCollection.AddSingleton<ConnectionService>();
         serviceCollection.AddSingleton<MessageService>();
         serviceCollection.AddSingleton<LoadBalancingService>();

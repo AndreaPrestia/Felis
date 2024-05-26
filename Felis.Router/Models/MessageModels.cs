@@ -1,4 +1,6 @@
-﻿namespace Felis.Router.Models;
+﻿using Felis.Router.Enums;
+
+namespace Felis.Router.Models;
 
 public record MessageRequest(Guid Id, string Topic, string Payload);
 
@@ -22,4 +24,6 @@ public record ErrorMessageRequest(Guid Id, string ConnectionId, ErrorDetail Erro
 
 public record RetryPolicy(int Attempts);
 
-public record ProcessedMessage(Guid Id, string ConnectionId, long Timestamp);
+public record ProcessedMessage(Guid Id, string ConnectionId);
+
+public record NextMessageSentResponse(Guid MessageId, MessageSendStatus MessageSendStatus);

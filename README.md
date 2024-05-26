@@ -572,9 +572,16 @@ timestamp | long | The unix time in milliseconds that provides the consume time.
 Add these two lines of code:
 
 ```
-builder.AddFelisRouter(); => this line adds the FelisRouter with its related implementation for clients and dispatchers
+builder.AddFelisRouter("username", "password"); => this line adds the FelisRouter with its related implementation for clients and dispatchers
 app.UseFelisRouter(); => this line uses the implementations and endpoints
 ```
+
+The signature of **AddFelisRouter** method is made of:
+
+Parameter | Type    | Context                                                                                                                                                                                                                                          |
+--- |---------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+username | string  | The FelisRouter username to apply the basic authentication.                                                                                                                                                                                         |
+password | string | The FelisRouter password to apply the basic authentication.                                                                                                                                                                                            |
 
 **Felis.Client.Test**
 
@@ -586,14 +593,14 @@ This application contains a class, called TestConsumer, that implements the Cons
 
 Just add the following line of code:
 ```
-builder.AddFelisClient("https://localhost:7103", false 15, 5);
+builder.AddFelisClient("https://username:password@localhost:7103", false 15, 5);
 ```
 
 The signature of **AddFelisClient** method is made of:
 
 Parameter | Type    | Context                                                                                                                                                                                                                                          |
 --- |---------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-routerEndpoint | string  | The FelisRouter endpoint that the client must subscribe.                                                                                                                                                                                         |
+connectionString | string  | The FelisRouter connection string that the client must subscribe. It must contain the UserInfo to authenticate.                                                                                                                               |
 unique | boolean | Tells to the FelisRouter if the consumer is unique.                                                                                                                                                                                              |
 pooledConnectionLifetimeMinutes | int     | The internal http client PooledConnectionLifetimeMinutes. Not mandatory. Default value is 15.                                                                                                                                                    |
 maxAttempts | int     | It tells the router the maximum number of attempts that should be made to resend a message in the error queue, according to the retry policy that you want to apply. All the attempts are logged in the router. Not mandatory, default value is 0. |
@@ -646,9 +653,6 @@ Though there is room for further improvement, the project is fit for becoming a 
 
 **TODO**
 
-- Make it compliant with AMQP protocol.
-- Implement an authorization mechanism to make Felis available in public networks.
-- Code refactoring.
 - Unit testing.
 - Stress testing.
 - Clusterization design.

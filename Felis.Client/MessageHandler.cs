@@ -45,12 +45,10 @@ public sealed class MessageHandler : IAsyncDisposable
         {
             await CheckHubConnectionStateAndStartIt(cancellationToken);
 
-            //TODO add an authorization token as parameter
-
             var json = JsonSerializer.Serialize(payload);
 
             var responseMessage = await _httpClient.PostAsJsonAsync($"/messages/{topic}/dispatch",
-                new Message(new Header(Guid.NewGuid(), topic, new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds()), new Content(json)),
+                new MessageRequest(Guid.NewGuid(), topic, json),
                 cancellationToken: cancellationToken);
 
             responseMessage.EnsureSuccessStatusCode();
@@ -171,7 +169,10 @@ public sealed class MessageHandler : IAsyncDisposable
                 await _hubConnection?.StartAsync(cancellationToken)!;
             }
 
-            await _hubConnection?.InvokeAsync("SetConnectionId", _topics, _unique,  cancellationToken)!;
+            if (string.IsNullOrWhiteSpace(_hubConnection?.ConnectionId))
+            {
+                await _hubConnection?.InvokeAsync("SetConnectionId", _topics, _unique,  cancellationToken)!;
+            }
         }
         catch (Exception ex)
         {

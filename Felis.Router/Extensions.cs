@@ -1,16 +1,15 @@
-﻿using Felis.Router.Abstractions;
-using Felis.Router.Endpoints;
+﻿using Felis.Router.Endpoints;
 using Felis.Router.Hubs;
 using Felis.Router.Managers;
 using Felis.Router.Middlewares;
 using Felis.Router.Services;
 using Felis.Router.Services.Background;
-using Felis.Router.Storage;
 using LiteDB;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
 
 namespace Felis.Router;
@@ -19,6 +18,10 @@ public static class Extensions
 {
     public static void UseFelisRouter(this IApplicationBuilder app)
     {
+        app.UseWhen(context => context.Request.Path.ToString().StartsWith("/messages")
+                               || context.Request.Path.ToString().Contains("/consumers")
+                               || context.Request.Path.ToString().Contains("/felis/router"),
+            appBranch => { appBranch.UseMiddleware<AuthorizationMiddleware>(); });
         app.UseMiddleware<ErrorMiddleware>();
 
         app.UseRouting();
@@ -36,7 +39,7 @@ public static class Extensions
             "Felis Router v1"));
     }
 
-    public static void AddFelisRouter(this IServiceCollection services)
+    public static void AddFelisRouter(this IServiceCollection services, string username, string password)
     {
         services.Configure<JsonOptions>(options =>
         {
@@ -47,18 +50,28 @@ public static class Extensions
 
         AddServices(services);
 
+        services.AddSingleton<CredentialService>(_ => new CredentialService(username, password));
+
         AddSwagger(services);
+
         services.AddSingleton<ILiteDatabase>(_ => new LiteDatabase("Felis.db"));
-        services.AddSingleton<IRouterStorage, LiteDbRouterStorage>();
+
+        services.AddSingleton(_ => new RouterManager(
+            _.GetRequiredService<ILogger<RouterManager>>(),
+            _.GetRequiredService<MessageService>(),
+            _.GetRequiredService<ConnectionService>(),
+            _.GetRequiredService<QueueService>()
+        ));
     }
 
     private static void AddServices(IServiceCollection serviceCollection)
     {
-        serviceCollection.AddHostedService<SenderService>();
-        serviceCollection.AddSingleton<ConnectionManager>();
-        serviceCollection.AddSingleton<RouterService>();
         serviceCollection.AddSingleton<RouterHub>();
+        serviceCollection.AddHostedService<SenderService>();
+        serviceCollection.AddSingleton<ConnectionService>();
+        serviceCollection.AddSingleton<MessageService>();
         serviceCollection.AddSingleton<LoadBalancingService>();
+        serviceCollection.AddSingleton<QueueService>();
     }
 
     private static void AddSwagger(IServiceCollection serviceCollection)

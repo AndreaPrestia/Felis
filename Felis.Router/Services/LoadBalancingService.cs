@@ -1,24 +1,23 @@
-﻿using System.Collections.Concurrent;
-using Felis.Router.Managers;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
+using System.Collections.Concurrent;
 
 namespace Felis.Router.Services;
 
 internal class LoadBalancingService
 {
     private readonly ILogger<LoadBalancingService> _logger;
-    private readonly ConnectionManager _connectionManager;
+    private readonly ConnectionService _connectionService;
     private readonly ConcurrentDictionary<string, int> _currentIndexDictionary = new();
 
-    public LoadBalancingService(ILogger<LoadBalancingService> logger, ConnectionManager connectionManager)
+    public LoadBalancingService(ILogger<LoadBalancingService> logger, ConnectionService connectionService)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _connectionManager = connectionManager ?? throw  new ArgumentNullException(nameof(connectionManager));
+        _connectionService = connectionService ?? throw  new ArgumentNullException(nameof(connectionService));
     }
 
     public string? GetNextConnectionId(string topic)
     {
-        var connectionEntities = _connectionManager.GetConnectionIds(topic);
+        var connectionEntities = _connectionService.GetConnectionIds(topic);
         
         if (!connectionEntities.Any())
         {

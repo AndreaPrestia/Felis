@@ -16,7 +16,6 @@ public sealed class MessageHandler : IAsyncDisposable
     private readonly HttpClient _httpClient;
     private RetryPolicy? _retryPolicy;
     private bool _unique;
-    private string _credentials;
     private readonly ConsumerResolver _consumerResolver;
 
     public MessageHandler(HubConnection? hubConnection, ILogger<MessageHandler> logger,HttpClient httpClient, IServiceScopeFactory serviceScopeFactory)
@@ -46,8 +45,6 @@ public sealed class MessageHandler : IAsyncDisposable
         {
             await CheckHubConnectionStateAndStartIt(cancellationToken);
 
-            //TODO add an authorization token as parameter
-
             var json = JsonSerializer.Serialize(payload);
 
             var responseMessage = await _httpClient.PostAsJsonAsync($"/messages/{topic}/dispatch",
@@ -62,7 +59,7 @@ public sealed class MessageHandler : IAsyncDisposable
         }
     }
 
-    public async Task SubscribeAsync(RetryPolicy? retryPolicy, bool unique, string credentials, CancellationToken cancellationToken = default)
+    public async Task SubscribeAsync(RetryPolicy? retryPolicy, bool unique, CancellationToken cancellationToken = default)
     {
         if (_hubConnection == null)
         {
@@ -71,7 +68,6 @@ public sealed class MessageHandler : IAsyncDisposable
 
         _retryPolicy = retryPolicy;
         _unique = unique;
-        _credentials = credentials;
         
         var topicsTypes = _consumerResolver.GetTypesForTopics();
 
@@ -173,7 +169,10 @@ public sealed class MessageHandler : IAsyncDisposable
                 await _hubConnection?.StartAsync(cancellationToken)!;
             }
 
-            await _hubConnection?.InvokeAsync("SetConnectionId", _topics, _unique,  cancellationToken)!;
+            if (string.IsNullOrWhiteSpace(_hubConnection?.ConnectionId))
+            {
+                await _hubConnection?.InvokeAsync("SetConnectionId", _topics, _unique,  cancellationToken)!;
+            }
         }
         catch (Exception ex)
         {

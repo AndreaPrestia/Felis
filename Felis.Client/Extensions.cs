@@ -1,4 +1,5 @@
-﻿using Felis.Client.Resolvers;
+﻿using System.Text;
+using Felis.Client.Resolvers;
 using Felis.Core;
 using Felis.Core.Models;
 using Microsoft.AspNetCore.Connections;
@@ -31,13 +32,17 @@ public static class Extensions
 
 			var uri = new Uri(connectionString);
 
-			var credentials = uri.UserInfo;
+			var credentials = Convert.ToBase64String(Encoding.Default.GetBytes(uri.UserInfo));
 
 			var routerEndpoint = $"{uri.Scheme}://{uri.Authority}";
 			
 			serviceCollection.AddSingleton(hubConnectionBuilder
 				.WithUrl($"{connectionString}/felis/router",
-					options => { options.Transports = HttpTransportType.WebSockets; })
+					options =>
+					{
+						options.Transports = HttpTransportType.WebSockets;
+						options.Headers.Add("Authorization", $"Basic {credentials}");
+					})
 				.WithAutomaticReconnect()
 				.Build());
 
@@ -49,6 +54,7 @@ public static class Extensions
 			serviceCollection.AddHttpClient<MessageHandler>("felisClient", (_, client) =>
 				{
 					client.BaseAddress = new Uri(routerEndpoint);
+					client.DefaultRequestHeaders.Add("Authorization", $"Basic {credentials}");
 				}).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler()
 				{
 					PooledConnectionLifetime = TimeSpan.FromMinutes(pooledConnectionLifeTimeMinutes)
@@ -59,7 +65,7 @@ public static class Extensions
 
 			var messageHandler = serviceProvider.GetService<MessageHandler>();
 
-			messageHandler?.SubscribeAsync(maxAttempts > 0 ? new RetryPolicy(maxAttempts) : null, unique, credentials).Wait();
+			messageHandler?.SubscribeAsync(maxAttempts > 0 ? new RetryPolicy(maxAttempts) : null, unique).Wait();
 		});
 	}
 	

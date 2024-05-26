@@ -35,9 +35,16 @@ internal class AuthorizationMiddleware
             throw new SecurityException("Authorization not provided");
         }
 
-        var decodedContent = Encoding.Default.GetString(Convert.FromBase64String(authorization));
+        var encodedCredentials = authorization.Split(" ").LastOrDefault();
 
-        var splitAuthorization = decodedContent.Split(';');
+        if (string.IsNullOrWhiteSpace(encodedCredentials))
+        {
+            throw new SecurityException("Credentials not provided");
+        }
+
+        var decodedContent = Encoding.Default.GetString(Convert.FromBase64String(encodedCredentials));
+
+        var splitAuthorization = decodedContent.Split(':');
         
         var username = splitAuthorization[0];
 

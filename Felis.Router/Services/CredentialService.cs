@@ -2,7 +2,7 @@
 
 namespace Felis.Router.Services;
 
-public sealed class CredentialService
+internal sealed class CredentialService
 {
     private readonly CredentialEntity _credential;
 

@@ -14,10 +14,12 @@ public sealed class RouterManager
     private readonly MessageService _messageService;
     private readonly QueueService _queueService;
     private readonly LoadBalancingService _loadBalancingService;
+    private readonly DeadLetterService _deadLetterService;
     private readonly IHubContext<RouterHub> _hubContext;
 
     internal RouterManager(ILogger<RouterManager> logger, MessageService messageService,
         ConnectionService connectionService, QueueService queueService, LoadBalancingService loadBalancingService,
+        DeadLetterService deadLetterService,
         IHubContext<RouterHub> hubContext)
     {
         _logger = logger;
@@ -25,14 +27,20 @@ public sealed class RouterManager
         _connectionService = connectionService;
         _queueService = queueService;
         _loadBalancingService = loadBalancingService;
+        _deadLetterService = deadLetterService;
         _hubContext = hubContext;
     }
 
-    public MessageStatus Dispatch(string? topic, MessageRequest? message)
+    public MessageStatus Dispatch(string topic, MessageRequest? message)
     {
         if (message == null)
         {
             throw new ArgumentNullException(nameof(message));
+        }
+
+        if (string.IsNullOrWhiteSpace(topic))
+        {
+            throw new ArgumentNullException($"No Topic provided");
         }
 
         if (string.IsNullOrWhiteSpace(message.Topic))
@@ -171,12 +179,14 @@ public sealed class RouterManager
 
         if (message == null)
         {
+            _deadLetterService.Add(messageId, MessageSendStatus.MessageNotFound);
             _logger.LogWarning($"Cannot find message {messageId} in messages. No processing will be done.");
             return new NextMessageSentResponse(Guid.Empty, MessageSendStatus.MessageNotFound);
         }
 
         if (message.Status != MessageStatus.Ready.ToString())
         {
+            _deadLetterService.Add(messageId, MessageSendStatus.MessageNotReady);
             _logger.LogWarning($"Message {messageId} has status {message.Status}. No processing will be done.");
             return new NextMessageSentResponse(Guid.Empty, MessageSendStatus.MessageNotReady);
         }
@@ -185,6 +195,7 @@ public sealed class RouterManager
 
         if (string.IsNullOrWhiteSpace(topic))
         {
+            _deadLetterService.Add(messageId, MessageSendStatus.MessageWithoutTopic);
             _logger.LogWarning($"No topic for {messageId} in messages. No processing will be done.");
             return new NextMessageSentResponse(Guid.Empty, MessageSendStatus.MessageWithoutTopic);
         }
@@ -202,11 +213,16 @@ public sealed class RouterManager
 
         await _hubContext.Clients.Client(connectionId).SendAsync(topic, message, cancellationToken);
 
-        var messageSentSet = _messageService.Send(messageId);
+        var messageStatus = _messageService.Send(messageId);
 
-        _logger.LogWarning($"Message {message.Header?.Id} sent {messageSentSet}.");
+        _logger.LogWarning($"Message {message.Header?.Id} sent {messageStatus}.");
 
-        return messageSentSet == MessageStatus.Sent
+        if (messageStatus != MessageStatus.Sent)
+        {
+            _deadLetterService.Add(messageId, MessageSendStatus.MessageNotSent);
+        }
+
+        return messageStatus == MessageStatus.Sent
             ? new NextMessageSentResponse(messageId, MessageSendStatus.MessageSent)
             : new NextMessageSentResponse(messageId, MessageSendStatus.MessageNotSent);
     }

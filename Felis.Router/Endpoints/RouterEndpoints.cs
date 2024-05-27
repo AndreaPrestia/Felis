@@ -14,7 +14,7 @@ internal static class RouterEndpoints
     internal static void MapRouterEndpoints(this IEndpointRouteBuilder endpointRouteBuilder)
     {
         endpointRouteBuilder.MapPost("/messages/{topic}/dispatch",
-              ([FromServices] RouterManager manager, [FromRoute] string? topic,
+              ([FromServices] RouterManager manager, [FromRoute] string topic,
                    [FromBody] MessageRequest message) =>
               {
                   var result = manager.Dispatch(topic, message);

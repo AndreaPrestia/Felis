@@ -1,5 +1,5 @@
 # Felis
-A message broker totally written in .NET, based on SignalR.
+A message queue totally written in .NET, based on SignalR.
 
 ![FelisDiagram.jpg](Images%2FFelisDiagram.jpg)
 

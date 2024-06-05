@@ -16,7 +16,7 @@ internal class QueueService : IDisposable
         _queueCollection.EnsureIndex(x => x.Timestamp);
     }
 
-    public void Enqueue(Guid messageId)
+    public void Enqueue(Guid messageId, string? connectionId)
     {
         if(messageId == Guid.Empty)
         {
@@ -28,7 +28,8 @@ internal class QueueService : IDisposable
             var item = new QueueEntity
             {
                 Id = messageId,
-                Timestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds()
+                Timestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(),
+                ConnectionId = connectionId
             };
 
             _queueCollection.Insert(messageId, item);

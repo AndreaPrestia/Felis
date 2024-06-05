@@ -61,7 +61,7 @@ public sealed class RouterManager
             return result;
         }
 
-        _queueService.Enqueue(message.Id);
+        _queueService.Enqueue(message.Id, null);
 
         return result;
     }
@@ -113,7 +113,7 @@ public sealed class RouterManager
                 _logger.LogWarning("Cannot add error message in storage.");
                 break;
             case MessageStatus.Ready:
-                _queueService.Enqueue(id);
+                _queueService.Enqueue(id, errorMessage.ConnectionId);
                 _logger.LogDebug($"Re-enqueued message {id}");
                 break;
         }
@@ -202,12 +202,12 @@ public sealed class RouterManager
 
         _logger.LogInformation($"Sending message {messageId} for topic {topic}");
 
-        var connectionId = _loadBalancingService.GetNextConnectionId(topic);
+        var connectionId = queueItem.ConnectionId ?? _loadBalancingService.GetNextConnectionId(topic);
 
         if (connectionId == null || string.IsNullOrWhiteSpace(connectionId))
         {
             _logger.LogWarning($"No connectionId available for topic {topic}. Message {messageId} will be requeued.");
-            _queueService.Enqueue(messageId);
+            _queueService.Enqueue(messageId, null);
             return new NextMessageSentResponse(Guid.Empty, MessageSendStatus.NoConnectionIdAvailableForTopic);
         }
 

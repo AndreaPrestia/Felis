@@ -3,7 +3,6 @@ using Felis.Router.Hubs;
 using Felis.Router.Managers;
 using Felis.Router.Middlewares;
 using Felis.Router.Services;
-using Felis.Router.Services.Background;
 using LiteDB;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -62,7 +61,6 @@ public static class Extensions
             _.GetRequiredService<MessageService>(),
             _.GetRequiredService<ConnectionService>(),
             _.GetRequiredService<QueueService>(),
-            _.GetRequiredService<LoadBalancingService>(),
             _.GetRequiredService<DeadLetterService>(),
             _.GetRequiredService<IHubContext<RouterHub>>()
         ));
@@ -71,10 +69,8 @@ public static class Extensions
     private static void AddServices(IServiceCollection serviceCollection)
     {
         serviceCollection.AddSingleton<RouterHub>();
-        serviceCollection.AddHostedService<DispatcherService>();
         serviceCollection.AddSingleton<ConnectionService>();
         serviceCollection.AddSingleton<MessageService>();
-        serviceCollection.AddSingleton<LoadBalancingService>();
         serviceCollection.AddSingleton<QueueService>();
         serviceCollection.AddSingleton<DeadLetterService>();
     }

@@ -33,6 +33,14 @@ internal sealed class ConnectionService
 
         return consumerConnections;
     }
+    
+    public ConsumerConnectionEntity? GetConsumerByConnectionId(string connectionId)
+    {
+        lock (ConsumerConnectionMapLocker)
+        {
+            return ConnectionMap.FirstOrDefault(x => x.ConnectionId == connectionId);
+        }
+    }
 
     public void KeepConsumerConnection(Consumer consumer, string connectionId)
     {

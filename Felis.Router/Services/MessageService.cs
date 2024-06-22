@@ -67,8 +67,6 @@ internal sealed class MessageService : IDisposable
                 return MessageStatus.Error;
             }
 
-            messageFound.Status = MessageStatus.Consumed;
-
             messageFound.Ack.Add(new MessageAcknowledgement()
             {
                 MessageId = consumedMessage.Id,
@@ -76,7 +74,11 @@ internal sealed class MessageService : IDisposable
                 Timestamp = consumedMessage.Timestamp
             });
 
-            messageFound.Status = MessageStatus.Consumed;
+            if (messageFound.Status != MessageStatus.Consumed)
+            {
+                messageFound.Status = MessageStatus.Consumed;
+            }
+            
             messageFound.UpdatedAt = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
 
             var updateResult = _messageCollection.Update(consumedMessage.Id, messageFound);

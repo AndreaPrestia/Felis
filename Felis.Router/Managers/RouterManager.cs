@@ -1,4 +1,5 @@
-﻿using Felis.Router.Enums;
+﻿using Felis.Router.Entities;
+using Felis.Router.Enums;
 using Felis.Router.Hubs;
 using Felis.Router.Models;
 using Felis.Router.Services;
@@ -13,12 +14,11 @@ public sealed class RouterManager
     private readonly ConnectionService _connectionService;
     private readonly MessageService _messageService;
     private readonly QueueService _queueService;
-    private readonly LoadBalancingService _loadBalancingService;
     private readonly DeadLetterService _deadLetterService;
     private readonly IHubContext<RouterHub> _hubContext;
 
     internal RouterManager(ILogger<RouterManager> logger, MessageService messageService,
-        ConnectionService connectionService, QueueService queueService, LoadBalancingService loadBalancingService,
+        ConnectionService connectionService, QueueService queueService,
         DeadLetterService deadLetterService,
         IHubContext<RouterHub> hubContext)
     {
@@ -26,12 +26,12 @@ public sealed class RouterManager
         _messageService = messageService;
         _connectionService = connectionService;
         _queueService = queueService;
-        _loadBalancingService = loadBalancingService;
         _deadLetterService = deadLetterService;
         _hubContext = hubContext;
     }
 
-    public MessageStatus Dispatch(string topic, MessageRequest? message)
+    public async Task<MessageStatus> DispatchAsync(string topic, MessageRequest? message,
+        CancellationToken cancellationToken = default)
     {
         if (message == null)
         {
@@ -53,15 +53,18 @@ public sealed class RouterManager
             throw new InvalidOperationException("The topic provided in message and route are not matching");
         }
 
-        var result = _messageService.Add(message);
+        var sendMessageResponse = await SendMessageAsync(message.Id, null, cancellationToken);
+
+        var result = sendMessageResponse.MessageSendStatus == MessageSendStatus.MessageSent
+            ? MessageStatus.Sent
+            : sendMessageResponse.MessageSendStatus == MessageSendStatus.MessageReady
+                ? MessageStatus.Ready
+                : MessageStatus.Error;
 
         if (result == MessageStatus.Error)
         {
             _logger.LogWarning("Cannot add message in storage.");
-            return result;
         }
-
-        _queueService.Enqueue(message.Id, null);
 
         return result;
     }
@@ -93,7 +96,8 @@ public sealed class RouterManager
         return result;
     }
 
-    public MessageStatus Error(Guid id, ErrorMessageRequest? errorMessage)
+    public async Task<MessageStatus> ErrorAsync(Guid id, ErrorMessageRequest? errorMessage,
+        CancellationToken cancellationToken = default)
     {
         if (errorMessage == null)
         {
@@ -113,7 +117,13 @@ public sealed class RouterManager
                 _logger.LogWarning("Cannot add error message in storage.");
                 break;
             case MessageStatus.Ready:
-                _queueService.Enqueue(id, errorMessage.ConnectionId);
+                var sendMessageResponse =
+                    await SendMessageAsync(errorMessage.Id, errorMessage.ConnectionId, cancellationToken);
+                result = sendMessageResponse.MessageSendStatus == MessageSendStatus.MessageSent
+                    ? MessageStatus.Sent
+                    : sendMessageResponse.MessageSendStatus == MessageSendStatus.MessageReady
+                        ? MessageStatus.Ready
+                        : MessageStatus.Error;
                 _logger.LogDebug($"Re-enqueued message {id}");
                 break;
         }
@@ -166,29 +176,23 @@ public sealed class RouterManager
     public List<ConsumedMessage> ConsumedList(string connectionId, string topic) =>
         _messageService.ConsumedList(connectionId, topic);
 
-    public async Task<NextMessageSentResponse> SendNextMessageAsync(CancellationToken cancellationToken = default)
+    private async Task<NextMessageSentResponse> SendMessageAsync(Guid messageId, string? connectionId,
+        CancellationToken cancellationToken = default)
     {
-        var queueItem = _queueService.Dequeue();
-
-        if (queueItem == null || queueItem.Id == Guid.Empty)
-            return new NextMessageSentResponse(Guid.Empty, MessageSendStatus.NothingToSend);
-
-        var messageId = queueItem.Id;
-
         var message = _messageService.Get(messageId);
 
         if (message == null)
         {
             _deadLetterService.Add(messageId, MessageSendStatus.MessageNotFound);
             _logger.LogWarning($"Cannot find message {messageId} in messages. No processing will be done.");
-            return new NextMessageSentResponse(Guid.Empty, MessageSendStatus.MessageNotFound);
+            return new NextMessageSentResponse(messageId, MessageSendStatus.MessageNotFound);
         }
 
         if (message.Status != MessageStatus.Ready.ToString())
         {
             _deadLetterService.Add(messageId, MessageSendStatus.MessageNotReady);
             _logger.LogWarning($"Message {messageId} has status {message.Status}. No processing will be done.");
-            return new NextMessageSentResponse(Guid.Empty, MessageSendStatus.MessageNotReady);
+            return new NextMessageSentResponse(messageId, MessageSendStatus.MessageNotReady);
         }
 
         var topic = message.Header?.Topic;
@@ -197,21 +201,52 @@ public sealed class RouterManager
         {
             _deadLetterService.Add(messageId, MessageSendStatus.MessageWithoutTopic);
             _logger.LogWarning($"No topic for {messageId} in messages. No processing will be done.");
-            return new NextMessageSentResponse(Guid.Empty, MessageSendStatus.MessageWithoutTopic);
+            return new NextMessageSentResponse(messageId, MessageSendStatus.MessageWithoutTopic);
+        }
+
+        var consumerConnectionEntities = new List<ConsumerConnectionEntity>();
+
+        if (!string.IsNullOrWhiteSpace(connectionId))
+        {
+            var consumerConnectionEntity = _connectionService.GetConsumerByConnectionId(connectionId);
+
+            if (consumerConnectionEntity == null)
+            {
+                _deadLetterService.Add(messageId, MessageSendStatus.ConnectionIdNotFound);
+                _logger.LogWarning(
+                    $"No connection id {connectionId} for {messageId} in messages. No processing will be done.");
+                return new NextMessageSentResponse(messageId, MessageSendStatus.ConnectionIdNotFound);
+            }
+
+            consumerConnectionEntities.Add(consumerConnectionEntity);
+        }
+        else
+        {
+            consumerConnectionEntities = _connectionService.GetConnectionIds(topic);
+        }
+
+        if (!consumerConnectionEntities.Any())
+        {
+            _logger.LogWarning(
+                $"No connection ids found for topic {topic}. The message {messageId} remains in ready status.");
+            return new NextMessageSentResponse(messageId, MessageSendStatus.MessageReady);
         }
 
         _logger.LogInformation($"Sending message {messageId} for topic {topic}");
 
-        var connectionId = queueItem.ConnectionId ?? _loadBalancingService.GetNextConnectionId(topic);
+        var uniqueConsumer = consumerConnectionEntities.Where(x => x.Consumer.Unique).MinBy(x => x.Timestamp);
 
-        if (connectionId == null || string.IsNullOrWhiteSpace(connectionId))
+        if (uniqueConsumer != null)
         {
-            _logger.LogWarning($"No connectionId available for topic {topic}. Message {messageId} will be requeued.");
-            _queueService.Enqueue(messageId, null);
-            return new NextMessageSentResponse(Guid.Empty, MessageSendStatus.NoConnectionIdAvailableForTopic);
+            _logger.LogInformation($"Found unique consumer {uniqueConsumer.ConnectionId} for topic {topic}");
+            consumerConnectionEntities = new List<ConsumerConnectionEntity>()
+            {
+                uniqueConsumer
+            };
         }
 
-        await _hubContext.Clients.Client(connectionId).SendAsync(topic, message, cancellationToken);
+        await _hubContext.Clients.Clients(consumerConnectionEntities.Select(x => x.ConnectionId).ToList())
+            .SendAsync(topic, message, cancellationToken);
 
         var messageStatus = _messageService.Send(messageId);
 

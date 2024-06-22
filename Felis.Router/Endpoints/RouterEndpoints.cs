@@ -14,10 +14,10 @@ internal static class RouterEndpoints
     internal static void MapRouterEndpoints(this IEndpointRouteBuilder endpointRouteBuilder)
     {
         endpointRouteBuilder.MapPost("/messages/{topic}/dispatch",
-              ([FromServices] RouterManager manager, [FromRoute] string topic,
+              async (CancellationToken cancellationToken, [FromServices] RouterManager manager, [FromRoute] string topic,
                    [FromBody] MessageRequest message) =>
               {
-                  var result = manager.Dispatch(topic, message);
+                  var result = await manager.DispatchAsync(topic, message, cancellationToken);
 
                   return result == MessageStatus.Error ? Results.BadRequest("Failed operation") : Results.Created("/dispatch", message);
               }).WithName("MessageDispatch").Produces<CreatedResult>(StatusCodes.Status201Created)
@@ -56,10 +56,10 @@ internal static class RouterEndpoints
             .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
         endpointRouteBuilder.MapPost("/messages/{id}/error",
-                ([FromServices] RouterManager manager, [FromRoute] Guid id,
+                async (CancellationToken cancellationToken, [FromServices] RouterManager manager, [FromRoute] Guid id,
                     [FromBody] ErrorMessageRequest message) =>
                 {
-                    var result = manager.Error(id, message);
+                    var result = await manager.ErrorAsync(id, message, cancellationToken);
 
                     return result == MessageStatus.Error ? Results.BadRequest("Failed operation") : Results.NoContent();
                 }).WithName("ErrorMessageAdd").Produces<NoContentResult>(StatusCodes.Status204NoContent)

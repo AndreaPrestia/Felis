@@ -60,7 +60,6 @@ public static class Extensions
             _.GetRequiredService<ILogger<RouterManager>>(),
             _.GetRequiredService<MessageService>(),
             _.GetRequiredService<ConnectionService>(),
-            _.GetRequiredService<QueueService>(),
             _.GetRequiredService<DeadLetterService>(),
             _.GetRequiredService<IHubContext<RouterHub>>()
         ));
@@ -71,7 +70,6 @@ public static class Extensions
         serviceCollection.AddSingleton<RouterHub>();
         serviceCollection.AddSingleton<ConnectionService>();
         serviceCollection.AddSingleton<MessageService>();
-        serviceCollection.AddSingleton<QueueService>();
         serviceCollection.AddSingleton<DeadLetterService>();
     }
 

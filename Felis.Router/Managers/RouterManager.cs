@@ -13,19 +13,17 @@ public sealed class RouterManager
     private readonly ILogger<RouterManager> _logger;
     private readonly ConnectionService _connectionService;
     private readonly MessageService _messageService;
-    private readonly QueueService _queueService;
     private readonly DeadLetterService _deadLetterService;
     private readonly IHubContext<RouterHub> _hubContext;
 
     internal RouterManager(ILogger<RouterManager> logger, MessageService messageService,
-        ConnectionService connectionService, QueueService queueService,
+        ConnectionService connectionService,
         DeadLetterService deadLetterService,
         IHubContext<RouterHub> hubContext)
     {
         _logger = logger;
         _messageService = messageService;
         _connectionService = connectionService;
-        _queueService = queueService;
         _deadLetterService = deadLetterService;
         _hubContext = hubContext;
     }

@@ -1,5 +1,5 @@
-using Felis.Client;
 using Felis.Client.Test.Models;
+using Felis.Subscriber;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi.Models;
 

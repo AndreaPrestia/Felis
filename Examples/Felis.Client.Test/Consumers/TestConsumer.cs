@@ -1,6 +1,7 @@
 ﻿using System.Text.Json;
-using Felis.Client.Attributes;
 using Felis.Client.Test.Models;
+using Felis.Subscriber;
+using Felis.Subscriber.Attributes;
 
 namespace Felis.Client.Test.Consumers;
 

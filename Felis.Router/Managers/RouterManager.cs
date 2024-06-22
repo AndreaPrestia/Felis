@@ -109,22 +109,27 @@ public sealed class RouterManager
 
         var result = _messageService.Error(errorMessage);
 
-        switch (result)
+        if (result == MessageStatus.Error)
         {
-            case MessageStatus.Error:
-                _logger.LogWarning("Cannot add error message in storage.");
-                break;
-            case MessageStatus.Ready:
-                var sendMessageResponse =
-                    await SendMessageAsync(errorMessage.Id, errorMessage.ConnectionId, cancellationToken);
-                result = sendMessageResponse.MessageSendStatus == MessageSendStatus.MessageSent
-                    ? MessageStatus.Sent
-                    : sendMessageResponse.MessageSendStatus == MessageSendStatus.MessageReady
-                        ? MessageStatus.Ready
-                        : MessageStatus.Error;
-                _logger.LogDebug($"Re-enqueued message {id}");
-                break;
+            _logger.LogWarning("Cannot add error message in storage.");
+            return result;
         }
+
+        if (result != MessageStatus.Ready)
+        {
+            _logger.LogWarning($"Message {errorMessage.Id} status {result}. No processing will be done.");
+            return result;
+        }
+        
+        var sendMessageResponse =
+            await SendMessageAsync(errorMessage.Id, errorMessage.ConnectionId, cancellationToken);
+        result = sendMessageResponse.MessageSendStatus == MessageSendStatus.MessageSent
+            ? MessageStatus.Sent
+            : sendMessageResponse.MessageSendStatus == MessageSendStatus.MessageReady
+                ? MessageStatus.Ready
+                : MessageStatus.Error;
+        
+        _logger.LogDebug($"Re-enqueued message {id}");
 
         return result;
     }

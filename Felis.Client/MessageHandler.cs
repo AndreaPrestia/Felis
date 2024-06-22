@@ -116,7 +116,7 @@ public sealed class MessageHandler : IAsyncDisposable
                     }
 
                     var responseMessage = await _httpClient.PostAsJsonAsync(
-                        $"/messages/{messageIncoming.Header?.Id}/consume",
+                        "/messages/consume",
                         new ConsumedMessage(messageIncoming.Header!.Id, _hubConnection.ConnectionId,
                             new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds()),
                         cancellationToken: cancellationToken);
@@ -127,6 +127,8 @@ public sealed class MessageHandler : IAsyncDisposable
                     Task.Run(async () =>
 #pragma warning restore CS4014
                     {
+                        var startTimeStamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
+
                         try
                         {
                             consumerSearchResult.ProcessMethod?.Invoke(consumerSearchResult.Consumer,
@@ -136,6 +138,13 @@ public sealed class MessageHandler : IAsyncDisposable
                         {
                             _logger.LogError(ex.InnerException, ex.InnerException?.Message);
                             await SendError(messageIncoming, ex.InnerException, cancellationToken);
+                        }
+                        finally
+                        {
+                            var endTimeStamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
+
+                            _logger.LogDebug($"Processed message {messageIncoming.Header?.Id}");
+                            await SendProcess(messageIncoming, endTimeStamp - startTimeStamp, cancellationToken);
                         }
                     }, cancellationToken);
                 }
@@ -190,10 +199,30 @@ public sealed class MessageHandler : IAsyncDisposable
             ArgumentNullException.ThrowIfNull(_hubConnection);
             ArgumentException.ThrowIfNullOrWhiteSpace(_hubConnection.ConnectionId);
 
-            var responseMessage = await _httpClient.PostAsJsonAsync($"/messages/{message?.Header?.Id}/error",
+            var responseMessage = await _httpClient.PostAsJsonAsync("/messages/error",
                 new ErrorMessageRequest(message!.Header!.Id,
                     _hubConnection.ConnectionId, new ErrorDetail(exception?.Message, exception?.StackTrace),
                     _retryPolicy),
+                cancellationToken: cancellationToken);
+
+            responseMessage.EnsureSuccessStatusCode();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, ex.Message);
+        }
+    }
+    
+    private async Task SendProcess(Message? message, long executionTimeMs, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            ArgumentNullException.ThrowIfNull(_hubConnection);
+            ArgumentException.ThrowIfNullOrWhiteSpace(_hubConnection.ConnectionId);
+
+            var responseMessage = await _httpClient.PostAsJsonAsync("/messages/process",
+                new ProcessedMessage(message!.Header!.Id,
+                    _hubConnection.ConnectionId, executionTimeMs),
                 cancellationToken: cancellationToken);
 
             responseMessage.EnsureSuccessStatusCode();

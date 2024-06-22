@@ -14,6 +14,7 @@ internal sealed class MessageEntity
     public List<MessageError> Errors { get; } = new();
     public List<MessageAcknowledgement> Ack { get; set; } = new();
     public List<MessageRetry> Retries { get; set; } = new();
+    public List<MessageProcess> Processes { get; set; } = new();
 }
 
 internal class MessageAcknowledgement
@@ -47,4 +48,11 @@ internal class MessageRetry
     public string ConnectionId { get; set; } = string.Empty;
     public long Timestamp { get; set; }
     public long? Sent { get; set; }
+}
+
+internal class MessageProcess
+{
+    public string ConnectionId { get; set; } = string.Empty;
+    public long Timestamp { get; set; } 
+    public long ExecutionTimeMs { get; set; }
 }

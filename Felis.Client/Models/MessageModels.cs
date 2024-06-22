@@ -18,3 +18,5 @@ public record ErrorMessageRequest(Guid Id, string ConnectionId, ErrorDetail Erro
 }
 
 public record RetryPolicy(int Attempts);
+
+public record ProcessedMessage(Guid Id, string ConnectionId, long ExecutionTimeMs);

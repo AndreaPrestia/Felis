@@ -197,6 +197,13 @@ internal sealed class MessageService : IDisposable
                 return MessageStatus.Error;
             }
 
+            messageFound.Processes.Add(new MessageProcess()
+            {
+                ConnectionId = processedMessage.ConnectionId,
+                Timestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(),
+                ExecutionTimeMs = processedMessage.ExecutionTimeMs
+            });
+            
             messageFound.Status = MessageStatus.Processed;
             messageFound.UpdatedAt = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
 

@@ -28,7 +28,7 @@ public sealed class RouterManager
         _hubContext = hubContext;
     }
 
-    public async Task<MessageStatus> DispatchAsync(string topic, MessageRequest? message,
+    public async Task<MessageStatus> DispatchAsync(MessageRequest? message,
         CancellationToken cancellationToken = default)
     {
         if (message == null)
@@ -36,19 +36,9 @@ public sealed class RouterManager
             throw new ArgumentNullException(nameof(message));
         }
 
-        if (string.IsNullOrWhiteSpace(topic))
-        {
-            throw new ArgumentNullException($"No Topic provided");
-        }
-
         if (string.IsNullOrWhiteSpace(message.Topic))
         {
             throw new ArgumentNullException($"No Topic provided");
-        }
-
-        if (!string.Equals(message.Topic, topic, StringComparison.InvariantCultureIgnoreCase))
-        {
-            throw new InvalidOperationException("The topic provided in message and route are not matching");
         }
 
         var sendMessageResponse = await SendMessageAsync(message.Id, null, cancellationToken);
@@ -67,21 +57,11 @@ public sealed class RouterManager
         return result;
     }
 
-    public MessageStatus Consume(Guid id, ConsumedMessage? consumedMessage)
+    public MessageStatus Consume(ConsumedMessage? consumedMessage)
     {
         if (consumedMessage == null)
         {
             throw new ArgumentNullException(nameof(consumedMessage));
-        }
-
-        if (consumedMessage.Id != id)
-        {
-            throw new InvalidOperationException("The id provided in message and route are not matching");
-        }
-
-        if (consumedMessage.Id != id)
-        {
-            throw new InvalidOperationException("The id provided in message and route are not matching");
         }
 
         var result = _messageService.Consume(consumedMessage);
@@ -94,17 +74,12 @@ public sealed class RouterManager
         return result;
     }
 
-    public async Task<MessageStatus> ErrorAsync(Guid id, ErrorMessageRequest? errorMessage,
+    public async Task<MessageStatus> ErrorAsync(ErrorMessageRequest? errorMessage,
         CancellationToken cancellationToken = default)
     {
         if (errorMessage == null)
         {
             throw new ArgumentNullException(nameof(errorMessage));
-        }
-
-        if (errorMessage.Id != id)
-        {
-            throw new InvalidOperationException("The id provided in message and route are not matching");
         }
 
         var result = _messageService.Error(errorMessage);
@@ -129,26 +104,16 @@ public sealed class RouterManager
                 ? MessageStatus.Ready
                 : MessageStatus.Error;
         
-        _logger.LogDebug($"Re-enqueued message {id}");
+        _logger.LogDebug($"Re-enqueued message {errorMessage.Id}");
 
         return result;
     }
 
-    public MessageStatus Process(Guid id, ProcessedMessage? processedMessage)
+    public MessageStatus Process(ProcessedMessage? processedMessage)
     {
         if (processedMessage == null)
         {
             throw new ArgumentNullException(nameof(processedMessage));
-        }
-
-        if (processedMessage.Id != id)
-        {
-            throw new InvalidOperationException("The id provided in message and route are not matching");
-        }
-
-        if (processedMessage.Id != id)
-        {
-            throw new InvalidOperationException("The id provided in message and route are not matching");
         }
 
         var result = _messageService.Process(processedMessage);

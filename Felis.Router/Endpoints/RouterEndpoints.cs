@@ -13,11 +13,11 @@ internal static class RouterEndpoints
 {
     internal static void MapRouterEndpoints(this IEndpointRouteBuilder endpointRouteBuilder)
     {
-        endpointRouteBuilder.MapPost("/messages/{topic}/dispatch",
+        endpointRouteBuilder.MapPost("/messages/dispatch",
               async (CancellationToken cancellationToken, [FromServices] RouterManager manager, [FromRoute] string topic,
                    [FromBody] MessageRequest message) =>
               {
-                  var result = await manager.DispatchAsync(topic, message, cancellationToken);
+                  var result = await manager.DispatchAsync(message, cancellationToken);
 
                   return result == MessageStatus.Error ? Results.BadRequest("Failed operation") : Results.Created("/dispatch", message);
               }).WithName("MessageDispatch").Produces<CreatedResult>(StatusCodes.Status201Created)
@@ -27,11 +27,11 @@ internal static class RouterEndpoints
            .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
            .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
-        endpointRouteBuilder.MapPost("/messages/{id}/consume",
+        endpointRouteBuilder.MapPost("/messages/consume",
                  ([FromServices] RouterManager manager, [FromRoute] Guid id,
                     [FromBody] ConsumedMessage message) =>
                  {
-                     var result = manager.Consume(id, message);
+                     var result = manager.Consume(message);
 
                      return result == MessageStatus.Error ? Results.BadRequest("Failed operation") : Results.NoContent();
                  }).WithName("MessageConsume").Produces<NoContentResult>(StatusCodes.Status204NoContent)
@@ -41,11 +41,11 @@ internal static class RouterEndpoints
             .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
             .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
         
-        endpointRouteBuilder.MapPost("/messages/{id}/process",
+        endpointRouteBuilder.MapPost("/messages/process",
                 ([FromServices] RouterManager manager, [FromRoute] Guid id,
                     [FromBody] ProcessedMessage message) =>
                 {
-                    var result = manager.Process(id, message);
+                    var result = manager.Process(message);
 
                     return result == MessageStatus.Error ? Results.BadRequest("Failed operation") : Results.NoContent();
                 }).WithName("MessageProcess").Produces<NoContentResult>(StatusCodes.Status204NoContent)
@@ -55,11 +55,11 @@ internal static class RouterEndpoints
             .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
             .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
-        endpointRouteBuilder.MapPost("/messages/{id}/error",
+        endpointRouteBuilder.MapPost("/messages/error",
                 async (CancellationToken cancellationToken, [FromServices] RouterManager manager, [FromRoute] Guid id,
                     [FromBody] ErrorMessageRequest message) =>
                 {
-                    var result = await manager.ErrorAsync(id, message, cancellationToken);
+                    var result = await manager.ErrorAsync(message, cancellationToken);
 
                     return result == MessageStatus.Error ? Results.BadRequest("Failed operation") : Results.NoContent();
                 }).WithName("ErrorMessageAdd").Produces<NoContentResult>(StatusCodes.Status204NoContent)
@@ -75,7 +75,7 @@ internal static class RouterEndpoints
                     var result = manager.Purge(topic);
 
                     return Results.Ok(result);
-                }).WithName("ReadyMessagePurge").Produces<Ok<int>>(StatusCodes.Status200OK)
+                }).WithName("ReadyMessagePurge").Produces<Ok<int>>()
             .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
             .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
             .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)

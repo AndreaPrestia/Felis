@@ -32,6 +32,8 @@ internal sealed class RouterHub : Hub
             var clientHostname = Dns.GetHostEntry(clientIp).HostName;
 
             _connectionService.KeepConsumerConnection(new Common.Models.Consumer(clientHostname, clientIp.MapToIPv4().ToString(), topics, unique), Context.ConnectionId);
+           
+            //TODO invoke manager to retrieve ready messages to send for the topics exposed by consumer use event handler
             return Context.ConnectionId;
         }
         catch (Exception ex)

@@ -1,4 +1,5 @@
-﻿using Felis.Router.Entities;
+﻿using Felis.Common.Models;
+using Felis.Router.Entities;
 
 namespace Felis.Router.Services;
 
@@ -6,10 +7,14 @@ internal sealed class ConnectionService
 {
     private static readonly List<ConsumerConnectionEntity> ConnectionMap = new();
     private static readonly string ConsumerConnectionMapLocker = string.Empty;
+    
+    
+    public delegate void NotifyNewConnectedConsumerEventHandler(object sender, NewConsumerConnectedEventArgs e);
+    public event NotifyNewConnectedConsumerEventHandler? NotifyNewConnectedConsumer;
 
-    public List<Common.Models.Consumer> GetConnectedConsumers(string topic)
+    public List<Consumer> GetConnectedConsumers(string topic)
     {
-        List<Common.Models.Consumer> consumers;
+        List<Consumer> consumers;
 
         lock (ConsumerConnectionMapLocker)
         {
@@ -41,7 +46,7 @@ internal sealed class ConnectionService
         }
     }
 
-    public void KeepConsumerConnection(Common.Models.Consumer consumer, string connectionId)
+    public void KeepConsumerConnection(Consumer consumer, string connectionId)
     {
         lock (ConsumerConnectionMapLocker)
         {
@@ -49,6 +54,13 @@ internal sealed class ConnectionService
                     !x.ConnectionId.Equals(connectionId, StringComparison.InvariantCultureIgnoreCase)))
             {
                 ConnectionMap.Add(new ConsumerConnectionEntity()
+                {
+                    Consumer = consumer,
+                    ConnectionId = connectionId
+                });
+                
+                
+                OnNotifyNewConnectedConsumer(new NewConsumerConnectedEventArgs()
                 {
                     Consumer = consumer,
                     ConnectionId = connectionId
@@ -68,5 +80,10 @@ internal sealed class ConnectionService
 
             consumers.ForEach(consumer => ConnectionMap.Remove(consumer));
         }
+    }
+    
+    private void OnNotifyNewConnectedConsumer(NewConsumerConnectedEventArgs e)
+    {
+        NotifyNewConnectedConsumer?.Invoke(this, e);
     }
 }

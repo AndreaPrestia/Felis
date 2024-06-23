@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Felis.Router.Managers;
 
-public sealed class RouterManager
+public sealed class RouterManager : IDisposable
 {
     private readonly ILogger<RouterManager> _logger;
     private readonly ConnectionService _connectionService;
@@ -25,6 +25,8 @@ public sealed class RouterManager
         _connectionService = connectionService;
         _deadLetterService = deadLetterService;
         _hubContext = hubContext;
+
+        _connectionService.NotifyNewConnectedConsumer += OnNewConnectedConsumerNotifyReceived;
     }
 
     public async Task<MessageStatus> DispatchAsync(MessageRequest? message,
@@ -143,6 +145,15 @@ public sealed class RouterManager
     public List<ConsumedMessage> ConsumedList(string connectionId, string topic) =>
         _messageService.ConsumedList(connectionId, topic);
 
+    private async void OnNewConnectedConsumerNotifyReceived(object sender, NewConsumerConnectedEventArgs e)
+    {
+        foreach (var message in e.Consumer.Topics.Select(topic => _messageService.ReadyList(topic)).Where(messages => messages.Any()).SelectMany(messages => messages))
+        {
+            var result = await SendMessageAsync(message.Header!.Id, e.ConnectionId);
+            _logger.LogInformation($"Send ready message {message.Header!.Id} to new connection {e.ConnectionId} with result {result}");
+        }
+    }
+    
     private async Task<NextMessageSentResponse> SendMessageAsync(Guid messageId, string? connectionId,
         CancellationToken cancellationToken = default)
     {
@@ -227,5 +238,12 @@ public sealed class RouterManager
         return messageStatus == MessageStatus.Sent
             ? new NextMessageSentResponse(messageId, MessageSendStatus.MessageSent)
             : new NextMessageSentResponse(messageId, MessageSendStatus.MessageNotSent);
+    }
+
+    public void Dispose()
+    {
+        _connectionService.NotifyNewConnectedConsumer -= OnNewConnectedConsumerNotifyReceived;
+        _messageService.Dispose();
+        _deadLetterService.Dispose();
     }
 }

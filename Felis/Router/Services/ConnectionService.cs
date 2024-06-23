@@ -5,85 +5,83 @@ namespace Felis.Router.Services;
 
 internal sealed class ConnectionService
 {
-    private static readonly List<ConsumerConnectionEntity> ConnectionMap = new();
-    private static readonly string ConsumerConnectionMapLocker = string.Empty;
+    private static readonly List<SubscriberConnectionEntity> ConnectionMap = new();
+    private static readonly string SubscriberConnectionMapLocker = string.Empty;
     
-    
-    public delegate void NotifyNewConnectedConsumerEventHandler(object sender, NewConsumerConnectedEventArgs e);
-    public event NotifyNewConnectedConsumerEventHandler? NotifyNewConnectedConsumer;
+    public delegate void NotifyNewConnectedSubscriberEventHandler(object sender, NewSubscriberConnectedEventArgs e);
+    public event NotifyNewConnectedSubscriberEventHandler? NotifyNewConnectedSubscriber;
 
-    public List<Consumer> GetConnectedConsumers(string topic)
+    public List<Common.Models.Subscriber> GetConnectedSubscribers(string topic)
     {
-        List<Consumer> consumers;
+        List<Common.Models.Subscriber> consumers;
 
-        lock (ConsumerConnectionMapLocker)
+        lock (SubscriberConnectionMapLocker)
         {
-            consumers = ConnectionMap.Select(x => x.Consumer)
+            consumers = ConnectionMap.Select(x => x.Subscriber)
                 .Where(x => x.Topics.Select(t => t).ToList().Contains(topic)).ToList();
         }
 
         return consumers;
     }
 
-    public List<ConsumerConnectionEntity> GetConnectionIds(string topic)
+    public List<SubscriberConnectionEntity> GetConnectionIds(string topic)
     {
-        List<ConsumerConnectionEntity> consumerConnections;
+        List<SubscriberConnectionEntity> consumerConnections;
 
-        lock (ConsumerConnectionMapLocker)
+        lock (SubscriberConnectionMapLocker)
         {
             consumerConnections = ConnectionMap
-                .Where(x => x.Consumer.Topics.Select(t => t).ToList().Contains(topic)).ToList();
+                .Where(x => x.Subscriber.Topics.Select(t => t).ToList().Contains(topic)).ToList();
         }
 
         return consumerConnections;
     }
     
-    public ConsumerConnectionEntity? GetConsumerByConnectionId(string connectionId)
+    public SubscriberConnectionEntity? GetSubscriberByConnectionId(string connectionId)
     {
-        lock (ConsumerConnectionMapLocker)
+        lock (SubscriberConnectionMapLocker)
         {
             return ConnectionMap.FirstOrDefault(x => x.ConnectionId == connectionId);
         }
     }
 
-    public void KeepConsumerConnection(Consumer consumer, string connectionId)
+    public void KeepSubscriberConnection(Common.Models.Subscriber subscriber, string connectionId)
     {
-        lock (ConsumerConnectionMapLocker)
+        lock (SubscriberConnectionMapLocker)
         {
             if (ConnectionMap.All(x =>
                     !x.ConnectionId.Equals(connectionId, StringComparison.InvariantCultureIgnoreCase)))
             {
-                ConnectionMap.Add(new ConsumerConnectionEntity()
+                ConnectionMap.Add(new SubscriberConnectionEntity()
                 {
-                    Consumer = consumer,
+                    Subscriber = subscriber,
                     ConnectionId = connectionId
                 });
                 
-                
-                OnNotifyNewConnectedConsumer(new NewConsumerConnectedEventArgs()
+                OnNotifyNewConnectedSubscriber(new NewSubscriberConnectedEventArgs()
                 {
-                    Consumer = consumer,
+                    Subscriber = subscriber,
                     ConnectionId = connectionId
                 });
             }
         }
     }
 
-    public void RemoveConsumerConnections(string connectionId)
+    public void RemoveSubscriberConnections(string connectionId)
     {
-        lock (ConsumerConnectionMapLocker)
+        lock (SubscriberConnectionMapLocker)
         {
-            var consumers = ConnectionMap.Where(x =>
+            var subscribers = ConnectionMap.Where(x =>
                 !x.ConnectionId.Equals(connectionId, StringComparison.InvariantCultureIgnoreCase)).ToList();
 
-            if (consumers.Count == 0) return;
+            if (subscribers.Count == 0) return;
 
-            consumers.ForEach(consumer => ConnectionMap.Remove(consumer));
+            subscribers.ForEach(consumer => ConnectionMap.Remove(consumer));
         }
     }
     
-    private void OnNotifyNewConnectedConsumer(NewConsumerConnectedEventArgs e)
+    private void OnNotifyNewConnectedSubscriber(NewSubscriberConnectedEventArgs e)
     {
-        NotifyNewConnectedConsumer?.Invoke(this, e);
+        NotifyNewConnectedSubscriber?.Invoke(this, e);
     }
 }

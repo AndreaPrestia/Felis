@@ -81,13 +81,13 @@ internal static class RouterEndpoints
             .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
             .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
-        endpointRouteBuilder.MapGet("/messages/{topic}/consumers",
+        endpointRouteBuilder.MapGet("/messages/{topic}/subscribers",
                 ([FromServices] RouterManager manager, [FromRoute] string topic) =>
                 {
-                    var result = manager.Consumers(topic);
+                    var result = manager.Subscribers(topic);
 
                     return Results.Ok(result);
-                }).WithName("ConsumerList").Produces<List<Consumer>>()
+                }).WithName("SubscriberList").Produces<List<Common.Models.Subscriber>>()
             .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
             .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
             .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)
@@ -146,7 +146,7 @@ internal static class RouterEndpoints
             .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
             .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
-        endpointRouteBuilder.MapGet("/consumers/{connectionId}/messages",
+        endpointRouteBuilder.MapGet("/subscribers/{connectionId}/messages",
                 ([FromServices] RouterManager manager, [FromRoute] string connectionId) =>
                 {
                     var result = manager.ConsumedListByConnectionId(connectionId);
@@ -159,7 +159,7 @@ internal static class RouterEndpoints
             .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
             .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
-        endpointRouteBuilder.MapGet("/consumers/{connectionId}/messages/{topic}", ([FromServices] RouterManager manager,
+        endpointRouteBuilder.MapGet("/subscribers/{connectionId}/messages/{topic}", ([FromServices] RouterManager manager,
                 [FromRoute] string connectionId, [FromRoute] string topic) =>
         {
             var result = manager.ConsumedList(connectionId, topic);

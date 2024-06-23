@@ -2,8 +2,8 @@
 
 namespace Felis.Router.Entities;
 
-public class NewConsumerConnectedEventArgs : EventArgs
+public class NewSubscriberConnectedEventArgs : EventArgs
 {
-    public Consumer Consumer { get; set; } = null!;
+    public Common.Models.Subscriber Subscriber { get; set; } = null!;
     public string ConnectionId { get; set; } = string.Empty;
 }

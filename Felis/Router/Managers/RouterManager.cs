@@ -26,7 +26,7 @@ public sealed class RouterManager : IDisposable
         _deadLetterService = deadLetterService;
         _hubContext = hubContext;
 
-        _connectionService.NotifyNewConnectedConsumer += OnNewConnectedConsumerNotifyReceived;
+        _connectionService.NotifyNewConnectedSubscriber += OnNewConnectedSubscriberNotifyReceived;
     }
 
     public async Task<MessageStatus> DispatchAsync(MessageRequest? message,
@@ -129,7 +129,7 @@ public sealed class RouterManager : IDisposable
 
     public int Purge(string topic) => _messageService.Purge(topic);
 
-    public List<Consumer> Consumers(string topic) => _connectionService.GetConnectedConsumers(topic);
+    public List<Common.Models.Subscriber> Subscribers(string topic) => _connectionService.GetConnectedSubscribers(topic);
 
     public List<Message> ReadyList(string? topic = null) => _messageService.ReadyList(topic);
 
@@ -145,9 +145,9 @@ public sealed class RouterManager : IDisposable
     public List<ConsumedMessage> ConsumedList(string connectionId, string topic) =>
         _messageService.ConsumedList(connectionId, topic);
 
-    private async void OnNewConnectedConsumerNotifyReceived(object sender, NewConsumerConnectedEventArgs e)
+    private async void OnNewConnectedSubscriberNotifyReceived(object sender, NewSubscriberConnectedEventArgs e)
     {
-        foreach (var message in e.Consumer.Topics.Select(topic => _messageService.ReadyList(topic)).Where(messages => messages.Any()).SelectMany(messages => messages))
+        foreach (var message in e.Subscriber.Topics.Select(topic => _messageService.ReadyList(topic)).Where(messages => messages.Any()).SelectMany(messages => messages))
         {
             var result = await SendMessageAsync(message.Header!.Id, e.ConnectionId);
             _logger.LogInformation($"Send ready message {message.Header!.Id} to new connection {e.ConnectionId} with result {result}");
@@ -182,11 +182,11 @@ public sealed class RouterManager : IDisposable
             return new NextMessageSentResponse(messageId, MessageSendStatus.MessageWithoutTopic);
         }
 
-        var consumerConnectionEntities = new List<ConsumerConnectionEntity>();
+        var consumerConnectionEntities = new List<SubscriberConnectionEntity>();
 
         if (!string.IsNullOrWhiteSpace(connectionId))
         {
-            var consumerConnectionEntity = _connectionService.GetConsumerByConnectionId(connectionId);
+            var consumerConnectionEntity = _connectionService.GetSubscriberByConnectionId(connectionId);
 
             if (consumerConnectionEntity == null)
             {
@@ -212,12 +212,12 @@ public sealed class RouterManager : IDisposable
 
         _logger.LogInformation($"Sending message {messageId} for topic {topic}");
 
-        var uniqueConsumer = consumerConnectionEntities.Where(x => x.Consumer.Unique).MinBy(x => x.Timestamp);
+        var uniqueConsumer = consumerConnectionEntities.Where(x => x.Subscriber.Unique).MinBy(x => x.Timestamp);
 
         if (uniqueConsumer != null)
         {
-            _logger.LogInformation($"Found unique consumer {uniqueConsumer.ConnectionId} for topic {topic}");
-            consumerConnectionEntities = new List<ConsumerConnectionEntity>()
+            _logger.LogInformation($"Found unique subscriber {uniqueConsumer.ConnectionId} for topic {topic}");
+            consumerConnectionEntities = new List<SubscriberConnectionEntity>()
             {
                 uniqueConsumer
             };
@@ -242,7 +242,7 @@ public sealed class RouterManager : IDisposable
 
     public void Dispose()
     {
-        _connectionService.NotifyNewConnectedConsumer -= OnNewConnectedConsumerNotifyReceived;
+        _connectionService.NotifyNewConnectedSubscriber -= OnNewConnectedSubscriberNotifyReceived;
         _messageService.Dispose();
         _deadLetterService.Dispose();
     }

@@ -56,7 +56,7 @@ internal sealed class ConsumerResolver
 
         if (processParameterInfo == null)
         {
-            throw new InvalidOperationException($"Not found parameter of Consumer.Process for topic {topicType.Key}");
+            throw new InvalidOperationException($"Not found parameter of ISubscriber.Process for topic {topicType.Key}");
         }
 
         var parameterType = processParameterInfo.ParameterType;

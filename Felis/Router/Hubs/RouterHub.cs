@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using Felis.Common.Models;
 using Felis.Router.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.SignalR;
@@ -18,7 +19,7 @@ internal sealed class RouterHub : Hub
         _connectionService = connectionService ?? throw new ArgumentNullException(nameof(connectionService));
     }
 
-    public string SetConnectionId(List<string> topics, bool unique)
+    public string SetConnectionId(List<TopicValue> topics)
     {
         try
         {
@@ -31,7 +32,7 @@ internal sealed class RouterHub : Hub
 
             var clientHostname = Dns.GetHostEntry(clientIp).HostName;
 
-            _connectionService.KeepSubscriberConnection(new Common.Models.Subscriber(clientHostname, clientIp.MapToIPv4().ToString(), topics, unique), Context.ConnectionId);
+            _connectionService.KeepSubscriberConnection(new Common.Models.Subscriber(clientHostname, clientIp.MapToIPv4().ToString(), topics), Context.ConnectionId);
            
             return Context.ConnectionId;
         }

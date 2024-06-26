@@ -4,7 +4,7 @@ using Felis.Subscriber.Attributes;
 
 namespace Felis.Client.Test.Consumers;
 
-[Topic("TestError")]
+[Topic("TestError", false)]
 public class TestConsumerWithError : IConsume<TestModel>
 {
     public void Process(TestModel entity)

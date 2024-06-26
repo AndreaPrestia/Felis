@@ -5,7 +5,7 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Host.AddFelisClient("https://gabriele:paolini@localhost:7110", false, 15, 2);
+builder.Host.AddFelisClient("https://gabriele:paolini@localhost:7110", 15, 2);
 
 builder.Services.AddEndpointsApiExplorer();
 

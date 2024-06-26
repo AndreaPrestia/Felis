@@ -1,5 +1,4 @@
-﻿using Felis.Common.Models;
-using Felis.Router.Entities;
+﻿using Felis.Router.Entities;
 
 namespace Felis.Router.Services;
 
@@ -18,7 +17,7 @@ internal sealed class ConnectionService
         lock (SubscriberConnectionMapLocker)
         {
             consumers = ConnectionMap.Select(x => x.Subscriber)
-                .Where(x => x.Topics.Select(t => t).ToList().Contains(topic)).ToList();
+                .Where(x => x.Topics.Any(t => t.Name == topic)).ToList();
         }
 
         return consumers;
@@ -31,7 +30,7 @@ internal sealed class ConnectionService
         lock (SubscriberConnectionMapLocker)
         {
             consumerConnections = ConnectionMap
-                .Where(x => x.Subscriber.Topics.Select(t => t).ToList().Contains(topic)).ToList();
+                .Where(x => x.Subscriber.Topics.Any(t => t.Name == topic)).ToList();
         }
 
         return consumerConnections;

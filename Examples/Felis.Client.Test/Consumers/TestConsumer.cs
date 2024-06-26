@@ -5,7 +5,7 @@ using Felis.Subscriber.Attributes;
 
 namespace Felis.Client.Test.Consumers;
 
-[Topic("Test")]
+[Topic("Test", false)]
 public class TestConsumer : IConsume<TestModel>
 {
     public void Process(TestModel entity)

@@ -147,7 +147,7 @@ public sealed class RouterManager : IDisposable
 
     private async void OnNewConnectedSubscriberNotifyReceived(object sender, NewSubscriberConnectedEventArgs e)
     {
-        foreach (var message in e.Subscriber.Topics.Select(topic => _messageService.ReadyList(topic)).Where(messages => messages.Any()).SelectMany(messages => messages))
+        foreach (var message in e.Subscriber.Topics.Select(topic => _messageService.ReadyList(topic.Name)).Where(messages => messages.Any()).SelectMany(messages => messages))
         {
             var result = await SendMessageAsync(message.Header!.Id, e.ConnectionId);
             _logger.LogInformation($"Send ready message {message.Header!.Id} to new connection {e.ConnectionId} with result {result}");
@@ -212,7 +212,7 @@ public sealed class RouterManager : IDisposable
 
         _logger.LogInformation($"Sending message {messageId} for topic {topic}");
 
-        var uniqueConsumer = consumerConnectionEntities.Where(x => x.Subscriber.Unique).MinBy(x => x.Timestamp);
+        var uniqueConsumer = consumerConnectionEntities.Where(x => x.Subscriber.Topics.Any(t => t.Name == topic && t.Unique)).MinBy(x => x.Timestamp);
 
         if (uniqueConsumer != null)
         {

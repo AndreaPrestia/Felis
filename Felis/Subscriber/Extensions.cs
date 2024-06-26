@@ -14,76 +14,78 @@ namespace Felis.Subscriber;
 
 public static class Extensions
 {
-	public static void AddFelisClient(this IHostBuilder builder, string connectionString, bool unique = false, int pooledConnectionLifeTimeMinutes = 15, int maxAttempts = 0)
-	{
-		if (string.IsNullOrWhiteSpace(connectionString))
-		{
-			throw new ApplicationException(
-				"No connectionString provided. The subscription to Felis Router cannot be done");
-		}
-		
+    public static void AddFelisClient(this IHostBuilder builder, string connectionString,
+        int pooledConnectionLifeTimeMinutes = 15, int maxAttempts = 0)
+    {
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new ApplicationException(
+                "No connectionString provided. The subscription to Felis Router cannot be done");
+        }
+
         builder.ConfigureServices((_, serviceCollection) =>
         {
-			var hubConnectionBuilder = new HubConnectionBuilder();
+            var hubConnectionBuilder = new HubConnectionBuilder();
 
-			hubConnectionBuilder.Services.AddSingleton<IConnectionFactory>(
-				new HttpConnectionFactory(Options.Create(new HttpConnectionOptions()), NullLoggerFactory.Instance));
+            hubConnectionBuilder.Services.AddSingleton<IConnectionFactory>(
+                new HttpConnectionFactory(Options.Create(new HttpConnectionOptions()), NullLoggerFactory.Instance));
 
-			var uri = new Uri(connectionString);
+            var uri = new Uri(connectionString);
 
-			var credentials = Convert.ToBase64String(Encoding.Default.GetBytes(uri.UserInfo));
+            var credentials = Convert.ToBase64String(Encoding.Default.GetBytes(uri.UserInfo));
 
-			var routerEndpoint = $"{uri.Scheme}://{uri.Authority}";
-			
-			serviceCollection.AddSingleton(hubConnectionBuilder
-				.WithUrl($"{connectionString}/felis/router",
-					options =>
-					{
-						options.Transports = HttpTransportType.WebSockets;
-						options.Headers.Add("Authorization", $"Basic {credentials}");
-					})
-				.WithAutomaticReconnect()
-				.Build());
+            var routerEndpoint = $"{uri.Scheme}://{uri.Authority}";
 
-			serviceCollection.RegisterConsumers();
+            serviceCollection.AddSingleton(hubConnectionBuilder
+                .WithUrl($"{connectionString}/felis/router",
+                    options =>
+                    {
+                        options.Transports = HttpTransportType.WebSockets;
+                        options.Headers.Add("Authorization", $"Basic {credentials}");
+                    })
+                .WithAutomaticReconnect()
+                .Build());
 
-			serviceCollection.AddSingleton<ConsumerResolver>();
-			serviceCollection.AddSingleton<MessageHandler>();
+            serviceCollection.RegisterConsumers();
 
-			serviceCollection.AddHttpClient<MessageHandler>("felisClient", (_, client) =>
-				{
-					client.BaseAddress = new Uri(routerEndpoint);
-					client.DefaultRequestHeaders.Add("Authorization", $"Basic {credentials}");
-				}).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler()
-				{
-					PooledConnectionLifetime = TimeSpan.FromMinutes(pooledConnectionLifeTimeMinutes)
-				})
-				.SetHandlerLifetime(Timeout.InfiniteTimeSpan);
-			
-			var serviceProvider = serviceCollection.BuildServiceProvider();
+            serviceCollection.AddSingleton<ConsumerResolver>();
+            serviceCollection.AddSingleton<MessageHandler>();
 
-			var messageHandler = serviceProvider.GetService<MessageHandler>();
+            serviceCollection.AddHttpClient<MessageHandler>("felisClient", (_, client) =>
+                {
+                    client.BaseAddress = new Uri(routerEndpoint);
+                    client.DefaultRequestHeaders.Add("Authorization", $"Basic {credentials}");
+                }).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler()
+                {
+                    PooledConnectionLifetime = TimeSpan.FromMinutes(pooledConnectionLifeTimeMinutes)
+                })
+                .SetHandlerLifetime(Timeout.InfiniteTimeSpan);
 
-			messageHandler?.SubscribeAsync(maxAttempts > 0 ? new RetryPolicy(maxAttempts) : null, unique).Wait();
-		});
-	}
-	
-	private static void RegisterConsumers(this IServiceCollection serviceCollection)
-	{
-		var genericInterfaceType = typeof(IConsume<>);
+            var serviceProvider = serviceCollection.BuildServiceProvider();
 
-		var implementationTypes = AppDomain.CurrentDomain.GetAssemblies()
-			.SelectMany(assembly => assembly.GetTypes())
-			.Where(type => type is { IsClass: true, IsAbstract: false } &&
-			               type.GetInterfaces().Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == genericInterfaceType)).ToList();
+            var messageHandler = serviceProvider.GetService<MessageHandler>();
 
-		foreach (var implementationType in implementationTypes)
-		{
-			var closedServiceType = genericInterfaceType.MakeGenericType(implementationType.GetInterfaces()
-				.Single(i => i.IsGenericType && i.GetGenericTypeDefinition() == genericInterfaceType)
-				.GetGenericArguments());
+            messageHandler?.SubscribeAsync(maxAttempts > 0 ? new RetryPolicy(maxAttempts) : null).Wait();
+        });
+    }
 
-			serviceCollection.AddSingleton(closedServiceType, implementationType);
-		}
-	}
+    private static void RegisterConsumers(this IServiceCollection serviceCollection)
+    {
+        var genericInterfaceType = typeof(IConsume<>);
+
+        var implementationTypes = AppDomain.CurrentDomain.GetAssemblies()
+            .SelectMany(assembly => assembly.GetTypes())
+            .Where(type => type is { IsClass: true, IsAbstract: false } &&
+                           type.GetInterfaces().Any(i =>
+                               i.IsGenericType && i.GetGenericTypeDefinition() == genericInterfaceType)).ToList();
+
+        foreach (var implementationType in implementationTypes)
+        {
+            var closedServiceType = genericInterfaceType.MakeGenericType(implementationType.GetInterfaces()
+                .Single(i => i.IsGenericType && i.GetGenericTypeDefinition() == genericInterfaceType)
+                .GetGenericArguments());
+
+            serviceCollection.AddSingleton(closedServiceType, implementationType);
+        }
+    }
 }

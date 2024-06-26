@@ -1,7 +1,9 @@
 ﻿namespace Felis.Common.Models;
 
-public record Subscriber(string? Hostname, string? IpAddress, List<string> Topics, bool Unique)
+public record Subscriber(string? Hostname, string? IpAddress, List<TopicValue> Topics)
 {
-    public List<string> Topics { get; set; } = Topics;
+    public List<TopicValue> Topics { get; set; } = Topics;
 }
+
+public record TopicValue(string Name, bool Unique);
 

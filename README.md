@@ -250,19 +250,23 @@ Status code | Type                  | Context |
    {
       "ipAddress":"192.168.1.1",
       "hostname":"host",
-      "topics":["topic"],
-      "unique": false
+      "topics":[
+      {
+          "name": "topic",
+          "unique": false
+      }]
    }
 ]
 ```
 This endpoint returns an array of subscribers.
 
-Property | Type          | Context                                                                         |
---- |---------------|---------------------------------------------------------------------------------|
-ipAddress | string        | The ipAddress property of the subscriber.                                       |
-hostname | string        | The hostname property of the subscriber.                                          |
-topics | array<string> | This property contains the array of topics subscribed by the subscriber.          |
-unique | boolean       | This property tells the router whether the subscriber is configured to be unique. |
+Property | Type         | Context                                                                                              |
+--- |--------------|------------------------------------------------------------------------------------------------------|
+ipAddress | string       | The ipAddress property of the subscriber.                                                            |
+hostname | string       | The hostname property of the subscriber.                                                             |
+topics | array<Topic> | This property contains the array of topics subscribed by the subscriber.                             |
+topics.name | string | This property contains the topic name subscribed by the subscriber                                   |
+topics.unique | boolean | This property tells the router whether the topic has a unique consumer registered in the subscriber. |
 
 **message/{topic}/ready**
 

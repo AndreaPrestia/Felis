@@ -35,7 +35,7 @@ internal sealed class ConsumerResolver
                            type.GetInterfaces().Any(i =>
                                i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IConsume<>))).SelectMany(t =>
                 t.GetCustomAttributes<TopicAttribute>()
-                    .Select(x => new KeyValuePair<TopicValue, Type>(new TopicValue(x.Value!, x.Unique), t)))
+                    .Select(x => new KeyValuePair<TopicValue, Type>(new TopicValue(x.Value!, x.Unique, x.RetryPolicy), t)))
             .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
         return topicTypes;

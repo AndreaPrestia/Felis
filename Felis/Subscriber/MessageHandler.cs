@@ -61,14 +61,12 @@ public sealed class MessageHandler : IAsyncDisposable
     }
 
     //TODO define retry policy on topic attribute
-    public async Task SubscribeAsync(RetryPolicy? retryPolicy, CancellationToken cancellationToken = default)
+    public async Task SubscribeAsync(CancellationToken cancellationToken = default)
     {
         if (_hubConnection == null)
         {
             throw new ArgumentNullException($"Connection to Felis router not correctly initialized");
         }
-
-        _retryPolicy = retryPolicy;
 
         var topicsTypes = _consumerResolver.GetTypesForTopics();
 
@@ -199,8 +197,7 @@ public sealed class MessageHandler : IAsyncDisposable
 
             var responseMessage = await _httpClient.PostAsJsonAsync("/messages/error",
                 new ErrorMessageRequest(message!.Header!.Id,
-                    _hubConnection.ConnectionId, new ErrorDetail(exception?.Message, exception?.StackTrace),
-                    _retryPolicy),
+                    _hubConnection.ConnectionId, new ErrorDetail(exception?.Message, exception?.StackTrace)),
                 cancellationToken: cancellationToken);
 
             responseMessage.EnsureSuccessStatusCode();

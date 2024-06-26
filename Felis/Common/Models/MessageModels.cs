@@ -15,7 +15,7 @@ public record ErrorMessage(Guid Id, Message Message, List<ErrorMessageDetail> Er
 public record ErrorMessageDetail(string ConnectionId, List<ErrorDetail> Details, RetryPolicy? RetryPolicy);
 public record ErrorDetail(string? Title, string? Detail);
 
-public record ErrorMessageRequest(Guid Id, string ConnectionId, ErrorDetail Error, RetryPolicy? RetryPolicy)
+public record ErrorMessageRequest(Guid Id, string ConnectionId, ErrorDetail Error)
 {
     public long Timestamp { get; } = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
 }

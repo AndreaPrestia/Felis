@@ -5,7 +5,7 @@ using Felis.Subscriber.Attributes;
 
 namespace Felis.Client.Test.Consumers;
 
-[Topic("TestAsync", false)]
+[Topic("TestAsync", false, null)]
 public class TestConsumerAsync : IConsume<TestModel>
 {
     public async void Process(TestModel entity)

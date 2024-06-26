@@ -5,5 +5,5 @@ public record Subscriber(string? Hostname, string? IpAddress, List<TopicValue> T
     public List<TopicValue> Topics { get; set; } = Topics;
 }
 
-public record TopicValue(string Name, bool Unique);
+public record TopicValue(string Name, bool Unique, RetryPolicy? RetryPolicy);
 

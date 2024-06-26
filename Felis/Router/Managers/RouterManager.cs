@@ -42,6 +42,10 @@ public sealed class RouterManager : IDisposable
             throw new ArgumentNullException($"No Topic provided");
         }
 
+        var messageAddResult = _messageService.Add(message);
+        
+        _logger.LogDebug($"MessageAddResult {messageAddResult} for message {message.Id}");
+        
         var sendMessageResponse = await SendMessageAsync(message.Id, null, cancellationToken);
 
         var result = sendMessageResponse.MessageSendStatus == MessageSendStatus.MessageSent

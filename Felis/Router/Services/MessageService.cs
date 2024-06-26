@@ -112,7 +112,8 @@ internal sealed class MessageService : IDisposable
                 return MessageStatus.Error;
             }
 
-            var hasRetryPolicy = message.RetryPolicy is { Attempts: > 0 };
+            //TODO load retry policy by connection id for the topic of the message
+            var retryPolicy = false;
 
             var error = messageFound.Errors.FirstOrDefault(x => x.ConnectionId == message.ConnectionId);
 

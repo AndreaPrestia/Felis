@@ -14,8 +14,7 @@ namespace Felis.Subscriber;
 
 public static class Extensions
 {
-    public static void AddFelisClient(this IHostBuilder builder, string connectionString,
-        int pooledConnectionLifeTimeMinutes = 15, int maxAttempts = 0)
+    public static void AddFelisClient(this IHostBuilder builder, string connectionString, int pooledConnectionLifeTimeMinutes = 15)
     {
         if (string.IsNullOrWhiteSpace(connectionString))
         {
@@ -65,7 +64,7 @@ public static class Extensions
 
             var messageHandler = serviceProvider.GetService<MessageHandler>();
 
-            messageHandler?.SubscribeAsync(maxAttempts > 0 ? new RetryPolicy(maxAttempts) : null).Wait();
+            messageHandler?.SubscribeAsync().Wait();
         });
     }
 

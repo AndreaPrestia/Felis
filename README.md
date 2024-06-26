@@ -151,7 +151,7 @@ Status code | Type | Context |
 **messages/error**
 
 This endpoint informs Felis when a subscriber encounters errors while consuming a message. It is used to keep track of the operations (ACK).
-If no retry policy is provided the message is not requeued but only logged in Felis.
+If no retry policy is provided in the topic attribute, by the subscriber, the message is not requeued but goes in the dead letter storage.
 
 ```
 curl -X 'POST' \
@@ -165,9 +165,6 @@ curl -X 'POST' \
     "error": {
         "title": "string",
         "detail": "string"
-    },
-    "retryPolicy": {
-        "attempts": 3
     }
 }'
 ```
@@ -180,8 +177,6 @@ connectionId | string | the actual value of the connectionId of the message that
 error | object | The object containing the error occurred. |
 error.title | string | The .NET exception message. |
 error.detail | string | The .NET exception stacktrace. |
-retryPolicy | object | The object containing the retry policy to apply to the message. |
-retryPolicy.attempts | int | The number of attempts to retry to send a message. |
 
 ***Response***
 Status code | Type | Context |
@@ -253,7 +248,10 @@ Status code | Type                  | Context |
       "topics":[
       {
           "name": "topic",
-          "unique": false
+          "unique": false,
+          "retryPolicy": {
+               "attempts": 2
+          }
       }]
    }
 ]
@@ -265,8 +263,10 @@ Property | Type         | Context                                               
 ipAddress | string       | The ipAddress property of the subscriber.                                                            |
 hostname | string       | The hostname property of the subscriber.                                                             |
 topics | array<Topic> | This property contains the array of topics subscribed by the subscriber.                             |
-topics.name | string | This property contains the topic name subscribed by the subscriber                                   |
-topics.unique | boolean | This property tells the router whether the topic has a unique consumer registered in the subscriber. |
+topics.name | string       | This property contains the topic name subscribed by the subscriber                                   |
+topics.unique | boolean      | This property tells the router whether the topic has a unique consumer registered in the subscriber. |
+topics.retryPolicy | object       | This property tells the router whether the topic has a retry policy to apply for the subscriber.     |
+topics.retryPolicy.attempts | int          | This property tells the router whether the topic has the retry attempts to apply for the subscriber. |
 
 **message/{topic}/ready**
 
@@ -619,7 +619,6 @@ Parameter | Type    | Context                                                   
 connectionString | string  | The FelisRouter connection string that the subscriber must subscribe. It must contain the UserInfo to authenticate.                                                                                                                                |
 unique | boolean | Tells to the FelisRouter if the subscriber is unique.                                                                                                                                                                                                |
 pooledConnectionLifetimeMinutes | int     | The internal http client PooledConnectionLifetimeMinutes. Not mandatory. Default value is 15.                                                                                                                                                      |
-maxAttempts | int     | It tells the router the maximum number of attempts that should be made to resend a message in the error queue, according to the retry policy that you want to apply. All the attempts are logged in the router. Not mandatory, default value is 0. |
 
 **How do I use a subscriber?**
 
@@ -633,7 +632,7 @@ using System.Text.Json;
 
 namespace Felis.Subscriber.Test;
 
-[Topic("Test")]
+[Topic("Test", false, new(2))]
 public class TestConsumer : IConsume<TestModel>
 {
 	public async void Process(TestModel entity)
@@ -651,7 +650,7 @@ using Felis.Subscriber.Test.Models;
 
 namespace Felis.Subscriber.Test;
 
-[Topic("TestAsync")]
+[Topic("TestAsync", false, new(2))]
 public class TestConsumerAsync : IConsume<TestModel>
 {
     public async void Process(TestModel entity)

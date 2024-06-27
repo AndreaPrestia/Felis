@@ -88,7 +88,7 @@ internal sealed class MessageService : IDisposable
         }
     }
 
-    public MessageStatus Error(ErrorMessageRequest? message)
+    public MessageStatus Error(ErrorMessageRequest? message, SubscriberConnectionEntity? subscriberConnectionEntity)
     {
         ArgumentNullException.ThrowIfNull(message);
         ArgumentNullException.ThrowIfNull(message.ConnectionId);
@@ -96,6 +96,12 @@ internal sealed class MessageService : IDisposable
         ArgumentNullException.ThrowIfNull(message.Error);
         ArgumentException.ThrowIfNullOrWhiteSpace(message.Error.Detail);
         ArgumentException.ThrowIfNullOrWhiteSpace(message.Error.Title);
+        if (subscriberConnectionEntity != null)
+        {
+            ArgumentNullException.ThrowIfNull(subscriberConnectionEntity.ConnectionId);
+            ArgumentNullException.ThrowIfNull(subscriberConnectionEntity.Subscriber);
+            ArgumentNullException.ThrowIfNull(subscriberConnectionEntity.Subscriber.Topics);
+        }
 
         lock (_lock)
         {
@@ -112,9 +118,10 @@ internal sealed class MessageService : IDisposable
                 return MessageStatus.Error;
             }
 
-            //TODO load retry policy by connection id for the topic of the message
-            var retryPolicy = false;
-
+            var retryPolicy = subscriberConnectionEntity?.Subscriber.Topics
+                .FirstOrDefault(x => x.Name == messageFound.Topic)
+                ?.RetryPolicy;
+            
             var error = messageFound.Errors.FirstOrDefault(x => x.ConnectionId == message.ConnectionId);
 
             if (error == null)
@@ -134,14 +141,14 @@ internal sealed class MessageService : IDisposable
                 Timestamp = message.Timestamp
             });
 
-            error.RetryPolicy = hasRetryPolicy
+            error.RetryPolicy = retryPolicy != null
             ? new MessageRetryPolicy()
             {
-                Attempts = message.RetryPolicy!.Attempts
+                Attempts = retryPolicy.Attempts
             }
             : null;
 
-            if (hasRetryPolicy)
+            if (retryPolicy != null)
             {
                 messageFound.Retries.Add(new MessageRetry()
                 {

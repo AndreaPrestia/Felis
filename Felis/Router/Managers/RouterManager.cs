@@ -87,7 +87,9 @@ public sealed class RouterManager : IDisposable
             throw new ArgumentNullException(nameof(errorMessage));
         }
 
-        var result = _messageService.Error(errorMessage);
+        var subscriberConnectionEntity = _connectionService.GetSubscriberByConnectionId(errorMessage.ConnectionId);
+
+        var result = _messageService.Error(errorMessage, subscriberConnectionEntity);
 
         if (result == MessageStatus.Error)
         {

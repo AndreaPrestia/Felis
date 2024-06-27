@@ -609,7 +609,7 @@ This application contains a class, called TestConsumer, that implements the Cons
 
 Just add the following line of code:
 ```
-builder.AddFelisSubscriber("https://username:password@localhost:7103", false 15, 5);
+builder.AddFelisSubscriber("https://username:password@localhost:7103", 15);
 ```
 
 The signature of **AddFelisSubscriber** method is made of:
@@ -632,7 +632,7 @@ using System.Text.Json;
 
 namespace Felis.Subscriber.Test;
 
-[Topic("Test", false, new(2))]
+[Topic("Test", false, 2)]
 public class TestConsumer : IConsume<TestModel>
 {
 	public async void Process(TestModel entity)
@@ -650,7 +650,7 @@ using Felis.Subscriber.Test.Models;
 
 namespace Felis.Subscriber.Test;
 
-[Topic("TestAsync", false, new(2))]
+[Topic("TestAsync", false, 2)]
 public class TestConsumerAsync : IConsume<TestModel>
 {
     public async void Process(TestModel entity)

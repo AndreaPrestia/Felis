@@ -1,11 +1,11 @@
-using Felis.Client;
 using Felis.Client.Test.Models;
+using Felis.Subscriber;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Host.AddFelisClient("https://gabriele:paolini@localhost:7110", false, 15, 2);
+builder.Host.AddFelisClient("https://gabriele:paolini@localhost:7110");
 
 builder.Services.AddEndpointsApiExplorer();
 

@@ -1,9 +1,10 @@
-﻿using Felis.Client.Attributes;
-using Felis.Client.Test.Models;
+﻿using Felis.Client.Test.Models;
+using Felis.Subscriber;
+using Felis.Subscriber.Attributes;
 
 namespace Felis.Client.Test.Consumers;
 
-[Topic("TestError")]
+[Topic("TestError", false, 5)]
 public class TestConsumerWithError : IConsume<TestModel>
 {
     public void Process(TestModel entity)

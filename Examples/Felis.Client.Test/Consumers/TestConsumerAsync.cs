@@ -1,10 +1,11 @@
 ﻿using System.Text.Json;
-using Felis.Client.Attributes;
 using Felis.Client.Test.Models;
+using Felis.Subscriber;
+using Felis.Subscriber.Attributes;
 
 namespace Felis.Client.Test.Consumers;
 
-[Topic("TestAsync")]
+[Topic("TestAsync", false, 5)]
 public class TestConsumerAsync : IConsume<TestModel>
 {
     public async void Process(TestModel entity)

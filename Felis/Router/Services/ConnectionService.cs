@@ -36,6 +36,19 @@ internal sealed class ConnectionService
         return consumerConnections;
     }
     
+    public List<SubscriberConnectionEntity> GetConnectionIdsByQueueName(string queueName)
+    {
+        List<SubscriberConnectionEntity> consumerConnections;
+
+        lock (SubscriberConnectionMapLocker)
+        {
+            consumerConnections = ConnectionMap
+                .Where(x => x.Subscriber.Queues.Any(t => t.Name == queueName)).ToList();
+        }
+
+        return consumerConnections;
+    }
+    
     public SubscriberConnectionEntity? GetSubscriberByConnectionId(string connectionId)
     {
         lock (SubscriberConnectionMapLocker)

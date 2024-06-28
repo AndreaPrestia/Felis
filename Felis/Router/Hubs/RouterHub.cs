@@ -19,7 +19,7 @@ internal sealed class RouterHub : Hub
         _connectionService = connectionService ?? throw new ArgumentNullException(nameof(connectionService));
     }
 
-    public string SetConnectionId(List<TopicValue> topics)
+    public string SetConnectionId(List<TopicValue> topics, List<QueueValue> queues)
     {
         try
         {
@@ -32,7 +32,7 @@ internal sealed class RouterHub : Hub
 
             var clientHostname = Dns.GetHostEntry(clientIp).HostName;
 
-            _connectionService.KeepSubscriberConnection(new Common.Models.Subscriber(clientHostname, clientIp.MapToIPv4().ToString(), topics), Context.ConnectionId);
+            _connectionService.KeepSubscriberConnection(new Common.Models.Subscriber(clientHostname, clientIp.MapToIPv4().ToString(), topics, queues), Context.ConnectionId);
            
             return Context.ConnectionId;
         }

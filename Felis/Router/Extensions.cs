@@ -71,6 +71,7 @@ public static class Extensions
         serviceCollection.AddSingleton<ConnectionService>();
         serviceCollection.AddSingleton<MessageService>();
         serviceCollection.AddSingleton<DeadLetterService>();
+        serviceCollection.AddSingleton<QueueService>();
     }
 
     private static void AddSwagger(IServiceCollection serviceCollection)

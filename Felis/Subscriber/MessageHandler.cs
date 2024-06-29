@@ -14,7 +14,6 @@ public sealed class MessageHandler : IAsyncDisposable
     private readonly ILogger<MessageHandler> _logger;
     private List<TopicValue>? _topics;
     private readonly HttpClient _httpClient;
-    private RetryPolicy? _retryPolicy;
     private readonly ConsumerResolver _consumerResolver;
 
     public MessageHandler(HubConnection? hubConnection, ILogger<MessageHandler> logger, HttpClient httpClient,
@@ -48,8 +47,39 @@ public sealed class MessageHandler : IAsyncDisposable
 
             var json = JsonSerializer.Serialize(payload);
 
-            var responseMessage = await _httpClient.PostAsJsonAsync($"/messages/{topic}/dispatch",
-                new MessageRequest(Guid.NewGuid(), topic, json),
+            var responseMessage = await _httpClient.PostAsJsonAsync($"/messages/dispatch",
+                new MessageRequest(Guid.NewGuid(), topic, string.Empty, json),
+                cancellationToken: cancellationToken);
+
+            responseMessage.EnsureSuccessStatusCode();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, ex.Message);
+        }
+    }
+    
+    public async Task EnqueueAsync<T>(T payload, string? queue, CancellationToken cancellationToken = default)
+        where T : class
+    {
+        if (payload == null)
+        {
+            throw new ArgumentNullException(nameof(payload));
+        }
+
+        if (string.IsNullOrWhiteSpace(queue))
+        {
+            throw new ArgumentNullException(nameof(queue));
+        }
+
+        try
+        {
+            await CheckHubConnectionStateAndStartIt(cancellationToken);
+
+            var json = JsonSerializer.Serialize(payload);
+
+            var responseMessage = await _httpClient.PostAsJsonAsync($"/messages/enqueue",
+                new MessageRequest(Guid.NewGuid(), string.Empty, queue, json),
                 cancellationToken: cancellationToken);
 
             responseMessage.EnsureSuccessStatusCode();

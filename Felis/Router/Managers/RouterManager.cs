@@ -13,18 +13,20 @@ public sealed class RouterManager : IDisposable
     private readonly ConnectionService _connectionService;
     private readonly MessageService _messageService;
     private readonly DeadLetterService _deadLetterService;
+    private readonly QueueService _queueService;
     private readonly IHubContext<RouterHub> _hubContext;
 
     internal RouterManager(ILogger<RouterManager> logger, MessageService messageService,
         ConnectionService connectionService,
         DeadLetterService deadLetterService,
-        IHubContext<RouterHub> hubContext)
+        IHubContext<RouterHub> hubContext, QueueService queueService)
     {
         _logger = logger;
         _messageService = messageService;
         _connectionService = connectionService;
         _deadLetterService = deadLetterService;
         _hubContext = hubContext;
+        _queueService = queueService;
 
         _connectionService.NotifyNewConnectedSubscriber += OnNewConnectedSubscriberNotifyReceived;
     }
@@ -60,6 +62,91 @@ public sealed class RouterManager : IDisposable
         }
 
         return result;
+    }
+    
+    public MessageStatus Enqueue(MessageRequest? message,
+        CancellationToken cancellationToken = default)
+    {
+        if (message == null)
+        {
+            throw new ArgumentNullException(nameof(message));
+        }
+
+        if (string.IsNullOrWhiteSpace(message.Queue))
+        {
+            throw new ArgumentNullException($"No Topic provided");
+        }
+
+        var messageAddResult = _messageService.Add(message);
+        
+        _logger.LogDebug($"MessageAddResult {messageAddResult} for message {message.Id}");
+        
+        if (messageAddResult == MessageStatus.Error)
+        {
+            _logger.LogWarning("Cannot add message in storage.");
+            return messageAddResult;
+        }
+
+        _queueService.Enqueue(message.Id);
+
+        return messageAddResult;
+    }
+    
+    public MessageStatus Ack(ConsumedMessage? consumedMessage)
+    {
+        try
+        {
+            if (consumedMessage == null)
+            {
+                throw new ArgumentNullException(nameof(consumedMessage));
+            }
+
+            var result = _messageService.Consume(consumedMessage);
+
+            if (result == MessageStatus.Error)
+            {
+                _logger.LogWarning("Cannot add consumed message in storage.");
+            }
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, ex.Message);
+            return MessageStatus.Error;
+        }
+    }
+    public MessageStatus Nack(ErrorMessageRequest? errorMessage)
+    {
+        try
+        {
+            if (errorMessage == null)
+            {
+                throw new ArgumentNullException(nameof(errorMessage));
+            }
+
+            var subscriberConnectionEntity = _connectionService.GetSubscriberByConnectionId(errorMessage.ConnectionId);
+
+            var result = _messageService.Error(errorMessage, subscriberConnectionEntity);
+
+            if (result == MessageStatus.Error)
+            {
+                _logger.LogWarning("Cannot add error message in storage.");
+            }
+    
+            if (result == MessageStatus.Ready)
+            {
+                _queueService.Enqueue(errorMessage.Id);
+                _logger.LogDebug($"Re-enqueued message {errorMessage.Id}");
+            }
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, ex.Message);
+            return MessageStatus.Error;
+        }
     }
 
     public MessageStatus Consume(ConsumedMessage? consumedMessage)

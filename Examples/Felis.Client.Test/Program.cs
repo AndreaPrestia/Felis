@@ -40,4 +40,10 @@ app.MapPost("/dispatch", async (MessageHandler messageHandler, [FromBody] TestMo
     return Results.Created("/dispatch", model);
 });
 
+app.MapPost("/enqueue", async (MessageHandler messageHandler, [FromBody] TestModel model, [FromQuery] string queue) =>
+{
+    await messageHandler.EnqueueAsync(model, queue);
+    return Results.Created("/enqueue", model);
+});
+
 app.Run();

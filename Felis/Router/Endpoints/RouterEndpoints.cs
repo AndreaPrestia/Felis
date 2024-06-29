@@ -13,35 +13,38 @@ internal static class RouterEndpoints
     internal static void MapRouterEndpoints(this IEndpointRouteBuilder endpointRouteBuilder)
     {
         endpointRouteBuilder.MapPost("/messages/dispatch",
-              async (CancellationToken cancellationToken, [FromServices] RouterManager manager, [FromRoute] string topic,
-                   [FromBody] MessageRequest message) =>
-              {
-                  var result = await manager.DispatchAsync(message, cancellationToken);
+                async (CancellationToken cancellationToken, [FromServices] RouterManager manager,
+                    [FromRoute] string topic,
+                    [FromBody] MessageRequest message) =>
+                {
+                    var result = await manager.DispatchAsync(message, cancellationToken);
 
-                  return result == MessageStatus.Error ? Results.BadRequest("Failed operation") : Results.Created("/dispatch", message);
-              }).WithName("MessageDispatch").Produces<CreatedResult>(StatusCodes.Status201Created)
-           .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
-           .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
-           .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)
-           .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
-           .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
-
-        endpointRouteBuilder.MapPost("/messages/consume",
-                 ([FromServices] RouterManager manager, [FromRoute] Guid id,
-                    [FromBody] ConsumedMessage message) =>
-                 {
-                     var result = manager.Consume(message);
-
-                     return result == MessageStatus.Error ? Results.BadRequest("Failed operation") : Results.NoContent();
-                 }).WithName("MessageConsume").Produces<NoContentResult>(StatusCodes.Status204NoContent)
+                    return result == MessageStatus.Error
+                        ? Results.BadRequest("Failed operation")
+                        : Results.Created("/dispatch", message);
+                }).WithName("MessageDispatch").Produces<CreatedResult>(StatusCodes.Status201Created)
             .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
             .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
             .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)
             .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
             .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
-        
+
+        endpointRouteBuilder.MapPost("/messages/consume",
+                ([FromServices] RouterManager manager,
+                    [FromBody] ConsumedMessage message) =>
+                {
+                    var result = manager.Consume(message);
+
+                    return result == MessageStatus.Error ? Results.BadRequest("Failed operation") : Results.NoContent();
+                }).WithName("MessageConsume").Produces<NoContentResult>(StatusCodes.Status204NoContent)
+            .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
+            .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
+            .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)
+            .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
+            .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
+
         endpointRouteBuilder.MapPost("/messages/process",
-                ([FromServices] RouterManager manager, [FromRoute] Guid id,
+                ([FromServices] RouterManager manager,
                     [FromBody] ProcessedMessage message) =>
                 {
                     var result = manager.Process(message);
@@ -55,7 +58,7 @@ internal static class RouterEndpoints
             .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
         endpointRouteBuilder.MapPost("/messages/error",
-                async (CancellationToken cancellationToken, [FromServices] RouterManager manager, [FromRoute] Guid id,
+                async (CancellationToken cancellationToken, [FromServices] RouterManager manager,
                     [FromBody] ErrorMessageRequest message) =>
                 {
                     var result = await manager.ErrorAsync(message, cancellationToken);
@@ -159,13 +162,55 @@ internal static class RouterEndpoints
             .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
             .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
-        endpointRouteBuilder.MapGet("/subscribers/{connectionId}/messages/{topic}", ([FromServices] RouterManager manager,
+        endpointRouteBuilder.MapGet("/subscribers/{connectionId}/messages/{topic}", (
+                [FromServices] RouterManager manager,
                 [FromRoute] string connectionId, [FromRoute] string topic) =>
-        {
-            var result = manager.ConsumedList(connectionId, topic);
+            {
+                var result = manager.ConsumedList(connectionId, topic);
 
-            return Results.Ok(result);
-        }).WithName("ConsumedMessageListByConnectionIdAndTopic").Produces<List<ConsumedMessage>>()
+                return Results.Ok(result);
+            }).WithName("ConsumedMessageListByConnectionIdAndTopic").Produces<List<ConsumedMessage>>()
+            .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
+            .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
+            .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)
+            .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
+            .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
+
+        endpointRouteBuilder.MapPost("/messages/enqueue",
+                ([FromServices] RouterManager manager, [FromBody] MessageRequest message) =>
+                {
+                    var result = manager.Enqueue(message);
+
+                    return result == MessageStatus.Error
+                        ? Results.BadRequest("Failed operation")
+                        : Results.Created("/dispatch", message);
+                }).WithName("Enqueue").Produces<CreatedResult>(StatusCodes.Status201Created)
+            .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
+            .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
+            .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)
+            .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
+            .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
+
+        endpointRouteBuilder.MapPost("/messages/ack",
+                ([FromServices] RouterManager manager, [FromBody] ConsumedMessage message) =>
+                {
+                    var result = manager.Ack(message);
+
+                    return result == MessageStatus.Error ? Results.BadRequest("Failed operation") : Results.NoContent();
+                }).WithName("Ack").Produces<NoContentResult>(StatusCodes.Status204NoContent)
+            .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
+            .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
+            .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)
+            .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
+            .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
+
+        endpointRouteBuilder.MapPost("/messages/nack",
+                ([FromServices] RouterManager manager, [FromBody] ErrorMessageRequest message) =>
+                {
+                    var result = manager.Nack(message);
+
+                    return result == MessageStatus.Error ? Results.BadRequest("Failed operation") : Results.NoContent();
+                }).WithName("Nack").Produces<NoContentResult>(StatusCodes.Status204NoContent)
             .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
             .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
             .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)
@@ -173,4 +218,3 @@ internal static class RouterEndpoints
             .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
     }
 }
-

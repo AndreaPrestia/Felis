@@ -77,7 +77,7 @@ internal sealed class MessageService : IDisposable
             {
                 messageFound.Status = MessageStatus.Consumed;
             }
-            
+
             messageFound.UpdatedAt = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
 
             var updateResult = _messageCollection.Update(consumedMessage.Id, messageFound);
@@ -121,7 +121,7 @@ internal sealed class MessageService : IDisposable
             var retryPolicy = subscriberConnectionEntity?.Subscriber.Topics
                 .FirstOrDefault(x => x.Name == messageFound.Topic)
                 ?.RetryPolicy;
-            
+
             var error = messageFound.Errors.FirstOrDefault(x => x.ConnectionId == message.ConnectionId);
 
             if (error == null)
@@ -142,11 +142,11 @@ internal sealed class MessageService : IDisposable
             });
 
             error.RetryPolicy = retryPolicy != null
-            ? new MessageRetryPolicy()
-            {
-                Attempts = retryPolicy.Attempts
-            }
-            : null;
+                ? new MessageRetryPolicy()
+                {
+                    Attempts = retryPolicy.Attempts
+                }
+                : null;
 
             if (retryPolicy != null)
             {
@@ -156,7 +156,9 @@ internal sealed class MessageService : IDisposable
                     Timestamp = message.Timestamp
                 });
 
-                var messageRetries = messageFound.Errors.All(x => x.RetryPolicy == null) ? new List<MessageRetry>() : messageFound.Retries.ToList();
+                var messageRetries = messageFound.Errors.All(x => x.RetryPolicy == null)
+                    ? new List<MessageRetry>()
+                    : messageFound.Retries.ToList();
 
                 var firstRetryToApply = messageRetries.Where(x => x.Sent == null).MinBy(x => x.Timestamp);
 
@@ -210,7 +212,7 @@ internal sealed class MessageService : IDisposable
                 Timestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(),
                 ExecutionTimeMs = processedMessage.ExecutionTimeMs
             });
-            
+
             messageFound.Status = MessageStatus.Processed;
             messageFound.UpdatedAt = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
 
@@ -239,7 +241,9 @@ internal sealed class MessageService : IDisposable
                 return null;
             }
 
-            return new Message(new Header(Guid.Parse(messageFound.Id.ToString()), messageFound.Topic, messageFound.Timestamp), new Content(messageFound.Payload), messageFound.Status.ToString());
+            return new Message(
+                new Header(Guid.Parse(messageFound.Id.ToString()), messageFound.Topic, messageFound.Queue,
+                    messageFound.Timestamp), new Content(messageFound.Payload), messageFound.Status.ToString());
         }
     }
 
@@ -256,13 +260,15 @@ internal sealed class MessageService : IDisposable
 
             if (messageFound == null)
             {
-                _logger.LogWarning($"No message {messageId} with status {MessageStatus.Ready} not found. The send will not be set.");
+                _logger.LogWarning(
+                    $"No message {messageId} with status {MessageStatus.Ready} not found. The send will not be set.");
                 return MessageStatus.Error;
             }
 
             if (messageFound.Status != MessageStatus.Ready)
             {
-                _logger.LogWarning($"Message {messageId} with status {messageFound.Status} found. The send will not be set.");
+                _logger.LogWarning(
+                    $"Message {messageId} with status {messageFound.Status} found. The send will not be set.");
                 return MessageStatus.Error;
             }
 
@@ -293,11 +299,16 @@ internal sealed class MessageService : IDisposable
     {
         lock (_lock)
         {
-            var messages = !string.IsNullOrWhiteSpace(topic) ? _messageCollection.Query().Where(x => x.Topic == topic && x.Status == MessageStatus.Ready).OrderBy(x => x.Timestamp).ToList() : _messageCollection.Query().Where(x => x.Status == MessageStatus.Ready).OrderBy(x => x.Timestamp).ToList();
+            var messages = !string.IsNullOrWhiteSpace(topic)
+                ? _messageCollection.Query().Where(x => x.Topic == topic && x.Status == MessageStatus.Ready)
+                    .OrderBy(x => x.Timestamp).ToList()
+                : _messageCollection.Query().Where(x => x.Status == MessageStatus.Ready).OrderBy(x => x.Timestamp)
+                    .ToList();
 
             return messages != null
                 ? messages.Select(m =>
-                    new Message(new Header(Guid.Parse(m.Id.ToString()), m.Topic, m.Timestamp), new Content(m.Payload), m.Status.ToString())).ToList()
+                    new Message(new Header(Guid.Parse(m.Id.ToString()), m.Topic, m.Queue, m.Timestamp),
+                        new Content(m.Payload), m.Status.ToString())).ToList()
                 : new();
         }
     }
@@ -306,11 +317,16 @@ internal sealed class MessageService : IDisposable
     {
         lock (_lock)
         {
-            var messages = !string.IsNullOrWhiteSpace(topic) ? _messageCollection.Query().Where(x => x.Topic == topic && x.Status == MessageStatus.Sent).OrderBy(x => x.Timestamp).ToList() : _messageCollection.Query().Where(x => x.Status == MessageStatus.Sent).OrderBy(x => x.Timestamp).ToList();
+            var messages = !string.IsNullOrWhiteSpace(topic)
+                ? _messageCollection.Query().Where(x => x.Topic == topic && x.Status == MessageStatus.Sent)
+                    .OrderBy(x => x.Timestamp).ToList()
+                : _messageCollection.Query().Where(x => x.Status == MessageStatus.Sent).OrderBy(x => x.Timestamp)
+                    .ToList();
 
             return messages != null
                 ? messages.Select(m =>
-                    new Message(new Header(Guid.Parse(m.Id.ToString()), m.Topic, m.Timestamp), new Content(m.Payload), m.Status.ToString())).ToList()
+                    new Message(new Header(Guid.Parse(m.Id.ToString()), m.Topic, m.Queue, m.Timestamp),
+                        new Content(m.Payload), m.Status.ToString())).ToList()
                 : new();
         }
     }
@@ -323,7 +339,12 @@ internal sealed class MessageService : IDisposable
                 ? _messageCollection.Query().Where(x => x.Status == MessageStatus.Error && x.Topic == topic).ToList()
                 : _messageCollection.Query().Where(x => x.Status == MessageStatus.Error).ToList();
 
-            return messages.Select(m => new ErrorMessage(Guid.Parse(m.Id.ToString()), new Message(new Header(Guid.Parse(m.Id.ToString()), m.Topic, m.Timestamp), new Content(m.Payload), m.Status.ToString()), m.Errors.Select(d => new ErrorMessageDetail(d.ConnectionId, d.Details.Select(dt => new ErrorDetail(dt.Title, dt.Detail)).ToList(), d.RetryPolicy != null ? new RetryPolicy(d.RetryPolicy.Attempts) : null)).ToList())).ToList();
+            return messages.Select(m => new ErrorMessage(Guid.Parse(m.Id.ToString()),
+                new Message(new Header(Guid.Parse(m.Id.ToString()), m.Topic, m.Queue, m.Timestamp),
+                    new Content(m.Payload), m.Status.ToString()),
+                m.Errors.Select(d => new ErrorMessageDetail(d.ConnectionId,
+                    d.Details.Select(dt => new ErrorDetail(dt.Title, dt.Detail)).ToList(),
+                    d.RetryPolicy != null ? new RetryPolicy(d.RetryPolicy.Attempts) : null)).ToList())).ToList();
         }
     }
 
@@ -331,10 +352,12 @@ internal sealed class MessageService : IDisposable
     {
         lock (_lock)
         {
-            var messages = _messageCollection.Query().Where(x => x.Ack.Any() && x.Topic == topic).OrderBy(x => x.Timestamp).ToList();
+            var messages = _messageCollection.Query().Where(x => x.Ack.Any() && x.Topic == topic)
+                .OrderBy(x => x.Timestamp).ToList();
 
             return messages != null
-                ? messages.SelectMany(x => x.Ack).Select(ack => new ConsumedMessage(ack.MessageId, ack.ConnectionId, ack.Timestamp)).ToList()
+                ? messages.SelectMany(x => x.Ack)
+                    .Select(ack => new ConsumedMessage(ack.MessageId, ack.ConnectionId, ack.Timestamp)).ToList()
                 : new();
         }
     }
@@ -343,12 +366,13 @@ internal sealed class MessageService : IDisposable
     {
         lock (_lock)
         {
-            var messages = _messageCollection.Query().Where(x => x.Ack.Any(a => a.ConnectionId == connectionId)).OrderBy(x => x.Timestamp).ToList();
+            var messages = _messageCollection.Query().Where(x => x.Ack.Any(a => a.ConnectionId == connectionId))
+                .OrderBy(x => x.Timestamp).ToList();
 
             return messages != null
-                ? messages.SelectMany(x => x.Ack).Select(ack => new ConsumedMessage(ack.MessageId, ack.ConnectionId, ack.Timestamp)).ToList()
+                ? messages.SelectMany(x => x.Ack)
+                    .Select(ack => new ConsumedMessage(ack.MessageId, ack.ConnectionId, ack.Timestamp)).ToList()
                 : new();
-
         }
     }
 
@@ -356,10 +380,13 @@ internal sealed class MessageService : IDisposable
     {
         lock (_lock)
         {
-            var messages = _messageCollection.Query().Where(x => x.Ack.Any(ack => ack.ConnectionId == connectionId) && x.Topic == topic).OrderBy(x => x.Timestamp).ToList();
+            var messages = _messageCollection.Query()
+                .Where(x => x.Ack.Any(ack => ack.ConnectionId == connectionId) && x.Topic == topic)
+                .OrderBy(x => x.Timestamp).ToList();
 
             return messages != null
-                ? messages.SelectMany(x => x.Ack).Select(ack => new ConsumedMessage(ack.MessageId, ack.ConnectionId, ack.Timestamp)).ToList()
+                ? messages.SelectMany(x => x.Ack)
+                    .Select(ack => new ConsumedMessage(ack.MessageId, ack.ConnectionId, ack.Timestamp)).ToList()
                 : new();
         }
     }

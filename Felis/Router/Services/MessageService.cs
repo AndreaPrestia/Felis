@@ -77,7 +77,7 @@ internal sealed class MessageService : IDisposable
             {
                 messageFound.Status = MessageStatus.Consumed;
             }
-            
+
             messageFound.UpdatedAt = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
 
             var updateResult = _messageCollection.Update(consumedMessage.Id, messageFound);
@@ -118,10 +118,10 @@ internal sealed class MessageService : IDisposable
                 return MessageStatus.Error;
             }
 
-            var retryPolicy = subscriberConnectionEntity?.Subscriber.Topics
-                .FirstOrDefault(x => x.Name == messageFound.Topic)
+            var retryPolicy = subscriberConnectionEntity?.Subscriber.Queues
+                .FirstOrDefault(x => x.Name == messageFound.Queue)
                 ?.RetryPolicy;
-            
+
             var error = messageFound.Errors.FirstOrDefault(x => x.ConnectionId == message.ConnectionId);
 
             if (error == null)
@@ -142,11 +142,11 @@ internal sealed class MessageService : IDisposable
             });
 
             error.RetryPolicy = retryPolicy != null
-            ? new MessageRetryPolicy()
-            {
-                Attempts = retryPolicy.Attempts
-            }
-            : null;
+                ? new MessageRetryPolicy()
+                {
+                    Attempts = retryPolicy.Attempts
+                }
+                : null;
 
             if (retryPolicy != null)
             {
@@ -156,7 +156,9 @@ internal sealed class MessageService : IDisposable
                     Timestamp = message.Timestamp
                 });
 
-                var messageRetries = messageFound.Errors.All(x => x.RetryPolicy == null) ? new List<MessageRetry>() : messageFound.Retries.ToList();
+                var messageRetries = messageFound.Errors.All(x => x.RetryPolicy == null)
+                    ? new List<MessageRetry>()
+                    : messageFound.Retries.ToList();
 
                 var firstRetryToApply = messageRetries.Where(x => x.Sent == null).MinBy(x => x.Timestamp);
 
@@ -184,44 +186,6 @@ internal sealed class MessageService : IDisposable
         }
     }
 
-    public MessageStatus Process(ProcessedMessage? processedMessage)
-    {
-        ArgumentNullException.ThrowIfNull(processedMessage);
-        ArgumentException.ThrowIfNullOrWhiteSpace(processedMessage.ConnectionId);
-
-        lock (_lock)
-        {
-            if (processedMessage.Id == Guid.Empty)
-            {
-                throw new ArgumentException(nameof(processedMessage.Id));
-            }
-
-            var messageFound = _messageCollection.FindById(processedMessage.Id);
-
-            if (messageFound == null)
-            {
-                _logger.LogWarning($"Message {processedMessage.Id} not found");
-                return MessageStatus.Error;
-            }
-
-            messageFound.Processes.Add(new MessageProcess()
-            {
-                ConnectionId = processedMessage.ConnectionId,
-                Timestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(),
-                ExecutionTimeMs = processedMessage.ExecutionTimeMs
-            });
-            
-            messageFound.Status = MessageStatus.Processed;
-            messageFound.UpdatedAt = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
-
-            var updateResult = _messageCollection.Update(processedMessage.Id, messageFound);
-
-            _logger.LogDebug($"Update result {updateResult}");
-
-            return messageFound.Status;
-        }
-    }
-
     public Message? Get(Guid messageId)
     {
         if (messageId == Guid.Empty)
@@ -239,7 +203,9 @@ internal sealed class MessageService : IDisposable
                 return null;
             }
 
-            return new Message(new Header(Guid.Parse(messageFound.Id.ToString()), messageFound.Topic, messageFound.Timestamp), new Content(messageFound.Payload), messageFound.Status.ToString());
+            return new Message(
+                new Header(Guid.Parse(messageFound.Id.ToString()), messageFound.Topic, messageFound.Queue,
+                    messageFound.Timestamp), new Content(messageFound.Payload), messageFound.Status.ToString());
         }
     }
 
@@ -256,13 +222,15 @@ internal sealed class MessageService : IDisposable
 
             if (messageFound == null)
             {
-                _logger.LogWarning($"No message {messageId} with status {MessageStatus.Ready} not found. The send will not be set.");
+                _logger.LogWarning(
+                    $"No message {messageId} with status {MessageStatus.Ready} not found. The send will not be set.");
                 return MessageStatus.Error;
             }
 
             if (messageFound.Status != MessageStatus.Ready)
             {
-                _logger.LogWarning($"Message {messageId} with status {messageFound.Status} found. The send will not be set.");
+                _logger.LogWarning(
+                    $"Message {messageId} with status {messageFound.Status} found. The send will not be set.");
                 return MessageStatus.Error;
             }
 
@@ -277,7 +245,7 @@ internal sealed class MessageService : IDisposable
         }
     }
 
-    public int Purge(string topic)
+    public int PurgeByTopic(string topic)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(topic);
 
@@ -289,52 +257,121 @@ internal sealed class MessageService : IDisposable
         }
     }
 
-    public List<Message> ReadyList(string? topic = null)
+    public int PurgeByQueue(string queue)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(queue);
+
+        lock (_lock)
+        {
+            var deleteResult = _messageCollection.DeleteMany(x => x.Status == MessageStatus.Ready && x.Queue == queue);
+
+            return deleteResult;
+        }
+    }
+
+    public List<Message> ReadyListByTopic(string topic)
     {
         lock (_lock)
         {
-            var messages = !string.IsNullOrWhiteSpace(topic) ? _messageCollection.Query().Where(x => x.Topic == topic && x.Status == MessageStatus.Ready).OrderBy(x => x.Timestamp).ToList() : _messageCollection.Query().Where(x => x.Status == MessageStatus.Ready).OrderBy(x => x.Timestamp).ToList();
+            var messages = _messageCollection.Query().Where(x => x.Topic == topic && x.Status == MessageStatus.Ready)
+                .OrderBy(x => x.Timestamp).ToList();
 
             return messages != null
                 ? messages.Select(m =>
-                    new Message(new Header(Guid.Parse(m.Id.ToString()), m.Topic, m.Timestamp), new Content(m.Payload), m.Status.ToString())).ToList()
+                    new Message(new Header(Guid.Parse(m.Id.ToString()), m.Topic, m.Queue, m.Timestamp),
+                        new Content(m.Payload), m.Status.ToString())).ToList()
                 : new();
         }
     }
 
-    public List<Message> SentList(string? topic = null)
+    public List<Message> ReadyListByQueue(string queue)
     {
         lock (_lock)
         {
-            var messages = !string.IsNullOrWhiteSpace(topic) ? _messageCollection.Query().Where(x => x.Topic == topic && x.Status == MessageStatus.Sent).OrderBy(x => x.Timestamp).ToList() : _messageCollection.Query().Where(x => x.Status == MessageStatus.Sent).OrderBy(x => x.Timestamp).ToList();
+            var messages = _messageCollection.Query().Where(x => x.Queue == queue && x.Status == MessageStatus.Ready)
+                .OrderBy(x => x.Timestamp).ToList();
 
             return messages != null
                 ? messages.Select(m =>
-                    new Message(new Header(Guid.Parse(m.Id.ToString()), m.Topic, m.Timestamp), new Content(m.Payload), m.Status.ToString())).ToList()
+                    new Message(new Header(Guid.Parse(m.Id.ToString()), m.Topic, m.Queue, m.Timestamp),
+                        new Content(m.Payload), m.Status.ToString())).ToList()
                 : new();
         }
     }
 
-    public List<ErrorMessage> ErrorList(string? topic = null)
+    public List<Message> SentListByTopic(string topic)
     {
         lock (_lock)
         {
-            var messages = topic != null && !string.IsNullOrWhiteSpace(topic)
-                ? _messageCollection.Query().Where(x => x.Status == MessageStatus.Error && x.Topic == topic).ToList()
-                : _messageCollection.Query().Where(x => x.Status == MessageStatus.Error).ToList();
+            var messages = _messageCollection.Query().Where(x => x.Topic == topic && x.Status == MessageStatus.Sent)
+                .OrderBy(x => x.Timestamp).ToList();
 
-            return messages.Select(m => new ErrorMessage(Guid.Parse(m.Id.ToString()), new Message(new Header(Guid.Parse(m.Id.ToString()), m.Topic, m.Timestamp), new Content(m.Payload), m.Status.ToString()), m.Errors.Select(d => new ErrorMessageDetail(d.ConnectionId, d.Details.Select(dt => new ErrorDetail(dt.Title, dt.Detail)).ToList(), d.RetryPolicy != null ? new RetryPolicy(d.RetryPolicy.Attempts) : null)).ToList())).ToList();
+            return messages != null
+                ? messages.Select(m =>
+                    new Message(new Header(Guid.Parse(m.Id.ToString()), m.Topic, m.Queue, m.Timestamp),
+                        new Content(m.Payload), m.Status.ToString())).ToList()
+                : new();
         }
     }
+
+    public List<Message> SentListByQueue(string queue)
+    {
+        lock (_lock)
+        {
+            var messages = _messageCollection.Query().Where(x => x.Queue == queue && x.Status == MessageStatus.Sent)
+                .OrderBy(x => x.Timestamp).ToList();
+
+            return messages != null
+                ? messages.Select(m =>
+                    new Message(new Header(Guid.Parse(m.Id.ToString()), m.Topic, m.Queue, m.Timestamp),
+                        new Content(m.Payload), m.Status.ToString())).ToList()
+                : new();
+        }
+    }
+
+    public List<ErrorMessage> ErrorListByTopic(string topic)
+    {
+        lock (_lock)
+        {
+            var messages = _messageCollection.Query().Where(x => x.Status == MessageStatus.Error && x.Topic == topic)
+                .ToList();
+
+            return messages.Select(m => new ErrorMessage(Guid.Parse(m.Id.ToString()),
+                new Message(new Header(Guid.Parse(m.Id.ToString()), m.Topic, m.Queue, m.Timestamp),
+                    new Content(m.Payload), m.Status.ToString()),
+                m.Errors.Select(d => new ErrorMessageDetail(d.ConnectionId,
+                    d.Details.Select(dt => new ErrorDetail(dt.Title, dt.Detail)).ToList(),
+                    d.RetryPolicy != null ? new RetryPolicy(d.RetryPolicy.Attempts) : null)).ToList())).ToList();
+        }
+    }
+
+    public List<ErrorMessage> ErrorListByQueue(string queue)
+    {
+        lock (_lock)
+        {
+            var messages = _messageCollection.Query().Where(x => x.Status == MessageStatus.Error && x.Queue == queue)
+                .ToList();
+
+            return messages.Select(m => new ErrorMessage(Guid.Parse(m.Id.ToString()),
+                new Message(new Header(Guid.Parse(m.Id.ToString()), m.Topic, m.Queue, m.Timestamp),
+                    new Content(m.Payload), m.Status.ToString()),
+                m.Errors.Select(d => new ErrorMessageDetail(d.ConnectionId,
+                    d.Details.Select(dt => new ErrorDetail(dt.Title, dt.Detail)).ToList(),
+                    d.RetryPolicy != null ? new RetryPolicy(d.RetryPolicy.Attempts) : null)).ToList())).ToList();
+        }
+    }
+
 
     public List<ConsumedMessage> ConsumedMessageList(string topic)
     {
         lock (_lock)
         {
-            var messages = _messageCollection.Query().Where(x => x.Ack.Any() && x.Topic == topic).OrderBy(x => x.Timestamp).ToList();
+            var messages = _messageCollection.Query().Where(x => x.Ack.Any() && x.Topic == topic)
+                .OrderBy(x => x.Timestamp).ToList();
 
             return messages != null
-                ? messages.SelectMany(x => x.Ack).Select(ack => new ConsumedMessage(ack.MessageId, ack.ConnectionId, ack.Timestamp)).ToList()
+                ? messages.SelectMany(x => x.Ack)
+                    .Select(ack => new ConsumedMessage(ack.MessageId, ack.ConnectionId, ack.Timestamp)).ToList()
                 : new();
         }
     }
@@ -343,23 +380,42 @@ internal sealed class MessageService : IDisposable
     {
         lock (_lock)
         {
-            var messages = _messageCollection.Query().Where(x => x.Ack.Any(a => a.ConnectionId == connectionId)).OrderBy(x => x.Timestamp).ToList();
+            var messages = _messageCollection.Query().Where(x => x.Ack.Any(a => a.ConnectionId == connectionId))
+                .OrderBy(x => x.Timestamp).ToList();
 
             return messages != null
-                ? messages.SelectMany(x => x.Ack).Select(ack => new ConsumedMessage(ack.MessageId, ack.ConnectionId, ack.Timestamp)).ToList()
+                ? messages.SelectMany(x => x.Ack)
+                    .Select(ack => new ConsumedMessage(ack.MessageId, ack.ConnectionId, ack.Timestamp)).ToList()
                 : new();
-
         }
     }
 
-    public List<ConsumedMessage> ConsumedList(string connectionId, string topic)
+    public List<ConsumedMessage> ConsumedListByTopic(string connectionId, string topic)
     {
         lock (_lock)
         {
-            var messages = _messageCollection.Query().Where(x => x.Ack.Any(ack => ack.ConnectionId == connectionId) && x.Topic == topic).OrderBy(x => x.Timestamp).ToList();
+            var messages = _messageCollection.Query()
+                .Where(x => x.Ack.Any(ack => ack.ConnectionId == connectionId) && x.Topic == topic)
+                .OrderBy(x => x.Timestamp).ToList();
 
             return messages != null
-                ? messages.SelectMany(x => x.Ack).Select(ack => new ConsumedMessage(ack.MessageId, ack.ConnectionId, ack.Timestamp)).ToList()
+                ? messages.SelectMany(x => x.Ack)
+                    .Select(ack => new ConsumedMessage(ack.MessageId, ack.ConnectionId, ack.Timestamp)).ToList()
+                : new();
+        }
+    }
+
+    public List<ConsumedMessage> ConsumedListByQueue(string connectionId, string queue)
+    {
+        lock (_lock)
+        {
+            var messages = _messageCollection.Query()
+                .Where(x => x.Ack.Any(ack => ack.ConnectionId == connectionId) && x.Queue == queue)
+                .OrderBy(x => x.Timestamp).ToList();
+
+            return messages != null
+                ? messages.SelectMany(x => x.Ack)
+                    .Select(ack => new ConsumedMessage(ack.MessageId, ack.ConnectionId, ack.Timestamp)).ToList()
                 : new();
         }
     }

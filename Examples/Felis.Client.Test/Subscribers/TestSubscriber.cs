@@ -3,12 +3,12 @@ using Felis.Client.Test.Models;
 using Felis.Subscriber;
 using Felis.Subscriber.Attributes;
 
-namespace Felis.Client.Test.Consumers;
+namespace Felis.Client.Test.Subscribers;
 
-[Queue("Test", false, 5)]
-public class TestConsumer : IConsume<TestModel>
+[Topic("Test")]
+public class TestSubscriber : ISubscribe<TestModel>
 {
-    public void Process(TestModel entity)
+    public void Listen(TestModel entity)
     {
         Console.WriteLine("Sync mode");
         Console.WriteLine(JsonSerializer.Serialize(entity));

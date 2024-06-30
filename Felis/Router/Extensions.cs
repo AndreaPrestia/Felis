@@ -61,7 +61,8 @@ public static class Extensions
             _.GetRequiredService<MessageService>(),
             _.GetRequiredService<ConnectionService>(),
             _.GetRequiredService<DeadLetterService>(),
-            _.GetRequiredService<IHubContext<RouterHub>>()
+            _.GetRequiredService<IHubContext<RouterHub>>(),
+            _.GetRequiredService<QueueService>()
         ));
     }
 
@@ -71,6 +72,8 @@ public static class Extensions
         serviceCollection.AddSingleton<ConnectionService>();
         serviceCollection.AddSingleton<MessageService>();
         serviceCollection.AddSingleton<DeadLetterService>();
+        serviceCollection.AddSingleton<QueueService>();
+        serviceCollection.AddHostedService<SenderService>();
     }
 
     private static void AddSwagger(IServiceCollection serviceCollection)

@@ -6,6 +6,7 @@ internal sealed class MessageEntity
 {
     public Guid Id { get; set; }
     public string Topic { get; set; } = string.Empty;
+    public string Queue { get; set; } = string.Empty;
     public string Payload { get; set; } = "{}";
     public long Timestamp { get; set; }
     public long UpdatedAt { get; set; }

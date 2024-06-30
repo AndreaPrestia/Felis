@@ -3,12 +3,12 @@ using Felis.Client.Test.Models;
 using Felis.Subscriber;
 using Felis.Subscriber.Attributes;
 
-namespace Felis.Client.Test.Consumers;
+namespace Felis.Client.Test.Subscribers;
 
-[Queue("TestAsync", false, 5)]
-public class TestConsumerAsync : IConsume<TestModel>
+[Topic("TestAsync")]
+public class TestConsumerAsync : ISubscribe<TestModel>
 {
-    public async void Process(TestModel entity)
+    public async void Listen(TestModel entity)
     {
         Console.WriteLine("Async mode");
         await Task.Run(() =>

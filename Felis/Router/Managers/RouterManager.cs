@@ -45,9 +45,9 @@ public sealed class RouterManager : IDisposable
         }
 
         var messageAddResult = _messageService.Add(message);
-        
+
         _logger.LogDebug($"MessageAddResult {messageAddResult} for message {message.Id}");
-        
+
         var sendMessageResponse = await SendMessageAsync(message.Id, null, cancellationToken);
 
         var result = sendMessageResponse.MessageSendStatus == MessageSendStatus.MessageSent
@@ -63,8 +63,8 @@ public sealed class RouterManager : IDisposable
 
         return result;
     }
-    
-    public MessageStatus Enqueue(MessageRequest? message,
+
+    public MessageStatus Publish(MessageRequest? message,
         CancellationToken cancellationToken = default)
     {
         if (message == null)
@@ -78,9 +78,9 @@ public sealed class RouterManager : IDisposable
         }
 
         var messageAddResult = _messageService.Add(message);
-        
+
         _logger.LogDebug($"MessageAddResult {messageAddResult} for message {message.Id}");
-        
+
         if (messageAddResult == MessageStatus.Error)
         {
             _logger.LogWarning("Cannot add message in storage.");
@@ -91,7 +91,7 @@ public sealed class RouterManager : IDisposable
 
         return messageAddResult;
     }
-    
+
     public MessageStatus Ack(ConsumedMessage? consumedMessage)
     {
         try
@@ -116,6 +116,7 @@ public sealed class RouterManager : IDisposable
             return MessageStatus.Error;
         }
     }
+
     public MessageStatus Nack(ErrorMessageRequest? errorMessage)
     {
         try
@@ -133,7 +134,7 @@ public sealed class RouterManager : IDisposable
             {
                 _logger.LogWarning("Cannot add error message in storage.");
             }
-    
+
             if (result == MessageStatus.Ready)
             {
                 _queueService.Enqueue(errorMessage.Id);
@@ -149,104 +150,46 @@ public sealed class RouterManager : IDisposable
         }
     }
 
-    public MessageStatus Consume(ConsumedMessage? consumedMessage)
-    {
-        if (consumedMessage == null)
-        {
-            throw new ArgumentNullException(nameof(consumedMessage));
-        }
+    public int PurgeByTopic(string topic) => _messageService.PurgeByTopic(topic);
+    public int PurgeByQueue(string queue) => _messageService.PurgeByQueue(queue);
 
-        var result = _messageService.Consume(consumedMessage);
+    public List<Common.Models.Subscriber> SubscribersByTopic(string topic) =>
+        _connectionService.GetConnectedSubscribersByTopic(topic);
 
-        if (result == MessageStatus.Error)
-        {
-            _logger.LogWarning("Cannot add consumed message in storage.");
-        }
+    public List<Common.Models.Subscriber> SubscribersByQueue(string queue) =>
+        _connectionService.GetConnectedSubscribersByQueue(queue);
 
-        return result;
-    }
+    public List<Message> ReadyListByTopic(string topic) => _messageService.ReadyListByTopic(topic);
+    public List<Message> ReadyListByQueue(string queue) => _messageService.ReadyListByQueue(queue);
 
-    public async Task<MessageStatus> ErrorAsync(ErrorMessageRequest? errorMessage,
-        CancellationToken cancellationToken = default)
-    {
-        if (errorMessage == null)
-        {
-            throw new ArgumentNullException(nameof(errorMessage));
-        }
+    public List<Message> SentListByTopic(string topic) => _messageService.SentListByTopic(topic);
+    public List<Message> SentListByQueue(string queue) => _messageService.SentListByQueue(queue);
 
-        var subscriberConnectionEntity = _connectionService.GetSubscriberByConnectionId(errorMessage.ConnectionId);
-
-        var result = _messageService.Error(errorMessage, subscriberConnectionEntity);
-
-        if (result == MessageStatus.Error)
-        {
-            _logger.LogWarning("Cannot add error message in storage.");
-            return result;
-        }
-
-        if (result != MessageStatus.Ready)
-        {
-            _logger.LogWarning($"Message {errorMessage.Id} status {result}. No processing will be done.");
-            return result;
-        }
-        
-        var sendMessageResponse =
-            await SendMessageAsync(errorMessage.Id, errorMessage.ConnectionId, cancellationToken);
-        result = sendMessageResponse.MessageSendStatus == MessageSendStatus.MessageSent
-            ? MessageStatus.Sent
-            : sendMessageResponse.MessageSendStatus == MessageSendStatus.MessageReady
-                ? MessageStatus.Ready
-                : MessageStatus.Error;
-        
-        _logger.LogDebug($"Re-enqueued message {errorMessage.Id}");
-
-        return result;
-    }
-
-    public MessageStatus Process(ProcessedMessage? processedMessage)
-    {
-        if (processedMessage == null)
-        {
-            throw new ArgumentNullException(nameof(processedMessage));
-        }
-
-        var result = _messageService.Process(processedMessage);
-
-        if (result == MessageStatus.Error)
-        {
-            _logger.LogWarning("Cannot add processed message in storage.");
-        }
-
-        return result;
-    }
-
-    public int Purge(string topic) => _messageService.Purge(topic);
-
-    public List<Common.Models.Subscriber> Subscribers(string topic) => _connectionService.GetConnectedSubscribers(topic);
-
-    public List<Message> ReadyList(string? topic = null) => _messageService.ReadyList(topic);
-
-    public List<Message> SentList(string? topic = null) => _messageService.SentList(topic);
-
-    public List<ErrorMessage> ErrorList(string? topic = null) => _messageService.ErrorList(topic);
+    public List<ErrorMessage> ErrorListByTopic(string topic) => _messageService.ErrorListByTopic(topic);
+    public List<ErrorMessage> ErrorListByQueue(string queue) => _messageService.ErrorListByQueue(queue);
 
     public List<ConsumedMessage> ConsumedMessageList(string topic) => _messageService.ConsumedMessageList(topic);
 
     public List<ConsumedMessage> ConsumedListByConnectionId(string connectionId) =>
         _messageService.ConsumedListByConnectionId(connectionId);
 
-    public List<ConsumedMessage> ConsumedList(string connectionId, string topic) =>
-        _messageService.ConsumedList(connectionId, topic);
+    public List<ConsumedMessage> ConsumedListByTopic(string connectionId, string topic) =>
+        _messageService.ConsumedListByTopic(connectionId, topic);
+
+    public List<ConsumedMessage> ConsumedListByQueue(string connectionId, string queue) =>
+        _messageService.ConsumedListByQueue(connectionId, queue);
 
     private async void OnNewConnectedSubscriberNotifyReceived(object sender, NewSubscriberConnectedEventArgs e)
     {
-        foreach (var message in e.Subscriber.Topics.Select(topic => _messageService.ReadyList(topic.Name)).Where(messages => messages.Any()).SelectMany(messages => messages))
+        foreach (var message in e.Subscriber.Topics.Select(topic => _messageService.ReadyListByTopic(topic.Name))
+                     .Where(messages => messages.Any()).SelectMany(messages => messages))
         {
             var result = await SendMessageAsync(message.Header!.Id, e.ConnectionId);
-            _logger.LogInformation($"Send ready message {message.Header!.Id} to new connection {e.ConnectionId} with result {result}");
+            _logger.LogInformation(
+                $"Send ready message {message.Header!.Id} to new connection {e.ConnectionId} with result {result}");
         }
     }
-    
+
     private async Task<NextMessageSentResponse> SendMessageAsync(Guid messageId, string? connectionId,
         CancellationToken cancellationToken = default)
     {
@@ -304,17 +247,6 @@ public sealed class RouterManager : IDisposable
         }
 
         _logger.LogInformation($"Sending message {messageId} for topic {topic}");
-
-        var uniqueConsumer = consumerConnectionEntities.Where(x => x.Subscriber.Topics.Any(t => t.Name == topic && t.Unique)).MinBy(x => x.Timestamp);
-
-        if (uniqueConsumer != null)
-        {
-            _logger.LogInformation($"Found unique subscriber {uniqueConsumer.ConnectionId} for topic {topic}");
-            consumerConnectionEntities = new List<SubscriberConnectionEntity>()
-            {
-                uniqueConsumer
-            };
-        }
 
         await _hubContext.Clients.Clients(consumerConnectionEntities.Select(x => x.ConnectionId).ToList())
             .SendAsync(topic, message, cancellationToken);

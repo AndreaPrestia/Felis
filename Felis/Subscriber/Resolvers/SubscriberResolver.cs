@@ -6,20 +6,20 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Felis.Subscriber.Resolvers;
 
-internal sealed class ConsumerResolver
+internal sealed class SubscriberResolver
 {
-    private readonly IServiceScopeFactory _scopeFactory;
+      private readonly IServiceScopeFactory _scopeFactory;
 
-    public ConsumerResolver(IServiceScopeFactory scopeFactory)
+    public SubscriberResolver(IServiceScopeFactory scopeFactory)
     {
         _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
     }
 
-    internal ConsumerResolveResult ResolveConsumerByQueue(KeyValuePair<QueueValue, Type> queueType, string? messagePayload)
+    internal ConsumerResolveResult ResolveSubscriberByTopic(KeyValuePair<TopicValue, Type> topicType, string? messagePayload)
     {
         try
         {
-           return GetConsumer(queueType, messagePayload);
+           return GetSubscriber(topicType, messagePayload);
         }
         catch (Exception ex)
         {
@@ -27,37 +27,37 @@ internal sealed class ConsumerResolver
         }
     }
     
-    internal Dictionary<QueueValue, Type> GetTypesForQueues()
+    internal Dictionary<TopicValue, Type> GetTypesForTopics()
     {
         var topicTypes = AppDomain.CurrentDomain.GetAssemblies()
             .SelectMany(assembly => assembly.GetTypes())
             .Where(type => type is { IsClass: true, IsAbstract: false } &&
                            type.GetInterfaces().Any(i =>
-                               i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IConsume<>))).SelectMany(t =>
-                t.GetCustomAttributes<QueueAttribute>()
-                    .Select(x => new KeyValuePair<QueueValue, Type>(new QueueValue(x.Value!, x.Unique, x.RetryPolicy), t)))
+                               i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ISubscribe<>))).SelectMany(t =>
+                t.GetCustomAttributes<TopicAttribute>()
+                    .Select(x => new KeyValuePair<TopicValue, Type>(new TopicValue(x.Value!), t)))
             .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
         return topicTypes;
     }
     
-    private ConsumerResolveResult GetConsumer(KeyValuePair<QueueValue, Type> queueType, string? messagePayload)
+    private ConsumerResolveResult GetSubscriber(KeyValuePair<TopicValue, Type> topicType, string? messagePayload)
     {
-        if (queueType.Key == null)
+        if (topicType.Key == null)
         {
-            throw new ArgumentNullException(nameof(queueType.Key));
+            throw new ArgumentNullException(nameof(topicType.Key));
         }
         
-        if (queueType.Value == null)
+        if (topicType.Value == null)
         {
-            throw new ArgumentNullException(nameof(queueType.Value));
+            throw new ArgumentNullException(nameof(topicType.Value));
         }
         
-        var processParameterInfo = queueType.Value.GetMethod("Process")?.GetParameters().FirstOrDefault();
+        var processParameterInfo = topicType.Value.GetMethod("Process")?.GetParameters().FirstOrDefault();
 
         if (processParameterInfo == null)
         {
-            throw new InvalidOperationException($"Not found parameter of IConsume.Process for queue {queueType.Key}");
+            throw new InvalidOperationException($"Not found parameter of ISubscribe.Process for topic {topicType.Key}");
         }
 
         var parameterType = processParameterInfo.ParameterType;
@@ -65,31 +65,31 @@ internal sealed class ConsumerResolver
         using var scope = _scopeFactory.CreateScope();
         var provider = scope.ServiceProvider;
         
-        var closedGenericType = typeof(IConsume<>).MakeGenericType(parameterType);
+        var closedGenericType = typeof(ISubscribe<>).MakeGenericType(parameterType);
 
         var services = provider.GetServices(closedGenericType).ToList();
 
         if (services == null || !services.Any())
         {
-            throw new ApplicationException($"No consumers registered for queue {queueType.Key}");
+            throw new ApplicationException($"No consumers registered for topic {topicType.Key}");
         }
 
-        var service = services.FirstOrDefault(e => e != null && e.GetType().FullName == queueType.Value.FullName);
+        var service = services.FirstOrDefault(e => e != null && e.GetType().FullName == topicType.Value.FullName);
 
-        var processMethod = GetProcessMethod(queueType.Value, parameterType);
+        var listenMethod = GetListenMethod(topicType.Value, parameterType);
 
-        if (processMethod == null)
+        if (listenMethod == null)
         {
             throw new EntryPointNotFoundException(
-                $"No implementation of method {parameterType.Name} Process({parameterType.Name} entity)");
+                $"No implementation of method {parameterType.Name} Listen({parameterType.Name} entity)");
         }
         
         var entity = Deserialize(messagePayload, parameterType);
 
-        return ConsumerResolveResult.Ok(service, queueType.Value, parameterType, processMethod, entity);
+        return ConsumerResolveResult.Ok(service, topicType.Value, parameterType, listenMethod, entity);
     }
 
-    private MethodInfo? GetProcessMethod(Type? consumerType, Type? entityType)
+    private MethodInfo? GetListenMethod(Type? consumerType, Type? entityType)
     {
         if (consumerType == null)
         {
@@ -101,7 +101,7 @@ internal sealed class ConsumerResolver
             throw new ArgumentNullException(nameof(entityType));
         }
 
-        return consumerType.GetMethods().Where(t => t.Name.Equals("Process")
+        return consumerType.GetMethods().Where(t => t.Name.Equals("Listen")
                                                     && t.GetParameters().Length == 1 &&
                                                     t.GetParameters().FirstOrDefault()!.ParameterType
                                                         .Name.Equals(entityType.Name)

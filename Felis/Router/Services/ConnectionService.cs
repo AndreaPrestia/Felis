@@ -10,7 +10,7 @@ internal sealed class ConnectionService
     public delegate void NotifyNewConnectedSubscriberEventHandler(object sender, NewSubscriberConnectedEventArgs e);
     public event NotifyNewConnectedSubscriberEventHandler? NotifyNewConnectedSubscriber;
 
-    public List<Common.Models.Subscriber> GetConnectedSubscribers(string topic)
+    public List<Common.Models.Subscriber> GetConnectedSubscribersByTopic(string topic)
     {
         List<Common.Models.Subscriber> consumers;
 
@@ -18,6 +18,19 @@ internal sealed class ConnectionService
         {
             consumers = ConnectionMap.Select(x => x.Subscriber)
                 .Where(x => x.Topics.Any(t => t.Name == topic)).ToList();
+        }
+
+        return consumers;
+    }
+    
+    public List<Common.Models.Subscriber> GetConnectedSubscribersByQueue(string queue)
+    {
+        List<Common.Models.Subscriber> consumers;
+
+        lock (SubscriberConnectionMapLocker)
+        {
+            consumers = ConnectionMap.Select(x => x.Subscriber)
+                .Where(x => x.Queues.Any(t => t.Name == queue)).ToList();
         }
 
         return consumers;

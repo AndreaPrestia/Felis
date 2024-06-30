@@ -2,12 +2,12 @@
 using Felis.Subscriber;
 using Felis.Subscriber.Attributes;
 
-namespace Felis.Client.Test.Consumers;
+namespace Felis.Client.Test.Subscribers;
 
-[Queue("TestError", false, 5)]
-public class TestConsumerWithError : IConsume<TestModel>
+[Topic("TestError")]
+public class TestConsumerWithError : ISubscribe<TestModel>
 {
-    public void Process(TestModel entity)
+    public void Listen(TestModel entity)
     {
         throw new NotImplementedException("Example with exception in error queue");
     }

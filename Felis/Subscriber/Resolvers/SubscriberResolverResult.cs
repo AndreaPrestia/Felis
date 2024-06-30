@@ -2,19 +2,19 @@
 
 namespace Felis.Subscriber.Resolvers;
 
-internal sealed class ConsumerResolveResult
+internal sealed class SubscriberResolverResult
 {
-    private ConsumerResolveResult(object? consumer, Type? consumerType, Type? messageType, MethodInfo? processMethod,
+    private SubscriberResolverResult(object? subscriber, Type? consumerType, Type? messageType, MethodInfo? processMethod,
         object? deserializedEntity)
     {
-        Consumer = consumer;
+        Subscriber = subscriber;
         ConsumerType = consumerType;
         MessageType = messageType;
         ProcessMethod = processMethod;
         DeserializedEntity = deserializedEntity;
     }
 
-    private ConsumerResolveResult(Exception? exception)
+    private SubscriberResolverResult(Exception? exception)
     {
         Exception = exception;
         Error = true;
@@ -22,17 +22,17 @@ internal sealed class ConsumerResolveResult
 
     public bool Error { get; init; }
     public Exception? Exception { get; init; }
-    public object? Consumer { get; init; }
+    public object? Subscriber { get; init; }
     public Type? ConsumerType { get; init; }
     public Type? MessageType { get; init; }
     public MethodInfo? ProcessMethod { get; init; }
     public object? DeserializedEntity { get; set; }
 
-    internal static ConsumerResolveResult Ok(object? consumer, Type? consumerType, Type? messageType,
+    internal static SubscriberResolverResult Ok(object? consumer, Type? consumerType, Type? messageType,
         MethodInfo? processMethod,
         object? deserializedEntity) => new(consumer, consumerType, messageType,
         processMethod,
         deserializedEntity);
 
-    internal static ConsumerResolveResult Ko(Exception? exception) => new(exception);
+    internal static SubscriberResolverResult Ko(Exception? exception) => new(exception);
 }

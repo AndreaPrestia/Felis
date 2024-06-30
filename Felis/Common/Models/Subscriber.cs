@@ -7,7 +7,7 @@ public record Subscriber(string? Hostname, string? IpAddress, List<TopicValue> T
 
 }
 
-public record TopicValue(string Name, bool Unique, RetryPolicy? RetryPolicy);
+public record TopicValue(string Name);
 
 public record QueueValue(string Name, bool Unique, RetryPolicy? RetryPolicy);
 

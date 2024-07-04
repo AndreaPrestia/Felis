@@ -1,5 +1,4 @@
 ﻿using System.Text;
-using Felis.Common.Models;
 using Felis.Subscriber.Resolvers;
 using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Http.Connections;
@@ -36,7 +35,7 @@ public static class Extensions
             var routerEndpoint = $"{uri.Scheme}://{uri.Authority}";
 
             serviceCollection.AddSingleton(hubConnectionBuilder
-                .WithUrl($"{connectionString}/felis/router",
+                .WithUrl($"{routerEndpoint}/felis/router",
                     options =>
                     {
                         options.Transports = HttpTransportType.WebSockets;

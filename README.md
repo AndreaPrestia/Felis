@@ -85,6 +85,25 @@ Status code | Type | Context |
 401 | UnauthorizedResult | When an operation fails due to missing authorization. |
 403 | ForbiddenResult | When an operation fails because it is not allowed in the context. |
 
+This endpoint pushes to the subscriber this json:
+
+```
+{
+        "id": "ac4625da-e922-4c2b-a7e7-aef21ece963c",
+        "topic": "test",
+        "payload": "{\"description\":\"Test\"}"
+}
+```
+The JSON above represent the **Message** coming from the broker.
+
+The **Message** entity is made of:
+
+Property | Type | Context |
+--- | --- | --- |
+id | guid | the message unique id assigned by the broker. |
+topic | string | the topic where the message has been published. |
+payload | string | the actual content of the message published on the topic. |
+
 **subscribers/{topic}**
 
 This endpoint provides a list of the subscribers connected to Felis that consume a specific topic provided in the route.

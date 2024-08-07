@@ -75,19 +75,21 @@ internal sealed class MessageBroker : IDisposable
     /// Publish a message to a topic
     /// </summary>
     /// <param name="message"></param>
-    /// <returns></returns>
-    public void Publish(MessageModel message)
+    /// <returns>Message id</returns>
+    public Guid Publish(MessageRequestModel message)
     {
-        _messageService.Add(message);
+        var messageId = _messageService.Add(message);
 
-        if (!_topicSubscribers.TryGetValue(message.Topic, out var subscribers)) return;
-        if (subscribers.Count <= 0) return;
+        if (!_topicSubscribers.TryGetValue(message.Topic, out var subscribers)) return messageId;
+        if (subscribers.Count <= 0) return messageId;
         
         foreach (var subscriber in subscribers)
         {
-            var writtenMessage = subscriber.MessageChannel.Writer.TryWrite(message);
-            _logger.LogDebug($"Written message {message.Id}: {writtenMessage}");
+            var writtenMessage = subscriber.MessageChannel.Writer.TryWrite(new MessageModel(messageId, message.Topic, message.Payload));
+            _logger.LogDebug($"Written message {messageId}: {writtenMessage}");
         }
+
+        return messageId;
     }
 
     /// <summary>
@@ -115,7 +117,8 @@ internal sealed class MessageBroker : IDisposable
     /// Sets a message in sent status
     /// </summary>
     /// <param name="messageId"></param>
-    public void Send(Guid messageId) => _messageService.Send(messageId);
+    /// <returns>If message has been set as sent or not</returns>
+    public bool Send(Guid messageId) => _messageService.Send(messageId);
 
     public void Dispose()
     {

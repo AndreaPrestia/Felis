@@ -7,11 +7,15 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Felis", "Felis\Felis.csproj
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples", "Examples", "{4C950E14-197A-4B6C-8130-44EBE06BA7EB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.Broker.Console", "Examples\Felis.Broker.Console\Felis.Broker.Console.csproj", "{5764F447-D3B1-491F-B995-D5390569B1B6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Felis.Broker.Console", "Examples\Felis.Broker.Console\Felis.Broker.Console.csproj", "{5764F447-D3B1-491F-B995-D5390569B1B6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.Publisher.Net.Console", "Examples\Felis.Publisher.Net.Console\Felis.Publisher.Net.Console.csproj", "{764BC614-E59A-46D2-97ED-5CF4D0ED63FF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Felis.Publisher.Net.Console", "Examples\Felis.Publisher.Net.Console\Felis.Publisher.Net.Console.csproj", "{764BC614-E59A-46D2-97ED-5CF4D0ED63FF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.Subscriber.Net.Console", "Examples\Felis.Subscriber.Net.Console\Felis.Subscriber.Net.Console.csproj", "{F391C6C5-8627-4BA7-AD41-3B223CAB1C44}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Felis.Subscriber.Net.Console", "Examples\Felis.Subscriber.Net.Console\Felis.Subscriber.Net.Console.csproj", "{F391C6C5-8627-4BA7-AD41-3B223CAB1C44}"
+EndProject
+Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "Felis.Publisher.Node.Console", "Examples\Felis.Publisher.Node.Console\Felis.Publisher.Node.Console.esproj", "{44D46D00-A86F-44B9-8B1F-EDF7D924B59D}"
+EndProject
+Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "Felis.Subscriber.Node.Console", "Examples\Felis.Subscriber.Node.Console\Felis.Subscriber.Node.Console.esproj", "{283FDF72-2BBB-40AA-98CC-32540A807464}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -35,16 +39,30 @@ Global
 		{F391C6C5-8627-4BA7-AD41-3B223CAB1C44}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F391C6C5-8627-4BA7-AD41-3B223CAB1C44}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F391C6C5-8627-4BA7-AD41-3B223CAB1C44}.Release|Any CPU.Build.0 = Release|Any CPU
+		{44D46D00-A86F-44B9-8B1F-EDF7D924B59D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{44D46D00-A86F-44B9-8B1F-EDF7D924B59D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{44D46D00-A86F-44B9-8B1F-EDF7D924B59D}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{44D46D00-A86F-44B9-8B1F-EDF7D924B59D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{44D46D00-A86F-44B9-8B1F-EDF7D924B59D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{44D46D00-A86F-44B9-8B1F-EDF7D924B59D}.Release|Any CPU.Deploy.0 = Release|Any CPU
+		{283FDF72-2BBB-40AA-98CC-32540A807464}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{283FDF72-2BBB-40AA-98CC-32540A807464}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{283FDF72-2BBB-40AA-98CC-32540A807464}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{283FDF72-2BBB-40AA-98CC-32540A807464}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{283FDF72-2BBB-40AA-98CC-32540A807464}.Release|Any CPU.Build.0 = Release|Any CPU
+		{283FDF72-2BBB-40AA-98CC-32540A807464}.Release|Any CPU.Deploy.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
-	EndGlobalSection
-	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {D605DA87-932C-4C6E-B7C8-77CED4B0C179}
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{5764F447-D3B1-491F-B995-D5390569B1B6} = {4C950E14-197A-4B6C-8130-44EBE06BA7EB}
 		{764BC614-E59A-46D2-97ED-5CF4D0ED63FF} = {4C950E14-197A-4B6C-8130-44EBE06BA7EB}
 		{F391C6C5-8627-4BA7-AD41-3B223CAB1C44} = {4C950E14-197A-4B6C-8130-44EBE06BA7EB}
+		{44D46D00-A86F-44B9-8B1F-EDF7D924B59D} = {4C950E14-197A-4B6C-8130-44EBE06BA7EB}
+		{283FDF72-2BBB-40AA-98CC-32540A807464} = {4C950E14-197A-4B6C-8130-44EBE06BA7EB}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {D605DA87-932C-4C6E-B7C8-77CED4B0C179}
 	EndGlobalSection
 EndGlobal

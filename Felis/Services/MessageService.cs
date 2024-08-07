@@ -1,27 +1,23 @@
 ﻿using Felis.Entities;
 using Felis.Models;
 using LiteDB;
-using Microsoft.Extensions.Logging;
 
 namespace Felis.Services;
 
 internal sealed class MessageService : IDisposable
 {
     private readonly ILiteDatabase _database;
-    private readonly ILogger<MessageService> _logger;
     private readonly ILiteCollection<MessageEntity> _messageCollection;
     private readonly object _lock = new();
 
-    public MessageService(ILiteDatabase database, ILogger<MessageService> logger)
+    public MessageService(ILiteDatabase database)
     {
         ArgumentNullException.ThrowIfNull(database);
-        ArgumentNullException.ThrowIfNull(logger);
         _database = database;
-        _logger = logger;
         _messageCollection = _database.GetCollection<MessageEntity>("messages");
     }
 
-    public void Add(MessageModel message)
+    public Guid Add(MessageRequestModel message)
     {
         ArgumentNullException.ThrowIfNull(message);
         ArgumentException.ThrowIfNullOrWhiteSpace(message.Topic);
@@ -29,18 +25,21 @@ internal sealed class MessageService : IDisposable
 
         lock (_lock)
         {
+            var messageId = Guid.NewGuid();
             var timestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
 
-            _messageCollection.Insert(message.Id, new MessageEntity()
+            _messageCollection.Insert(messageId, new MessageEntity()
             {
-                Id = message.Id,
-                Message = message,
+                Id = messageId,
+                Message = new MessageModel(messageId, message.Topic, message.Payload),
                 Timestamp = timestamp
             });
+
+            return messageId;
         }
     }
 
-    public void Send(Guid messageId)
+    public bool Send(Guid messageId)
     {
         if (messageId == Guid.Empty)
         {
@@ -62,7 +61,7 @@ internal sealed class MessageService : IDisposable
 
             var updateResult = _messageCollection.Update(messageFound.Id, messageFound);
 
-            _logger.LogDebug($"Update result {updateResult}");
+            return updateResult;
         }
     }
 

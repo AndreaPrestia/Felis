@@ -15,11 +15,11 @@ internal static class BrokerEndpoints
         ArgumentNullException.ThrowIfNull(endpointRouteBuilder);
 
         endpointRouteBuilder.MapPost("/publish",
-                ([FromServices] MessageBroker messageBroker, [FromBody] MessageModel message) =>
+                ([FromServices] MessageBroker messageBroker, [FromBody] MessageRequestModel message) =>
                 {
-                    messageBroker.Publish(message);
+                    var messageId = messageBroker.Publish(message);
 
-                    return Results.Accepted("/publish", message);
+                    return Results.Accepted("/publish", messageId);
                 }).WithName("Publish").Produces<CreatedResult>(StatusCodes.Status201Created)
             .Produces<BadRequestResult>(StatusCodes.Status400BadRequest)
             .Produces<UnauthorizedResult>(StatusCodes.Status401Unauthorized)
@@ -58,7 +58,7 @@ internal static class BrokerEndpoints
 
                     messageBroker.Send(message.Id);
                 }
-            });
+            }).ExcludeFromDescription();
 
         endpointRouteBuilder.MapGet("/subscribers/{topic}",
                 ([FromServices] MessageBroker messageBroker, [FromRoute] string topic) =>

@@ -75,10 +75,6 @@ try
                         }
                     }
                 }
-                else
-                {
-                    Console.Error.WriteLine("Message received is null");
-                }
             }
             catch (Exception ex)
             {

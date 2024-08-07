@@ -21,17 +21,9 @@ const publishMessage = async (message) => {
     // Send the message body
     req.write(JSON.stringify(message));
 
-    req.on('response', (headers, flags) => {
-        console.debug('Response headers:', headers);
-    });
-
     req.setEncoding('utf8');
-    req.on('data', (chunk) => {
-        console.debug(`Response body: ${chunk}`);
-    });
-
+   
     req.on('end', () => {
-        console.debug('Message sent and response received.');
         client.close();
     });
 

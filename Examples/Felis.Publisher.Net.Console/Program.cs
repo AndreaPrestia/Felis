@@ -55,7 +55,6 @@ try
 
         await Task.Delay(5000);
 
-
         var responseError = await httpClient.PostAsJsonAsync("/publish",
             new
             {

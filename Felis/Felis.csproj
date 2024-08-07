@@ -10,17 +10,11 @@
 
     <ItemGroup>
       <PackageReference Include="LiteDB" Version="5.0.21" />
-      <PackageReference Include="Microsoft.AspNetCore.Http.Connections.Client" Version="8.0.5" />
-      <PackageReference Include="Microsoft.AspNetCore.SignalR" Version="1.1.0" />
-      <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.5" />
-      <PackageReference Include="Microsoft.AspNetCore.SignalR.Client.Core" Version="8.0.5" />
-      <PackageReference Include="Microsoft.AspNetCore.SignalR.Common" Version="8.0.6" />
-      <PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.Json" Version="8.0.6" />
       <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.1" />
-      <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
-      <PackageReference Include="Swashbuckle.AspNetCore.Swagger" Version="6.6.2" />
-      <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="6.6.2" />
-      <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="6.6.2" />
+      <PackageReference Include="Swashbuckle.AspNetCore" Version="6.7.0" />
+      <PackageReference Include="Swashbuckle.AspNetCore.Swagger" Version="6.7.0" />
+      <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="6.7.0" />
+      <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="6.7.0" />
     </ItemGroup>
 
 </Project>

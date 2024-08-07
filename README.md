@@ -1,21 +1,19 @@
 # Felis
-A light-weight message broker totally written in .NET.
+A light-weight web based message broker totally written in .NET.
 
-![FelisDiagram.jpg](Images%2FFelisDiagram.jpg.png)
+![FelisDiagram.png](Images%2FFelisDiagram.png)
 
-The Felis project is composed of three parts:
-
-- **Broker**, containing the logic for dispatching, storing and validating messages. It stores the message in a LiteDB storage.
-- **Publisher**, containing the logic of the publisher, that will publish a message by topic, using a specific entity contract.
-- **Subscriber**, containing the logic of the subscriber, that will consume a message by topic, using a specific entity contract.
+The Felis project is made by the **Broker** part, containing the logic for dispatching, storing and validating messages. It stores the message in a LiteDB storage.
 
 **How can I use it?**
 
 This repository provides the examples of usage:
 
 - **Felis.Broker.Console**
-- **Felis.Publisher.Console**
-- **Felis.Subscriber.Console**
+- **Felis.Publisher.Net.Console**
+- **Felis.Subscriber.Net.Console**
+- **Felis.Publisher.Node.Console**
+- **Felis.Subscriber.Node.Console**
 
 **Felis.Broker.Console**
 
@@ -23,9 +21,9 @@ An console application, containing the three endpoints exposed by Felis Broker.
 
 The three endpoints are:
 
-- publish
-- subscribe
-- subscribers/{topic}
+- publish POST
+- subscribe GET
+- subscribers/{topic} GET
 
 These endpoints are documented in the following page:
 
@@ -36,6 +34,7 @@ https://localhost:7110/swagger/index.html
 **publish**
 
 This endpoint is used to publish a message with whatever contract in the payload, by topic, to every listener subscribed to Felis.
+This endpoint returns the unique identifier of the message published, assigned by the broker.
 
 ```
 curl -X 'POST' \
@@ -43,8 +42,7 @@ curl -X 'POST' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
   -d '{
-        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-        "topic": "test"
+        "topic": "test",
         "payload": "{\"description\":\"Test\"}"
 }'
 ```
@@ -66,7 +64,7 @@ Status code | Type | Context |
 
 **subscribe**
 
-This endpoint is used to subscribe to a subset of topics using SSE.
+This endpoint is used to subscribe to a subset of topics using SSE. It is **not** documented in swagger.
 
 ```
 curl -X 'GET' \
@@ -118,7 +116,7 @@ ipAddress | string        | The ipAddress property of the subscriber.           
 hostname | string        | The hostname property of the subscriber.                 |
 topics | array<string> | This property contains the array of topics subscribed. |
 
-**Usage of Felis Broker**
+**Usage of Broker**
 
 Code example:
 
@@ -130,7 +128,7 @@ Code example:
             logging.AddConsole();
             logging.SetMinimumLevel(LogLevel.Debug);
         })
-        .AddGerryBroker("username", "password", 7110);
+        .AddFelisBroker("username", "password", 7110);
 
     var host = builder.Build();
 
@@ -138,173 +136,30 @@ Code example:
 ```
 The example above initialize the **Felis Broker** in a console application.
 
-The **AddGerryBroker** method takes **username**, **password**, **port** as input parameters to use the broker with basic authentication.
+The **AddFelisBroker** method takes **username**, **password**, **port** as input parameters to use the broker with basic authentication.
 
-**Felis.Publisher.Console**
+**Publish a message**
 
-To ease the testing process, I have a console application that publishes to a Felis broker.
+To ease the testing process, I have two console application that publish to Felis broker.
 
-This application sends messages on the three topics of the **subscriber** example:
+This applications sends messages on the three topics of the **subscribers** examples:
 - Test
 - TestAsync
 - TestError
 
-**Usage of Felis Publisher**
+**Usage of Publishers**
 
-Just see the following lines of code:
-```
-var hostBuilder = Host.CreateDefaultBuilder(args);
+Just launch the **Publisher** applications in the **Examples** directory.
 
-hostBuilder.AddGerryPublisher("https://username:password@localhost:7110");
+**Subscribe to a topic**
 
-var host = hostBuilder.Build();
+To ease the testing process, I have two console applications that subscribe to Felis broker.
 
-var messagePublisher = host.Services.GetRequiredService<MessagePublisher>();
+These application contains the logic to subscribe to messages by topic.
 
-while (true)
-{
-    await messagePublisher.PublishAsync("Test", new TestModel()
-    {
-        Description = "Test"
-    }, CancellationToken.None);
-    
-    await Task.Delay(5000);
-    
-    await messagePublisher.PublishAsync("TestAsync", new TestModel()
-    {
-        Description = "TestAsync"
-    }, CancellationToken.None);
-    
-    await Task.Delay(1000);
-    
-    await messagePublisher.PublishAsync("TestError", new TestModel()
-    {
-        Description = "TestError"
-    }, CancellationToken.None);
-}
-```
+**Usage of Subscribers**
 
-These code registers a **Felis Publisher** and publishes a message for every topic that we have on the subscriber example, using a Task.Delay to simulate an async work.
-
-The signature of **AddGerryPublisher** method is made of:
-
-Parameter | Type | Context                                                                                       |
---- | --- |-----------------------------------------------------------------------------------------------|
-connectionString | string | The Felis broker connection string that the client must subscribe with related credentials.   |
-pooledConnectionLifetimeMinutes | int | The internal http client PooledConnectionLifetimeMinutes. Not mandatory. Default value is 15. |
-
-***Publish to a Topic***
-
-To use a **publisher** you have to use the **MessagePublisher** class.
-
-Here an example:
-```
-var messagePublisher = host.Services.GetRequiredService<MessagePublisher>();
-
-await messagePublisher.PublishAsync("Test", new TestModel()
-    {
-        Description = "Test"
-    }, CancellationToken.None);
-```
-
-**Felis.Subscriber.Console**
-
-To ease the testing process, I have a console application that subscribes to a Felis broker.
-
-This application contains three classes, called TestSubscriber, TestSubscriberAsync and TestSubscriberWithError, that implement the ISubscribe<T> interface. They contain the Process(T entity) method implemented. They only show how messages are intercepted.
-
-**Usage of Felis Subscriber**
-
-Just see the following lines of code:
-```
-var hostBuilder = Host.CreateDefaultBuilder(args);
-
-hostBuilder.AddGerrySubscriber("https://username:password@localhost:7110");
-
-var host = hostBuilder.Build();
-
-var messageSubscriber = host.Services.GetRequiredService<MessageSubscriber>();
-await messageSubscriber.ConnectAsync(CancellationToken.None);
-```
-The example above registers a **Felis Subscriber** in a console application, retrieves the **MessageSubscriber** class and starts to listen for messages available on the **Felis Broker** for the topics declare in the **Subscriber** application.
-
-The signature of **AddGerrySubscriber** method is made of:
-
-Parameter | Type | Context                                                                                       |
---- | --- |-----------------------------------------------------------------------------------------------|
-connectionString | string | The Felis broker connection string that the client must subscribe with related credentials.   |
-pooledConnectionLifetimeMinutes | int | The internal http client PooledConnectionLifetimeMinutes. Not mandatory. Default value is 15. |
-
-**How do I use a subscriber?**
-
-To use a **subscriber** you have to use the **MessageSubscriber** class.
-
-Here an example:
-```
-var messageSubscriber = host.Services.GetRequiredService<MessageSubscriber>();
-await messageSubscriber.ConnectAsync(CancellationToken.None);
-```
-
-***Subscribe to a Topic***
-
-It is very simple. Just create a class that implements the ISubscribe<T> interface.
-See three examples from GitHub here below:
-
-****Sync****
-```
-using Felis.Client.Test.Models;
-using System.Text.Json;
-
-namespace Felis.Client.Test;
-
-[Topic("Test")]
-public class TestSubscriber : ISubscribe<TestModel>
-{
-	public async void Process(TestModel entity)
-	{
-		Console.WriteLine("Sync mode");
-		Console.WriteLine(JsonSerializer.Serialize(entity));
-	}
-}
-```
-
-****Async****
-
-```
-using System.Text.Json;
-using Felis.Client.Test.Models;
-
-namespace Felis.Client.Test;
-
-[Topic("TestAsync")]
-public class TestSubscriberAsync : ISubscribe<TestModel>
-{
-    public async void Process(TestModel entity)
-    {
-        Console.WriteLine("Async mode");
-        await Task.Run(() =>
-            Console.WriteLine(JsonSerializer.Serialize(entity)));
-    }
-}
-```
-
-****Throwing error****
-
-```
-using System.Text.Json;
-using Felis.Client.Test.Models;
-
-namespace Felis.Client.Test;
-
-[Topic("TestError")]
-public class TestSubscriberWithError : ISubscribe<TestModel>
-{
-    public void Process(TestModel entity)
-    {
-        throw new NotImplementedException("Example with exception");
-    }
-}
-```
+Just launch the **Subscriber** applications in the **Examples** directory.
 
 **Conclusion**
 

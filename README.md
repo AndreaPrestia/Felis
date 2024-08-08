@@ -14,6 +14,8 @@ This repository provides the examples of usage:
 - **Felis.Subscriber.Net.Console**
 - **Felis.Publisher.Node.Console**
 - **Felis.Subscriber.Node.Console**
+- **Felis.Publisher.Python.Console**
+- **Felis.Subscriber.Python.Console**
 
 **Felis.Broker.Console**
 

@@ -1,7 +1,7 @@
 
 import base64
 from datetime import datetime
-from time import time
+import time
 import httpx
 
 def publishMessage(topic):

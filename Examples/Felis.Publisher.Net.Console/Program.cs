@@ -37,7 +37,7 @@ try
 
         response.EnsureSuccessStatusCode();
 
-        await Task.Delay(5000);
+        await Task.Delay(20);
 
         var responseAsync = await httpClient.PostAsJsonAsync("/publish",
             new
@@ -53,7 +53,7 @@ try
 
         responseAsync.EnsureSuccessStatusCode();
 
-        await Task.Delay(5000);
+        await Task.Delay(40);
 
         var responseError = await httpClient.PostAsJsonAsync("/publish",
             new
@@ -69,7 +69,7 @@ try
 
         responseError.EnsureSuccessStatusCode();
 
-        await Task.Delay(5000);
+        await Task.Delay(4);
     }
 }
 catch (Exception ex)

@@ -43,21 +43,21 @@ const sleep = (ms) => {
                 payload: `Test at: ${Math.floor(new Date().getTime() / 1000)} from NodeJS publisher`
             });
 
-            await sleep(5000);
+            await sleep(10);
 
             publishMessage({
                 topic: 'TestAsync',
                 payload: `TestAsync at: ${Math.floor(new Date().getTime() / 1000)} from NodeJS publisher`
             });
 
-            await sleep(5000);
+            await sleep(55);
 
             publishMessage({
                 topic: 'TestError',
                 payload: `TestError at: ${Math.floor(new Date().getTime() / 1000)} from NodeJS publisher`
             });
 
-            await sleep(5000);
+            await sleep(2);
         }
     }
     catch (e) {

@@ -2,17 +2,20 @@
 
 const EventSource = require('eventsource');
 
-const sseUrl = 'https://localhost:7110/subscribe?topics=Test,TestAsync,TestError';
+const sseTestUrl = 'https://localhost:7110/Test';
+const sseTestAsyncUrl = 'https://localhost:7110/TestAsync';
+const sseTestErrorUrl = 'https://localhost:7110/TestError';
+
 const credentials = Buffer.from("username:password").toString('base64');
 
-const eventSource = new EventSource(sseUrl, {
+const eventSourceTest = new EventSource(sseTestUrl, {
     headers: {
         Authorization: `Basic ${credentials}`
     },
     rejectUnauthorized: false
 });
 
-eventSource.onmessage = (event) => {
+eventSourceTest.onmessage = (event) => {
     console.debug(`Received: ${event.data}`);
 
     if (event.data) {
@@ -45,15 +48,57 @@ eventSource.onmessage = (event) => {
     }
 };
 
-eventSource.onerror = (err) => {
-    console.error('SSE error:', err);
-    // Optionally close the connection if there are errors
-    //eventSource.close();
+const eventSourceTestAsync = new EventSource(sseTestAsyncUrl, {
+    headers: {
+        Authorization: `Basic ${credentials}`
+    },
+    rejectUnauthorized: false
+});
+
+eventSourceTestAsync.onmessage = (event) => {
+    console.debug(`Received: ${event.data}`);
+
+    if (event.data) {
+        const messageDeserialized = JSON.parse(event.data);
+
+        if (messageDeserialized) {
+            var messageFormat =
+                `Received message - ${messageDeserialized.Id} with topic - ${messageDeserialized.Topic} with payload - ${messageDeserialized.Payload}`;
+
+            (async () => {
+                console.info(messageFormat);
+                await sleep(1000);
+
+            })();
+        }
+    }
 };
 
-// Optional: handle when the connection opens
-eventSource.onopen = () => {
-    console.debug('SSE connection opened.');
+const eventSourceTestError = new EventSource(sseTestErrorUrl, {
+    headers: {
+        Authorization: `Basic ${credentials}`
+    },
+    rejectUnauthorized: false
+});
+
+eventSourceTestError.onmessage = (event) => {
+    console.debug(`Received: ${event.data}`);
+
+    if (event.data) {
+        const messageDeserialized = JSON.parse(event.data);
+
+        if (messageDeserialized) {
+            var messageFormat =
+                `Received message - ${messageDeserialized.Id} with topic - ${messageDeserialized.Topic} with payload - ${messageDeserialized.Payload}`;
+
+            try {
+                throw new Error(messageFormat);
+            }
+            catch (e) {
+                console.error(`Error in Felis.Subscriber.Node.Console ${e.message}`);
+            }
+        }
+    }
 };
 
 const sleep = (ms) => {

@@ -21,13 +21,12 @@ export let options = {
 
 export default function () {
     // Define the URL for the POST request
-    const url = 'https://localhost:7110/publish';
+    const url = 'https://localhost:7110/Test';
     const credentials = "dXNlcm5hbWU6cGFzc3dvcmQ=";
 
     // Define the payload for the POST request
     const payload = JSON.stringify({
-        topic: 'Test',
-        payload: `Test at: ${Math.floor(new Date().getTime() / 1000)} from NodeJS publisher`
+        description: `Test at: ${Math.floor(new Date().getTime() / 1000)} from NodeJS publisher`
     });
 
     // Set the request headers

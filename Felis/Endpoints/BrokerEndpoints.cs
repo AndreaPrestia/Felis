@@ -14,10 +14,16 @@ internal static class BrokerEndpoints
     {
         ArgumentNullException.ThrowIfNull(endpointRouteBuilder);
 
-        endpointRouteBuilder.MapPost("/publish",
-                ([FromServices] MessageBroker messageBroker, [FromBody] MessageRequestModel message) =>
+        endpointRouteBuilder.MapPost("/{topic}",
+                async (HttpContext context, [FromServices] MessageBroker messageBroker, [FromRoute] string topic) =>
                 {
-                    var messageId = messageBroker.Publish(message);
+                    // Ensure the request body is not null
+
+                    // Use a StreamReader to read the request body
+                    using var reader = new StreamReader(context.Request.Body);
+                    var payload = await reader.ReadToEndAsync();
+
+                    var messageId = messageBroker.Publish(topic, payload);
 
                     return Results.Accepted("/publish", messageId);
                 }).WithName("Publish").Produces<CreatedResult>(StatusCodes.Status201Created)
@@ -25,16 +31,15 @@ internal static class BrokerEndpoints
             .Produces<UnauthorizedResult>(StatusCodes.Status401Unauthorized)
             .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
 
-        endpointRouteBuilder.MapGet("/subscribe",
-            async (HttpContext context, [FromServices] MessageBroker messageBroker, [FromQuery] string topics) =>
+        endpointRouteBuilder.MapGet("/{topic}",
+            async (HttpContext context, [FromServices] MessageBroker messageBroker, [FromRoute] string topic) =>
             {
                 var clientIp = (context.Connection.RemoteIpAddress) ??
                                throw new InvalidOperationException("No Ip address retrieve from Context");
 
                 var clientHostname = (await Dns.GetHostEntryAsync(clientIp)).HostName;
 
-                var subscriberEntity = messageBroker.Subscribe(clientIp.MapToIPv4().ToString(), clientHostname
-                    , topics.Split(',').ToList());
+                var subscriberEntity = messageBroker.Subscribe(clientIp.MapToIPv4().ToString(), clientHostname, topic);
 
                 context.Response.Headers["Content-Type"] = "text/event-stream";
                 context.Response.Headers["Cache-Control"] = "no-cache";
@@ -60,7 +65,7 @@ internal static class BrokerEndpoints
                 }
             }).ExcludeFromDescription();
 
-        endpointRouteBuilder.MapGet("/subscribers/{topic}",
+        endpointRouteBuilder.MapGet("/{topic}/subscribers",
                 ([FromServices] MessageBroker messageBroker, [FromRoute] string topic) =>
                 {
                     var result = messageBroker.Subscribers(topic);

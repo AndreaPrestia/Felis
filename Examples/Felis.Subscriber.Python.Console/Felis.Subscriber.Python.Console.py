@@ -2,7 +2,7 @@ import json
 import sseclient
 import requests
 
-sse_url = 'https://localhost:7110/subscribe?topics=Test,TestAsync,TestError'
+sse_url = 'https://localhost:7110/Test'
 
 session = requests.Session()
 
@@ -13,12 +13,7 @@ for event in client.events():
     try:
         json_object = json.loads(event.data)
         message_format = f'Received message - ${json_object.Id} with topic - ${json_object.Topic} with payload - ${json_object.Payload}'
-        if json_object.topic == 'Test':
-            print(message_format)
-        if json_object.topic == 'TestAsync':
-            print(message_format)
-        else:
-            raise Exception(message_format)  
+        print(message_format)
     except Exception as ex:
             print(ex)
 

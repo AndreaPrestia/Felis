@@ -9,14 +9,14 @@ internal class SubscriberEntity
     public Channel<MessageModel> MessageChannel { get; }
     public string Hostname { get; }
     public string IpAddress { get; }
-    public List<string> Topics { get; }
+    public string Topic { get; }
 
-    public SubscriberEntity(string ipAddress, string hostname, List<string> topics)
+    public SubscriberEntity(string ipAddress, string hostname, string topic)
     {
         Id = Guid.NewGuid();
         MessageChannel = Channel.CreateUnbounded<MessageModel>();
         Hostname = hostname;
         IpAddress = ipAddress;
-        Topics = topics;
+        Topic = topic;
     }
 }

@@ -1,7 +1,6 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
 using System.Text;
-using System.Text.Json;
 using static System.Net.ServicePointManager;
 
 try
@@ -25,13 +24,10 @@ try
 
     while (true)
     {
-        var response = await httpClient.PostAsJsonAsync("/publish",
+        var response = await httpClient.PostAsJsonAsync("/Test",
             new
             {
-                Id = Guid.NewGuid(),
-                Topic = "Test",
-                Payload = JsonSerializer.Serialize(new
-                    { Description = $"Test at: {DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()} from .NET publisher" })
+                Description = $"Test at: {DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()} from .NET publisher"
             },
             CancellationToken.None);
 
@@ -39,15 +35,10 @@ try
 
         await Task.Delay(20);
 
-        var responseAsync = await httpClient.PostAsJsonAsync("/publish",
+        var responseAsync = await httpClient.PostAsJsonAsync("/TestAsync",
             new
             {
-                Id = Guid.NewGuid(),
-                Topic = "TestAsync",
-                Payload = JsonSerializer.Serialize(new
-                {
-                    Description = $"TestAsync at: {DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()} from .NET publisher"
-                })
+                Description = $"TestAsync at: {DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()} from .NET publisher"
             },
             CancellationToken.None);
 
@@ -55,15 +46,10 @@ try
 
         await Task.Delay(40);
 
-        var responseError = await httpClient.PostAsJsonAsync("/publish",
+        var responseError = await httpClient.PostAsJsonAsync("/TestError",
             new
             {
-                Id = Guid.NewGuid(),
-                Topic = "TestError",
-                Payload = JsonSerializer.Serialize(new
-                {
-                    Description = $"TestError at: {DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()} from .NET publisher"
-                })
+                Description = $"TestError at: {DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()} from .NET publisher"
             },
             CancellationToken.None);
 

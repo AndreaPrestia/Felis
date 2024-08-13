@@ -2,8 +2,8 @@
 
 const http2 = require('http2');
 
-const publishMessage = async (message) => {
-    const endpoint = 'https://localhost:7110';
+const publishMessage = async (topic, message) => {
+    const endpoint = `https://localhost:7110/${topic}`;
     const credentials = Buffer.from("username:password").toString('base64');
 
     // Create a client session
@@ -13,7 +13,6 @@ const publishMessage = async (message) => {
 
     const req = client.request({
         ':method': 'POST',
-        ':path': '/publish',
         'Content-Type': 'application/json',
         'Authorization': `Basic ${credentials}`
     });
@@ -38,23 +37,20 @@ const sleep = (ms) => {
     try {
         console.log("Started Felis.Publisher.Node.Console");
         while (true) {
-            publishMessage({
-                topic: 'Test',
-                payload: `Test at: ${Math.floor(new Date().getTime() / 1000)} from NodeJS publisher`
+            publishMessage('Test', {
+                description: `Test at: ${Math.floor(new Date().getTime() / 1000)} from NodeJS publisher`
             });
 
             await sleep(10);
 
-            publishMessage({
-                topic: 'TestAsync',
-                payload: `TestAsync at: ${Math.floor(new Date().getTime() / 1000)} from NodeJS publisher`
+            publishMessage('TestAsync', {
+                description: `TestAsync at: ${Math.floor(new Date().getTime() / 1000)} from NodeJS publisher`
             });
 
             await sleep(55);
 
-            publishMessage({
-                topic: 'TestError',
-                payload: `TestError at: ${Math.floor(new Date().getTime() / 1000)} from NodeJS publisher`
+            publishMessage('TestError', {
+                description: `TestError at: ${Math.floor(new Date().getTime() / 1000)} from NodeJS publisher`
             });
 
             await sleep(2);

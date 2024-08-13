@@ -5,7 +5,7 @@ import time
 import httpx
 
 def publishMessage(topic):
-    publish_url = 'https://localhost:7110/publish'
+    publish_url = f'https://localhost:7110/{topic}'
 
     credentials = base64.urlsafe_b64encode(bytes('username:password', 'utf-8'))
 
@@ -20,8 +20,7 @@ def publishMessage(topic):
     unix_timestamp = datetime.timestamp(presentDate)*1000
 
     payload = {
-        'topic': topic,
-        'payload': f'{topic} at: {unix_timestamp} from Python publisher'
+        'description': f'{topic} at: {unix_timestamp} from Python publisher'
     }
 
     response = client.post(publish_url, json=payload, headers=headers)

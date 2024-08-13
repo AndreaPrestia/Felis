@@ -17,12 +17,10 @@ internal sealed class MessageService : IDisposable
         _messageCollection = _database.GetCollection<MessageEntity>("messages");
     }
 
-    public Guid Add(MessageRequestModel message)
+    public Guid Add(string topic, string payload)
     {
-        ArgumentNullException.ThrowIfNull(message);
-        ArgumentException.ThrowIfNullOrWhiteSpace(message.Topic);
-        ArgumentException.ThrowIfNullOrWhiteSpace(message.Payload);
-
+        ArgumentException.ThrowIfNullOrWhiteSpace(topic);
+        ArgumentException.ThrowIfNullOrWhiteSpace(payload);
         lock (_lock)
         {
             var messageId = Guid.NewGuid();
@@ -31,7 +29,7 @@ internal sealed class MessageService : IDisposable
             _messageCollection.Insert(messageId, new MessageEntity()
             {
                 Id = messageId,
-                Message = new MessageModel(messageId, message.Topic, message.Payload),
+                Message = new MessageModel(messageId, topic, payload),
                 Timestamp = timestamp
             });
 

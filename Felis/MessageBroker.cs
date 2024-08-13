@@ -25,31 +25,28 @@ internal sealed class MessageBroker : IDisposable
     /// </summary>
     /// <param name="ipAddress"></param>
     /// <param name="hostname"></param>
-    /// <param name="topics"></param>
+    /// <param name="topic"></param>
     /// <returns></returns>
-    public SubscriberEntity Subscribe(string ipAddress, string hostname, List<string> topics)
+    public SubscriberEntity Subscribe(string ipAddress, string hostname, string topic)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(ipAddress);
         ArgumentException.ThrowIfNullOrWhiteSpace(hostname);
-        ArgumentNullException.ThrowIfNull(topics);
+        ArgumentException.ThrowIfNullOrWhiteSpace(topic);
 
-        var subscriberEntity = new SubscriberEntity(ipAddress, hostname, topics);
+        var subscriberEntity = new SubscriberEntity(ipAddress, hostname, topic);
 
-        foreach (var topic in topics)
+        var subscribers = _topicSubscribers.GetOrAdd(topic.Trim(), _ => new List<SubscriberEntity>());
+        lock (subscribers)
         {
-            var subscribers = _topicSubscribers.GetOrAdd(topic.Trim(), _ => new List<SubscriberEntity>());
-            lock (subscribers)
-            {
-                subscribers.Add(subscriberEntity);
-            }
+            subscribers.Add(subscriberEntity);
+        }
 
-            var messages = _messageService.GetPendingMessagesToByTopic(topic);
-            // Send pending messages when a subscriber connects
-            foreach (var message in messages)
-            {
-                var writtenMessage = subscriberEntity.MessageChannel.Writer.TryWrite(message);
-                _logger.LogDebug($"Written message {message.Id}: {writtenMessage}");
-            }
+        var messages = _messageService.GetPendingMessagesToByTopic(topic);
+        // Send pending messages when a subscriber connects
+        foreach (var message in messages)
+        {
+            var writtenMessage = subscriberEntity.MessageChannel.Writer.TryWrite(message);
+            _logger.LogDebug($"Written message {message.Id}: {writtenMessage}");
         }
 
         return subscriberEntity;
@@ -74,18 +71,19 @@ internal sealed class MessageBroker : IDisposable
     /// <summary>
     /// Publish a message to a topic
     /// </summary>
-    /// <param name="message"></param>
+    /// <param name="topic"></param>
+    /// <param name="payload"></param>
     /// <returns>Message id</returns>
-    public Guid Publish(MessageRequestModel message)
+    public Guid Publish(string topic, string payload)
     {
-        var messageId = _messageService.Add(message);
+        var messageId = _messageService.Add(topic, payload);
 
-        if (!_topicSubscribers.TryGetValue(message.Topic, out var subscribers)) return messageId;
+        if (!_topicSubscribers.TryGetValue(topic, out var subscribers)) return messageId;
         if (subscribers.Count <= 0) return messageId;
         
         foreach (var subscriber in subscribers)
         {
-            var writtenMessage = subscriber.MessageChannel.Writer.TryWrite(new MessageModel(messageId, message.Topic, message.Payload));
+            var writtenMessage = subscriber.MessageChannel.Writer.TryWrite(new MessageModel(messageId, topic, payload));
             _logger.LogDebug($"Written message {messageId}: {writtenMessage}");
         }
 
@@ -104,7 +102,7 @@ internal sealed class MessageBroker : IDisposable
             ArgumentException.ThrowIfNullOrWhiteSpace(topic);
 
             return _topicSubscribers.Where(x => x.Key.Contains(topic)).SelectMany(e => e.Value)
-                .Select(r => new SubscriberModel(r.Hostname, r.IpAddress, r.Topics)).ToList();
+                .Select(r => new SubscriberModel(r.Hostname, r.IpAddress, r.Topic)).ToList();
         }
         catch (Exception ex)
         {

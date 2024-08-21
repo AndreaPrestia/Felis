@@ -1,27 +1,30 @@
-﻿using System.Net;
-using System.Net.Http.Json;
-using System.Text;
+﻿using System.Net.Http.Json;
+using System.Net.Security;
+using System.Security.Authentication;
+using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
-using static System.Net.ServicePointManager;
 
 try
 {
     Console.WriteLine("Started Felis.Publisher.Net.Console");
 
-    var uri = new Uri("https://username:password@localhost:7110");
+    var uri = new Uri("https://localhost:7110");
 
-    var credentials = Convert.ToBase64String(Encoding.Default.GetBytes(uri.UserInfo));
+    var currentDirectory = Path.GetDirectoryName(Directory.GetCurrentDirectory());
+    var pfxPath = Path.Combine(currentDirectory!, @"..\..\..\Output.pfx");
+    var certificatePath = Path.GetFullPath(pfxPath);
+    var clientCertificate = new X509Certificate2(certificatePath, "Password.1");
 
-    var brokerEndpoint = $"{uri.Scheme}://{uri.Authority}";
-
-    using var httpClient = new HttpClient()
+    using var httpClient = new HttpClient(new HttpClientHandler
     {
-        BaseAddress = new Uri(brokerEndpoint)
+        ClientCertificateOptions = ClientCertificateOption.Manual,
+        SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
+        ServerCertificateCustomValidationCallback = ValidateServerCertificate,
+        ClientCertificates = { clientCertificate }
+    })
+    {
+        BaseAddress = uri
     };
-
-    SecurityProtocol |= SecurityProtocolType.Tls12 | SecurityProtocolType.Tls13;
-
-    httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", $"Basic {credentials}");
 
     while (true)
     {
@@ -34,6 +37,8 @@ try
                     { Description = $"Test at: {DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()} from .NET publisher" })
             },
             CancellationToken.None);
+
+        var content = await response.Content.ReadAsStringAsync();
 
         response.EnsureSuccessStatusCode();
 
@@ -75,4 +80,9 @@ try
 catch (Exception ex)
 {
     Console.Error.WriteLine($"Error in Felis.Publisher.Net.Console {ex.Message}");
+}
+
+static bool ValidateServerCertificate(HttpRequestMessage request, X509Certificate2? certificate, X509Chain? chain, SslPolicyErrors errors)
+{
+    return certificate != null && certificate.Verify() && chain != null;
 }

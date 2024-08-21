@@ -6,6 +6,10 @@ try
 {
     Console.WriteLine("Started Felis.Broker.Console");
 
+    var currentDirectory = Path.GetDirectoryName(Directory.GetCurrentDirectory());
+    var pfxPath = Path.Combine(currentDirectory!, @"..\..\..\Output.pfx");
+    var certificatePath = Path.GetFullPath(pfxPath);
+
     var builder = Host.CreateDefaultBuilder(args)
         .ConfigureLogging(logging =>
         {
@@ -13,7 +17,7 @@ try
             logging.AddConsole();
             logging.SetMinimumLevel(LogLevel.Debug);
         })
-        .AddFelisBroker("username", "password", 7110);
+        .AddFelisBroker(certificatePath, "Password.1", 7110);
 
     var host = builder.Build();
 

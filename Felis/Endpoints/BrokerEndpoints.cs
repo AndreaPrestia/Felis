@@ -36,9 +36,9 @@ internal static class BrokerEndpoints
                 var subscriberEntity = messageBroker.Subscribe(clientIp.MapToIPv4().ToString(), clientHostname
                     , topics.Split(',').ToList());
 
-                context.Response.Headers["Content-Type"] = "text/event-stream";
-                context.Response.Headers["Cache-Control"] = "no-cache";
-                context.Response.Headers["Connection"] = "keep-alive";
+                context.Response.Headers.ContentType = "text/event-stream";
+                context.Response.Headers.CacheControl = "no-cache";
+                context.Response.Headers.Connection = "keep-alive";
 
                 var cancellationToken = context.RequestAborted;
 

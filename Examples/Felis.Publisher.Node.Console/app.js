@@ -1,21 +1,26 @@
 'use strict';
 
 const http2 = require('http2');
+const fs = require('fs');
+const path = require('path');
 
 const publishMessage = async (message) => {
     const endpoint = 'https://localhost:7110';
-    const credentials = Buffer.from("username:password").toString('base64');
+
+    const pfxPath = path.join(__dirname, '../Output.pfx');
+    const password = 'Password.1';
 
     // Create a client session
     const client = http2.connect(endpoint, {
+        pfx: fs.readFileSync(pfxPath),
+        passphrase: password,
         rejectUnauthorized: false
     });
 
     const req = client.request({
         ':method': 'POST',
         ':path': '/publish',
-        'Content-Type': 'application/json',
-        'Authorization': `Basic ${credentials}`
+        'Content-Type': 'application/json'
     });
 
     // Send the message body

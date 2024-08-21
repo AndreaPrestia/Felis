@@ -1,8 +1,7 @@
-﻿using System.Security;
-using System.Text;
-using Felis.Services;
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using System.Security;
+using System.Security.Claims;
 
 namespace Felis.Middlewares;
 
@@ -10,16 +9,13 @@ internal class AuthorizationMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<AuthorizationMiddleware> _logger;
-    private readonly CredentialService _credentialService;
-    
-    public AuthorizationMiddleware(RequestDelegate next, ILogger<AuthorizationMiddleware> logger, CredentialService credentialService)
+
+    public AuthorizationMiddleware(RequestDelegate next, ILogger<AuthorizationMiddleware> logger)
     {
         ArgumentNullException.ThrowIfNull(next);
         ArgumentNullException.ThrowIfNull(logger);
-        ArgumentNullException.ThrowIfNull(credentialService);
         _next = next;
         _logger = logger;
-        _credentialService = credentialService;
     }
 
     public async Task Invoke(HttpContext context)
@@ -28,46 +24,25 @@ internal class AuthorizationMiddleware
 
         var method = context.Request.Method;
 
-        var authorization = context.Request.Headers["Authorization"].ToString();
+        var certificate = context.Connection.ClientCertificate ?? throw new SecurityException("Certificate not provided");
 
-        if (string.IsNullOrWhiteSpace(authorization))
-        {
-            throw new SecurityException("Authorization not provided");
-        }
-
-        var encodedCredentials = authorization.Split(" ").LastOrDefault();
-
-        if (string.IsNullOrWhiteSpace(encodedCredentials))
-        {
-            throw new SecurityException("Credentials not provided");
-        }
-
-        var decodedContent = Encoding.Default.GetString(Convert.FromBase64String(encodedCredentials));
-
-        var splitAuthorization = decodedContent.Split(':');
-        
-        var username = splitAuthorization[0];
-
-        if (string.IsNullOrWhiteSpace(username))
-        {
-            throw new SecurityException("Username not provided.");
-        }
-
-        var password = splitAuthorization[1];
-
-        if (string.IsNullOrWhiteSpace(password))
-        {
-            throw new SecurityException("Password not provided.");
-        }
-
-        var isAuthorized = _credentialService.IsValid(username, password);
+        var isAuthorized = certificate.Verify();
 
         if (!isAuthorized)
         {
-            _logger.LogWarning($"Username {username} with password {password} not authorized on resource {url} {method}");
+            _logger.LogWarning($"Name {certificate.Subject} not authorized on resource {url} {method}");
             throw new UnauthorizedAccessException();
         }
-        
+
+        var claims = new[]
+        {
+            new Claim(ClaimTypes.NameIdentifier, certificate.Subject),
+            new Claim(ClaimTypes.Name, certificate.Subject)
+        };
+
+        var identity = new ClaimsIdentity(claims, "Certificate");
+        context.User = new ClaimsPrincipal(identity);
+
         await _next.Invoke(context);
     }
 }

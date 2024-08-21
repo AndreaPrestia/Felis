@@ -1,15 +1,18 @@
 ﻿using Felis.Endpoints;
 using Felis.Middlewares;
-using Felis.Services;
 using LiteDB;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.AspNetCore.Server.Kestrel.Https;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
+using System.Security.Authentication;
+using System.Security.Cryptography.X509Certificates;
 
 namespace Felis;
 
@@ -19,11 +22,11 @@ public static class Extensions
     /// Adds the Felis broker with credentials and port
     /// </summary>
     /// <param name="builder"></param>
-    /// <param name="username"></param>
-    /// <param name="password"></param>
-    /// <param name="port"></param>
+    /// <param name="certPath">Cert path</param>
+    /// <param name="certPassword">Cert password</param>
+    /// <param name="port">Port to bind to listen incoming connections</param>
     /// <returns>IHostBuilder</returns>
-    public static IHostBuilder AddFelisBroker(this IHostBuilder builder, string username, string password, int port)
+    public static IHostBuilder AddFelisBroker(this IHostBuilder builder, string certPath, string certPassword, int port)
     {
         return builder.ConfigureWebHostDefaults(webBuilder =>
         {
@@ -31,25 +34,40 @@ public static class Extensions
             {
                 options.ListenAnyIP(port, listenOptions =>
                 {
+                    
                     listenOptions.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
-                    listenOptions.UseHttps(httpsOptions =>
+                    listenOptions.UseHttps(new X509Certificate2(certPath, certPassword), httpsOptions =>
                     {
-                        httpsOptions.SslProtocols = System.Security.Authentication.SslProtocols.Tls13;
+                        httpsOptions.SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13;
+                        httpsOptions.ClientCertificateMode = ClientCertificateMode.AllowCertificate;
+                        httpsOptions.AllowAnyClientCertificate();
+                        httpsOptions.ClientCertificateValidation = (cert, chain, policyErrors) =>
+                        {
+                            return true;
+                        };
                     });
                 });
             }).ConfigureServices(services =>
             {
+                services.Configure<ForwardedHeadersOptions>(options =>
+                {
+                    options.ForwardedHeaders =
+      ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+                    options.KnownNetworks.Clear();
+                    options.KnownProxies.Clear();
+                });
+
+                services.AddCertificateForwarding(
+    options => { options.CertificateHeader = "X-ARR-ClientCert"; });
+
                 services.Configure<JsonOptions>(options =>
                 {
                     options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
                 });
 
                 services.AddRouting();
-
                 services.AddSingleton<ILiteDatabase>(_ => new LiteDatabase("Felis.db"));
-
-                AddServices(services, username, password);
-
+                services.AddSingleton<MessageBroker>();
                 AddSwagger(services);
             }).Configure(app =>
             {
@@ -59,6 +77,8 @@ public static class Extensions
                 app.UseMiddleware<ErrorMiddleware>();
 
                 app.UseRouting();
+
+                app.UseCertificateForwarding();
 
                 app.UseEndpoints(endpoints =>
                 {
@@ -72,15 +92,10 @@ public static class Extensions
                     "Felis Broker v1"));
 
                 app.UseHttpsRedirection();
+
+                app.UseForwardedHeaders();
             });
         });
-    }
-
-    private static void AddServices(IServiceCollection serviceCollection, string username, string password)
-    {
-        serviceCollection.AddSingleton<MessageService>();
-        serviceCollection.AddSingleton(_ => new CredentialService(username, password));
-        serviceCollection.AddSingleton<MessageBroker>();
     }
 
     private static void AddSwagger(IServiceCollection serviceCollection)

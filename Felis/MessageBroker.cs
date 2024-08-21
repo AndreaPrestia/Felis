@@ -1,8 +1,8 @@
-﻿using System.Collections.Concurrent;
-using Felis.Entities;
+﻿using Felis.Entities;
 using Felis.Models;
-using Felis.Services;
+using LiteDB;
 using Microsoft.Extensions.Logging;
+using System.Collections.Concurrent;
 
 namespace Felis;
 
@@ -10,14 +10,17 @@ internal sealed class MessageBroker : IDisposable
 {
     private readonly ConcurrentDictionary<string, List<SubscriberEntity>> _topicSubscribers = new();
     private readonly ILogger<MessageBroker> _logger;
-    private readonly MessageService _messageService;
+    private readonly ILiteDatabase _database;
+    private readonly ILiteCollection<MessageEntity> _messageCollection;
+    private readonly object _lock = new();
 
-    public MessageBroker(ILogger<MessageBroker> logger, MessageService messageService)
+    public MessageBroker(ILogger<MessageBroker> logger, ILiteDatabase database)
     {
         ArgumentNullException.ThrowIfNull(logger);
-        ArgumentNullException.ThrowIfNull(messageService);
+        ArgumentNullException.ThrowIfNull(database);
         _logger = logger;
-        _messageService = messageService;
+        _database = database;
+        _messageCollection = _database.GetCollection<MessageEntity>("messages");
     }
 
     /// <summary>
@@ -43,7 +46,7 @@ internal sealed class MessageBroker : IDisposable
                 subscribers.Add(subscriberEntity);
             }
 
-            var messages = _messageService.GetPendingMessagesToByTopic(topic);
+            var messages = GetPendingMessagesToByTopic(topic);
             // Send pending messages when a subscriber connects
             foreach (var message in messages)
             {
@@ -78,7 +81,7 @@ internal sealed class MessageBroker : IDisposable
     /// <returns>Message id</returns>
     public Guid Publish(MessageRequestModel message)
     {
-        var messageId = _messageService.Add(message);
+        var messageId = AddMessageInStorage(message);
 
         if (!_topicSubscribers.TryGetValue(message.Topic, out var subscribers)) return messageId;
         if (subscribers.Count <= 0) return messageId;
@@ -118,10 +121,66 @@ internal sealed class MessageBroker : IDisposable
     /// </summary>
     /// <param name="messageId"></param>
     /// <returns>If message has been set as sent or not</returns>
-    public bool Send(Guid messageId) => _messageService.Send(messageId);
+    public bool Send(Guid messageId)
+    {
+        if (messageId == Guid.Empty)
+        {
+            throw new ArgumentException(nameof(messageId));
+        }
+
+        lock (_lock)
+        {
+            var messageFound = _messageCollection.FindById(messageId) ?? throw new InvalidOperationException(
+                    $"Message {messageId} not found. The send will not be set.");
+
+            if (messageFound.Sent.HasValue)
+            {
+                throw new InvalidOperationException(
+                    $"Message {messageId} already sent at {messageFound.Sent.Value}. The send will not be set.");
+            }
+
+            messageFound.Sent = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
+
+            var updateResult = _messageCollection.Update(messageFound.Id, messageFound);
+
+            return updateResult;
+        }
+    }
+
+    private Guid AddMessageInStorage(MessageRequestModel message)
+    {
+        ArgumentNullException.ThrowIfNull(message);
+        ArgumentException.ThrowIfNullOrWhiteSpace(message.Topic);
+        ArgumentException.ThrowIfNullOrWhiteSpace(message.Payload);
+
+        lock (_lock)
+        {
+            var messageId = Guid.NewGuid();
+            var timestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
+
+            _messageCollection.Insert(messageId, new MessageEntity()
+            {
+                Id = messageId,
+                Message = new MessageModel(messageId, message.Topic, message.Payload),
+                Timestamp = timestamp
+            });
+
+            return messageId;
+        }
+    }
+
+    private List<MessageModel> GetPendingMessagesToByTopic(string topic)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(topic);
+
+        lock (_lock)
+        {
+            return _messageCollection.Find(x => x.Message.Topic == topic && x.Sent == null).OrderBy(x => x.Timestamp).Select(x => x.Message).ToList();
+        }
+    }
 
     public void Dispose()
     {
-        _messageService.Dispose();
+        _database.Dispose();
     }
 }

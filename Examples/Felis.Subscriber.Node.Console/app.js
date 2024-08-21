@@ -1,15 +1,23 @@
 'use strict';
 
+const fs = require('fs');
+const path = require('path');
+const https = require('https');
 const EventSource = require('eventsource');
 
 const sseUrl = 'https://localhost:7110/subscribe?topics=Test,TestAsync,TestError';
-const credentials = Buffer.from("username:password").toString('base64');
+
+const pfxPath = path.join(__dirname, '../Output.pfx');
+const password = 'Password.1';
+
+const agent = new https.Agent({
+    pfx: fs.readFileSync(pfxPath),
+    passphrase: password,
+    rejectUnauthorized: false 
+});
 
 const eventSource = new EventSource(sseUrl, {
-    headers: {
-        Authorization: `Basic ${credentials}`
-    },
-    rejectUnauthorized: false
+    https: { agent }
 });
 
 eventSource.onmessage = (event) => {

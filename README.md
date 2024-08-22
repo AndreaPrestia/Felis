@@ -140,6 +140,10 @@ topics | array<string> | This property contains the array of topics subscribed. 
 Code example:
 
 ```
+    var currentDirectory = Path.GetDirectoryName(Directory.GetCurrentDirectory());
+    var pfxPath = Path.Combine(currentDirectory!, @"..\..\..\Output.pfx");
+    var certificatePath = Path.GetFullPath(pfxPath);
+
     var builder = Host.CreateDefaultBuilder(args)
         .ConfigureLogging(logging =>
         {
@@ -147,7 +151,7 @@ Code example:
             logging.AddConsole();
             logging.SetMinimumLevel(LogLevel.Debug);
         })
-        .AddFelisBroker("username", "password", 7110);
+        .AddFelisBroker(certificatePath, "Password.1", 7110);
 
     var host = builder.Build();
 
@@ -155,7 +159,7 @@ Code example:
 ```
 The example above initialize the **Felis Broker** in a console application.
 
-The **AddFelisBroker** method takes **username**, **password**, **port** as input parameters to use the broker with basic authentication.
+The **AddFelisBroker** method takes **certPath**, **certPassword**, **port** as input parameters to use the broker with mTLS authentication.
 
 **Publish a message**
 
@@ -186,7 +190,5 @@ Though there is room for further improvement, the project is fit for becoming a 
 
 **TODO**
 
-- Code refactoring.
 - Unit testing.
 - Stress testing.
-- Auth flow. (NO BASIC AUTH ANYMORE)

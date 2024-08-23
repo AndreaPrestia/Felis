@@ -24,7 +24,7 @@ An console application, containing the three endpoints exposed by Felis Broker.
 The three endpoints are:
 
 - {topic} POST
-- {topic}GET
+- {topic} GET
 - {topic}/subscribers GET
 
 These endpoints are documented in the following page:

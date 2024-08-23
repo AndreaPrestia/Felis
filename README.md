@@ -1,8 +1,6 @@
 # Felis
 A light-weight web based message broker totally written in .NET.
 
-![FelisDiagram.png](Images%2FFelisDiagram.png)
-
 The Felis project is made by the **Broker** part, containing the logic for dispatching, storing and validating messages. It stores the message in a LiteDB storage.
 
 **How can I use it?**

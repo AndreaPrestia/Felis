@@ -1,5 +1,5 @@
 # Felis
-A light-weight web based message broker totally written in .NET.
+A light-weight web based message broker totally written in .NET based on HTTP3/QUIC.
 
 The Felis project is made by the **Broker** part, containing the logic for dispatching, storing and validating messages. It stores the message in a LiteDB storage.
 
@@ -17,19 +17,14 @@ This repository provides the examples of usage:
 
 **Felis.Broker.Console**
 
-An console application, containing the three endpoints exposed by Felis Broker.
+An console application, containing the two endpoints exposed by Felis Broker.
 
-The three endpoints are:
+The two endpoints are:
 
 - {topic} POST
 - {topic} GET
-- {topic}/subscribers GET
 
-These endpoints are documented in the following page:
-
-```
-https://localhost:7110/swagger/index.html
-```
+These endpoints are documented in the following chapters.
 
 **{topic} POST**
 
@@ -101,37 +96,6 @@ id | guid   | the message unique id assigned by the broker.             |
 topic | string | the topic where the message has been published.           |
 payload | string | the actual content of the message published on the topic. |
 timestamp | number | the timestamp of the message when it was published.       |
-
-**{topic}/subscribers GET**
-
-This endpoint provides a list of the subscribers connected to Felis that consume a specific topic provided in the route.
-
-```
-curl -X 'GET' \
-  'https://localhost:7110/topic/subscribers' \
-  -H 'accept: application/json'
-```
-
-***Response***
-
-```
-[
-   {
-      "ipAddress":"192.168.1.1",
-      "hostname":"host",
-      "topic": "topic",
-      "timestamp": 1724421633359
-   }
-]
-```
-This endpoint returns an array of clients.
-
-Property | Type   | Context                                               |
---- |--------|-------------------------------------------------------|
-ipAddress | string | The ipAddress property of the subscriber.             |
-hostname | string | The hostname property of the subscriber.              |
-topic | string   | This property contains the array of topic subscribed. |
-timestamp | number | the timestamp of the subscription.                    |
 
 **Usage of Broker**
 

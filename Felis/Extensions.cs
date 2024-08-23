@@ -10,7 +10,6 @@ using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.OpenApi.Models;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 
@@ -64,7 +63,6 @@ public static class Extensions
                 services.AddRouting();
                 services.AddSingleton<ILiteDatabase>(_ => new LiteDatabase("Felis.db"));
                 services.AddSingleton<MessageBroker>();
-                AddSwagger(services);
             }).Configure(app =>
             {
                 app.UseWhen(context => context.Request.Path.ToString().StartsWith("/publish")
@@ -82,35 +80,9 @@ public static class Extensions
                     endpoints.MapGet("/", () => "Felis Broker is up and running!").ExcludeFromDescription();
                 });
 
-                app.UseSwagger();
-
-                app.UseSwaggerUI(options => options.SwaggerEndpoint("/swagger/v1/swagger.json",
-                    "Felis Broker v1"));
-
                 app.UseHttpsRedirection();
 
                 app.UseForwardedHeaders();
-            });
-        });
-    }
-
-    private static void AddSwagger(IServiceCollection serviceCollection)
-    {
-        serviceCollection.AddEndpointsApiExplorer();
-
-        serviceCollection.AddSwaggerGen(c =>
-        {
-            c.SwaggerDoc("v1", new OpenApiInfo
-            {
-                Version = "v1",
-                Title = "Felis router",
-                Description = "Felis router endpoints",
-                Contact = new OpenApiContact
-                {
-                    Name = "Andrea Prestia",
-                    Email = "andrea@prestia.dev",
-                    Url = new Uri("https://www.linkedin.com/in/andrea-prestia-5212a2166/"),
-                }
             });
         });
     }

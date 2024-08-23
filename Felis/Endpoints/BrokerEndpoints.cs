@@ -62,16 +62,5 @@ internal static class BrokerEndpoints
                     messageBroker.Send(message.Id);
                 }
             }).ExcludeFromDescription();
-
-        endpointRouteBuilder.MapGet("/{topic}/subscribers",
-                ([FromServices] MessageBroker messageBroker, [FromRoute] string topic) =>
-                {
-                    var result = messageBroker.Subscribers(topic);
-
-                    return Results.Ok(result);
-                }).WithName("SubscriberList").Produces<List<SubscriberModel>>()
-            .Produces<BadRequestResult>(StatusCodes.Status400BadRequest)
-            .Produces<UnauthorizedResult>(StatusCodes.Status401Unauthorized)
-            .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
     }
 }

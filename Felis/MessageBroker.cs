@@ -94,27 +94,6 @@ internal sealed class MessageBroker : IDisposable
     }
 
     /// <summary>
-    /// Gets a list of subscribers by topic
-    /// </summary>
-    /// <param name="topic"></param>
-    /// <returns></returns>
-    public List<SubscriberModel> Subscribers(string topic)
-    {
-        try
-        {
-            ArgumentException.ThrowIfNullOrWhiteSpace(topic);
-
-            return _topicSubscribers.Where(x => x.Key.Contains(topic)).SelectMany(e => e.Value)
-                .Select(r => new SubscriberModel(r.Hostname, r.IpAddress, r.Topic, r.Timestamp)).ToList();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, ex.Message);
-            return new List<SubscriberModel>();
-        }
-    }
-
-    /// <summary>
     /// Sets a message in sent status
     /// </summary>
     /// <param name="messageId"></param>

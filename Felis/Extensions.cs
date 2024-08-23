@@ -41,10 +41,7 @@ public static class Extensions
                         httpsOptions.SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13;
                         httpsOptions.ClientCertificateMode = ClientCertificateMode.AllowCertificate;
                         httpsOptions.AllowAnyClientCertificate();
-                        httpsOptions.ClientCertificateValidation = (cert, chain, policyErrors) =>
-                        {
-                            return true;
-                        };
+                        httpsOptions.ClientCertificateValidation = (cert, chain, policyErrors) => true;
                     });
                 });
             }).ConfigureServices(services =>

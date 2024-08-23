@@ -52,22 +52,19 @@ const sleep = (ms) => {
         console.log("Started Felis.Publisher.Node.Console");
         while (true) {
             publishMessage({
-                topic: 'Test',
-                payload: `Test at: ${Math.floor(new Date().getTime() / 1000)} from NodeJS publisher`
+                description: `Test at: ${Math.floor(new Date().getTime() / 1000)} from NodeJS publisher`
             });
 
             await sleep(5000);
 
             publishMessage({
-                topic: 'TestAsync',
-                payload: `TestAsync at: ${Math.floor(new Date().getTime() / 1000)} from NodeJS publisher`
+                description: `TestAsync at: ${Math.floor(new Date().getTime() / 1000)} from NodeJS publisher`
             });
 
             await sleep(5000);
 
             publishMessage({
-                topic: 'TestError',
-                payload: `TestError at: ${Math.floor(new Date().getTime() / 1000)} from NodeJS publisher`
+                description: `TestError at: ${Math.floor(new Date().getTime() / 1000)} from NodeJS publisher`
             });
 
             await sleep(5000);

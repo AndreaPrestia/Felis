@@ -11,7 +11,7 @@ internal sealed class MessageBroker : IDisposable
     private readonly ConcurrentDictionary<string, List<SubscriberEntity>> _topicSubscribers = new();
     private readonly ILogger<MessageBroker> _logger;
     private readonly ILiteDatabase _database;
-    private readonly ILiteCollection<MessageEntity> _messageCollection;
+    private readonly ILiteCollection<MessageModel> _messageCollection;
     private readonly object _lock = new();
 
     public MessageBroker(ILogger<MessageBroker> logger, ILiteDatabase database)
@@ -20,7 +20,7 @@ internal sealed class MessageBroker : IDisposable
         ArgumentNullException.ThrowIfNull(database);
         _logger = logger;
         _database = database;
-        _messageCollection = _database.GetCollection<MessageEntity>("messages");
+        _messageCollection = _database.GetCollection<MessageModel>("messages");
     }
 
     /// <summary>
@@ -28,23 +28,20 @@ internal sealed class MessageBroker : IDisposable
     /// </summary>
     /// <param name="ipAddress"></param>
     /// <param name="hostname"></param>
-    /// <param name="topics"></param>
+    /// <param name="topic"></param>
     /// <returns></returns>
-    public SubscriberEntity Subscribe(string ipAddress, string hostname, List<string> topics)
+    public SubscriberEntity Subscribe(string ipAddress, string hostname, string topic)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(ipAddress);
         ArgumentException.ThrowIfNullOrWhiteSpace(hostname);
-        ArgumentNullException.ThrowIfNull(topics);
+        ArgumentException.ThrowIfNullOrWhiteSpace(topic);
 
-        var subscriberEntity = new SubscriberEntity(ipAddress, hostname, topics);
+        var subscriberEntity = new SubscriberEntity(ipAddress, hostname, topic);
 
-        foreach (var topic in topics)
+        var subscribers = _topicSubscribers.GetOrAdd(topic.Trim(), _ => new List<SubscriberEntity>());
+        lock (_lock)
         {
-            var subscribers = _topicSubscribers.GetOrAdd(topic.Trim(), _ => new List<SubscriberEntity>());
-            lock (subscribers)
-            {
-                subscribers.Add(subscriberEntity);
-            }
+            subscribers.Add(subscriberEntity);
 
             var messages = GetPendingMessagesToByTopic(topic);
             // Send pending messages when a subscriber connects
@@ -67,7 +64,7 @@ internal sealed class MessageBroker : IDisposable
         foreach (var topic in _topicSubscribers.Keys)
         {
             var subscribers = _topicSubscribers[topic];
-            lock (subscribers)
+            lock (_lock)
             {
                 subscribers.RemoveAll(s => s.Id == id);
             }
@@ -77,22 +74,23 @@ internal sealed class MessageBroker : IDisposable
     /// <summary>
     /// Publish a message to a topic
     /// </summary>
-    /// <param name="message"></param>
+    /// <param name="topic"></param>
+    /// <param name="payload"></param>
     /// <returns>Message id</returns>
-    public Guid Publish(MessageRequestModel message)
+    public Guid Publish(string topic, string payload)
     {
-        var messageId = AddMessageInStorage(message);
+        var message = AddMessageInStorage(topic, payload);
 
-        if (!_topicSubscribers.TryGetValue(message.Topic, out var subscribers)) return messageId;
-        if (subscribers.Count <= 0) return messageId;
+        if (!_topicSubscribers.TryGetValue(topic, out var subscribers)) return message.Id;
+        if (subscribers.Count <= 0) return message.Id;
         
         foreach (var subscriber in subscribers)
         {
-            var writtenMessage = subscriber.MessageChannel.Writer.TryWrite(new MessageModel(messageId, message.Topic, message.Payload));
-            _logger.LogDebug($"Written message {messageId}: {writtenMessage}");
+            var writtenMessage = subscriber.MessageChannel.Writer.TryWrite(message);
+            _logger.LogDebug($"Written message {message.Id}: {writtenMessage}");
         }
 
-        return messageId;
+        return message.Id;
     }
 
     /// <summary>
@@ -107,7 +105,7 @@ internal sealed class MessageBroker : IDisposable
             ArgumentException.ThrowIfNullOrWhiteSpace(topic);
 
             return _topicSubscribers.Where(x => x.Key.Contains(topic)).SelectMany(e => e.Value)
-                .Select(r => new SubscriberModel(r.Hostname, r.IpAddress, r.Topics)).ToList();
+                .Select(r => new SubscriberModel(r.Hostname, r.IpAddress, r.Topic, r.Timestamp)).ToList();
         }
         catch (Exception ex)
         {
@@ -147,25 +145,18 @@ internal sealed class MessageBroker : IDisposable
         }
     }
 
-    private Guid AddMessageInStorage(MessageRequestModel message)
+    private MessageModel AddMessageInStorage(string topic, string payload)
     {
-        ArgumentNullException.ThrowIfNull(message);
-        ArgumentException.ThrowIfNullOrWhiteSpace(message.Topic);
-        ArgumentException.ThrowIfNullOrWhiteSpace(message.Payload);
+        ArgumentException.ThrowIfNullOrWhiteSpace(topic);
+        ArgumentException.ThrowIfNullOrWhiteSpace(payload);
 
         lock (_lock)
         {
-            var messageId = Guid.NewGuid();
-            var timestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
+            var message = new MessageModel(Guid.NewGuid(), topic, payload, new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds());
 
-            _messageCollection.Insert(messageId, new MessageEntity()
-            {
-                Id = messageId,
-                Message = new MessageModel(messageId, message.Topic, message.Payload),
-                Timestamp = timestamp
-            });
+            _messageCollection.Insert(message.Id, message);
 
-            return messageId;
+            return message;
         }
     }
 
@@ -175,7 +166,7 @@ internal sealed class MessageBroker : IDisposable
 
         lock (_lock)
         {
-            return _messageCollection.Find(x => x.Message.Topic == topic && x.Sent == null).OrderBy(x => x.Timestamp).Select(x => x.Message).ToList();
+            return _messageCollection.Find(x => x.Topic == topic && x.Sent == null).OrderBy(x => x.Timestamp).ToList();
         }
     }
 

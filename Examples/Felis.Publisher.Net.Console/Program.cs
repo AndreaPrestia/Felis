@@ -2,7 +2,6 @@
 using System.Net.Security;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
-using System.Text.Json;
 
 try
 {
@@ -28,53 +27,38 @@ try
 
     while (true)
     {
-        var response = await httpClient.PostAsJsonAsync("/publish",
+        var response = await httpClient.PostAsJsonAsync("/Test",
             new
             {
-                Id = Guid.NewGuid(),
-                Topic = "Test",
-                Payload = JsonSerializer.Serialize(new
-                    { Description = $"Test at: {DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()} from .NET publisher" })
+                Description = $"Test at: {DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()} from .NET publisher"
             },
             CancellationToken.None);
 
-        var content = await response.Content.ReadAsStringAsync();
-
         response.EnsureSuccessStatusCode();
 
-        await Task.Delay(5000);
+        await Task.Delay(20);
 
-        var responseAsync = await httpClient.PostAsJsonAsync("/publish",
+        var responseAsync = await httpClient.PostAsJsonAsync("/TestAsync",
             new
             {
-                Id = Guid.NewGuid(),
-                Topic = "TestAsync",
-                Payload = JsonSerializer.Serialize(new
-                {
-                    Description = $"TestAsync at: {DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()} from .NET publisher"
-                })
+                Description = $"TestAsync at: {DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()} from .NET publisher"
             },
             CancellationToken.None);
 
         responseAsync.EnsureSuccessStatusCode();
 
-        await Task.Delay(5000);
+        await Task.Delay(40);
 
-        var responseError = await httpClient.PostAsJsonAsync("/publish",
+        var responseError = await httpClient.PostAsJsonAsync("/TestError",
             new
             {
-                Id = Guid.NewGuid(),
-                Topic = "TestError",
-                Payload = JsonSerializer.Serialize(new
-                {
-                    Description = $"TestError at: {DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()} from .NET publisher"
-                })
+                Description = $"TestError at: {DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()} from .NET publisher"
             },
             CancellationToken.None);
 
         responseError.EnsureSuccessStatusCode();
 
-        await Task.Delay(5000);
+        await Task.Delay(4);
     }
 }
 catch (Exception ex)

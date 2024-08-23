@@ -34,7 +34,6 @@ public static class Extensions
             {
                 options.ListenAnyIP(port, listenOptions =>
                 {
-                    
                     listenOptions.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
                     listenOptions.UseHttps(new X509Certificate2(certPath, certPassword), httpsOptions =>
                     {

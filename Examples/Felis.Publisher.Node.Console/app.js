@@ -4,7 +4,7 @@ const http2 = require('http2');
 const fs = require('fs');
 const path = require('path');
 
-const publishMessage = async (message) => {
+const publishMessage = async (topic) => {
     const endpoint = 'https://localhost:7110';
 
     const pfxPath = path.join(__dirname, '../Output.pfx');
@@ -19,12 +19,14 @@ const publishMessage = async (message) => {
 
     const req = client.request({
         ':method': 'POST',
-        ':path': '/publish',
+        ':path': `/${topic}`,
         'Content-Type': 'application/json'
     });
 
     // Send the message body
-    req.write(JSON.stringify(message));
+    req.write(JSON.stringify({
+        description: `${topic} at: ${Math.floor(new Date().getTime() / 1000)} from NodeJS publisher`
+    }));
 
     req.on('response', (headers, flags) => {
         console.debug('Response headers:', headers);
@@ -51,21 +53,7 @@ const sleep = (ms) => {
     try {
         console.log("Started Felis.Publisher.Node.Console");
         while (true) {
-            publishMessage({
-                description: `Test at: ${Math.floor(new Date().getTime() / 1000)} from NodeJS publisher`
-            });
-
-            await sleep(5000);
-
-            publishMessage({
-                description: `TestAsync at: ${Math.floor(new Date().getTime() / 1000)} from NodeJS publisher`
-            });
-
-            await sleep(5000);
-
-            publishMessage({
-                description: `TestError at: ${Math.floor(new Date().getTime() / 1000)} from NodeJS publisher`
-            });
+            publishMessage('Test');
 
             await sleep(5000);
         }

@@ -5,7 +5,7 @@ const path = require('path');
 const https = require('https');
 const EventSource = require('eventsource');
 
-const sseUrl = 'https://localhost:7110/subscribe?topics=Test,TestAsync,TestError';
+const sseUrl = 'https://localhost:7110/Test';
 
 const pfxPath = path.join(__dirname, '../Output.pfx');
 const password = 'Password.1';
@@ -31,19 +31,7 @@ eventSource.onmessage = (event) => {
                 `Received message - ${messageDeserialized.Id} with topic - ${messageDeserialized.Topic} with payload - ${messageDeserialized.Payload}`;
 
             try {
-                if ("Test" === messageDeserialized.Topic) {
-                    console.info(messageFormat);
-                }
-                else if ("TestAsync" === messageDeserialized.Topic) {
-                    (async () => {
-                        console.info(messageFormat);
-                        await sleep(1000);
-
-                    })();
-                }
-                else {
-                    throw new Error(messageFormat);
-                }
+                console.info(messageFormat);
             }
             catch (e) {
                 console.error(`Error in Felis.Subscriber.Node.Console ${e.message}`);

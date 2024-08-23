@@ -36,29 +36,7 @@ try
 
         response.EnsureSuccessStatusCode();
 
-        await Task.Delay(20);
-
-        var responseAsync = await httpClient.PostAsJsonAsync("/TestAsync",
-            new
-            {
-                Description = $"TestAsync at: {DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()} from .NET publisher"
-            },
-            CancellationToken.None);
-
-        responseAsync.EnsureSuccessStatusCode();
-
-        await Task.Delay(40);
-
-        var responseError = await httpClient.PostAsJsonAsync("/TestError",
-            new
-            {
-                Description = $"TestError at: {DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()} from .NET publisher"
-            },
-            CancellationToken.None);
-
-        responseError.EnsureSuccessStatusCode();
-
-        await Task.Delay(4);
+        await Task.Delay(3000);
     }
 }
 catch (Exception ex)
@@ -68,5 +46,5 @@ catch (Exception ex)
 
 static bool ValidateServerCertificate(HttpRequestMessage request, X509Certificate2? certificate, X509Chain? chain, SslPolicyErrors errors)
 {
-    return certificate != null && certificate.Verify() && chain != null;
+    return certificate != null && chain != null;
 }

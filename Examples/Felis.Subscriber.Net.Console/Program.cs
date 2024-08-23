@@ -31,7 +31,7 @@ try
     SecurityProtocol |= SecurityProtocolType.Tls12 | SecurityProtocolType.Tls13;
 
     var request = new HttpRequestMessage(HttpMethod.Get,
-        $"/subscribe?topics=Test,TestAsync,TestError");
+        $"/Test");
     request.Version = new Version(2, 0);
 
     using var response =
@@ -59,21 +59,8 @@ try
 
                             var messageFormat =
                                 $"Received message - {messageDeserialized?.Id} with topic - {messageDeserialized?.Topic} with payload - {messageDeserialized?.Payload}";
-                            if (string.Equals("Test", messageDeserialized?.Topic,
-                                    StringComparison.InvariantCultureIgnoreCase))
-                            {
-                                Console.WriteLine(messageFormat);
-                            }
-                            else if (string.Equals("TestAsync", messageDeserialized?.Topic,
-                                         StringComparison.InvariantCultureIgnoreCase))
-                            {
-                                await Task.Run(() =>
-                                    Console.WriteLine(messageFormat));
-                            }
-                            else
-                            {
-                                throw new Exception(messageFormat);
-                            }
+                          
+                            Console.WriteLine(messageFormat);
                         }
                         catch (Exception e)
                         {
@@ -104,7 +91,7 @@ catch (Exception ex)
 
 static bool ValidateServerCertificate(HttpRequestMessage request, X509Certificate2? certificate, X509Chain? chain, SslPolicyErrors errors)
 {
-    return certificate != null && certificate.Verify() && chain != null;
+    return certificate != null && chain != null;
 }
 
 public record MessageModel(Guid Id, string Topic, string Payload);

@@ -50,7 +50,3 @@ def publishMessage(topic):
 while True:
     publishMessage('Test')
     time.sleep(5)
-    publishMessage('TestAsync')
-    time.sleep(5)
-    publishMessage('TestError')
-    time.sleep(5)

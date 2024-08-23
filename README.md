@@ -47,11 +47,8 @@ curl -X 'POST' \
 ```
 
 ***Request***
-Property | Type | Context |
---- | --- | --- |
-id | guid | the message global unique identifier. |
-topic | string | the actual content of the topic of the message to dispatch. |
-payload | string | Json string of the message to dispatch. |
+
+The string of the message to dispatch.
 
 ***Response***
 Status code | Type | Context |
@@ -98,11 +95,12 @@ The JSON above represent the **Message** coming from the broker.
 
 The **Message** entity is made of:
 
-Property | Type | Context |
---- | --- | --- |
-id | guid | the message unique id assigned by the broker. |
-topic | string | the topic where the message has been published. |
+Property | Type   | Context                                                   |
+--- |--------|-----------------------------------------------------------|
+id | guid   | the message unique id assigned by the broker.             |
+topic | string | the topic where the message has been published.           |
 payload | string | the actual content of the message published on the topic. |
+timestamp | number | the timestamp of the message when it was published.       |
 
 **{topic}/subscribers GET**
 
@@ -133,6 +131,7 @@ Property | Type   | Context                                               |
 ipAddress | string | The ipAddress property of the subscriber.             |
 hostname | string | The hostname property of the subscriber.              |
 topic | string   | This property contains the array of topic subscribed. |
+timestamp | number | the timestamp of the subscription.                    |
 
 **Usage of Broker**
 

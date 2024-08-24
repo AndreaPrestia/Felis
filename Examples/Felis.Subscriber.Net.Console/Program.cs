@@ -4,13 +4,14 @@ using System.Net;
 using System.Net.Security;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
+using System.Text;
 using System.Text.Json;
 using static System.Net.ServicePointManager;
 
 try
 {
     Console.WriteLine("Started Felis.Subscriber.Net.Console");
-    
+
     var uri = new Uri("https://localhost:7110");
     var currentDirectory = Path.GetDirectoryName(Directory.GetCurrentDirectory());
     var pfxPath = Path.Combine(currentDirectory!, @"..\..\..\Output.pfx");
@@ -20,7 +21,7 @@ try
     using var httpClient = new HttpClient(new HttpClientHandler
     {
         ClientCertificateOptions = ClientCertificateOption.Manual,
-        SslProtocols = SslProtocols.Tls12,
+        SslProtocols = SslProtocols.Tls13,
         ServerCertificateCustomValidationCallback = ValidateServerCertificate,
         ClientCertificates = { clientCertificate }
     })
@@ -28,11 +29,11 @@ try
         BaseAddress = uri
     };
 
-    SecurityProtocol |= SecurityProtocolType.Tls12 | SecurityProtocolType.Tls13;
+    SecurityProtocol |= SecurityProtocolType.Tls13;
 
     var request = new HttpRequestMessage(HttpMethod.Get,
         $"/Test");
-    request.Version = new Version(2, 0);
+    request.Version = new Version(3, 0);
 
     using var response =
         await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, CancellationToken.None);
@@ -40,37 +41,30 @@ try
     if (response.IsSuccessStatusCode)
     {
         await using var stream = await response.Content.ReadAsStreamAsync(CancellationToken.None);
-        using var reader = new StreamReader(stream);
 
-        while (!reader.EndOfStream)
+        var buffer = new byte[1024];
+        int bytesRead;
+
+        while ((bytesRead = await stream.ReadAsync(buffer)) > 0)
         {
             try
             {
-                var message = await reader.ReadLineAsync(CancellationToken.None);
-                if (!string.IsNullOrWhiteSpace(message) && message.StartsWith("data:"))
+                if (bytesRead == 0) continue;
+                
+                try
                 {
-                    var jsonMessage = message.Split("data:").LastOrDefault();
+                    var jsonMessage = Encoding.Default.GetString(buffer, 0, bytesRead);
+                    
+                    var messageDeserialized = JsonSerializer.Deserialize<MessageModel>(jsonMessage);
 
-                    if (!string.IsNullOrWhiteSpace(jsonMessage))
-                    {
-                        try
-                        {
-                            var messageDeserialized = JsonSerializer.Deserialize<MessageModel>(jsonMessage);
+                    var messageFormat =
+                        $"Received message - {messageDeserialized?.Id} with topic - {messageDeserialized?.Topic} with payload - {messageDeserialized?.Payload}";
 
-                            var messageFormat =
-                                $"Received message - {messageDeserialized?.Id} with topic - {messageDeserialized?.Topic} with payload - {messageDeserialized?.Payload}";
-                          
-                            Console.WriteLine(messageFormat);
-                        }
-                        catch (Exception e)
-                        {
-                            Console.Error.WriteLine(e.Message);
-                        }
-                    }
+                    Console.WriteLine(messageFormat);
                 }
-                else
+                catch (Exception ex)
                 {
-                    Console.Error.WriteLine("Message received is null");
+                    Console.Error.WriteLine(ex.Message);
                 }
             }
             catch (Exception ex)
@@ -78,6 +72,40 @@ try
                 Console.Error.WriteLine(ex.Message);
             }
         }
+        //using var reader = new StreamReader(stream);
+
+        // while (!reader.EndOfStream)
+        // {
+        //     try
+        //     {
+        //         var message = await reader.ReadLineAsync(CancellationToken.None);
+        //         if (!string.IsNullOrWhiteSpace(message) && message.StartsWith("data:"))
+        //         {
+        //             var jsonMessage = message.Split("data:").LastOrDefault();
+        //
+        //             if (!string.IsNullOrWhiteSpace(jsonMessage))
+        //             {
+        //                 try
+        //                 {
+        //                     var messageDeserialized = JsonSerializer.Deserialize<MessageModel>(jsonMessage);
+        //
+        //                     var messageFormat =
+        //                         $"Received message - {messageDeserialized?.Id} with topic - {messageDeserialized?.Topic} with payload - {messageDeserialized?.Payload}";
+        //                   
+        //                     Console.WriteLine(messageFormat);
+        //                 }
+        //                 catch (Exception e)
+        //                 {
+        //                     Console.Error.WriteLine(e.Message);
+        //                 }
+        //             }
+        //         }
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         Console.Error.WriteLine(ex.Message);
+        //     }
+        // }
     }
     else
     {
@@ -89,10 +117,10 @@ catch (Exception ex)
     Console.Error.WriteLine($"Error in Felis.Subscriber.Net.Console {ex.Message}");
 }
 
-static bool ValidateServerCertificate(HttpRequestMessage request, X509Certificate2? certificate, X509Chain? chain, SslPolicyErrors errors)
+static bool ValidateServerCertificate(HttpRequestMessage request, X509Certificate2? certificate, X509Chain? chain,
+    SslPolicyErrors errors)
 {
     return certificate != null && chain != null;
 }
 
 public record MessageModel(Guid Id, string Topic, string Payload);
-

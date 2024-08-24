@@ -24,10 +24,6 @@ Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "Felis.Publisher.Python.Cons
 EndProject
 Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "Felis.Subscriber.Python.Console", "Examples\Felis.Subscriber.Python.Console\Felis.Subscriber.Python.Console.pyproj", "{FDCC2554-DDE8-4CDD-8BC2-D502057444F9}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{FAE8C575-8776-4383-9FD8-2C9C0E0594AE}"
-EndProject
-Project("{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}") = "Felis.Publisher.Node.Stress.Test", "Tests\Felis.Publisher.Node.Stress.Test\Felis.Publisher.Node.Stress.Test.njsproj", "{4D53B4D0-9F11-493B-BE8F-114F56DAA684}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -66,10 +62,6 @@ Global
 		{FCD134B7-FADA-492B-8514-89FB7D479A8C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FDCC2554-DDE8-4CDD-8BC2-D502057444F9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{FDCC2554-DDE8-4CDD-8BC2-D502057444F9}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{4D53B4D0-9F11-493B-BE8F-114F56DAA684}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{4D53B4D0-9F11-493B-BE8F-114F56DAA684}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{4D53B4D0-9F11-493B-BE8F-114F56DAA684}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{4D53B4D0-9F11-493B-BE8F-114F56DAA684}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -82,7 +74,6 @@ Global
 		{283FDF72-2BBB-40AA-98CC-32540A807464} = {4C950E14-197A-4B6C-8130-44EBE06BA7EB}
 		{FCD134B7-FADA-492B-8514-89FB7D479A8C} = {4C950E14-197A-4B6C-8130-44EBE06BA7EB}
 		{FDCC2554-DDE8-4CDD-8BC2-D502057444F9} = {4C950E14-197A-4B6C-8130-44EBE06BA7EB}
-		{4D53B4D0-9F11-493B-BE8F-114F56DAA684} = {FAE8C575-8776-4383-9FD8-2C9C0E0594AE}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {D605DA87-932C-4C6E-B7C8-77CED4B0C179}

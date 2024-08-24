@@ -1,14 +1,14 @@
-﻿using Felis.Entities;
-using Felis.Models;
+﻿using Felis.Models;
 using LiteDB;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
+using System.Threading.Channels;
 
 namespace Felis;
 
 internal sealed class MessageBroker : IDisposable
 {
-    private readonly ConcurrentDictionary<string, List<SubscriberEntity>> _topicSubscribers = new();
+    private readonly ConcurrentDictionary<string, List<Subscription>> _topicSubscriptions = new();
     private readonly ILogger<MessageBroker> _logger;
     private readonly ILiteDatabase _database;
     private readonly ILiteCollection<MessageModel> _messageCollection;
@@ -30,29 +30,31 @@ internal sealed class MessageBroker : IDisposable
     /// <param name="hostname"></param>
     /// <param name="topic"></param>
     /// <returns></returns>
-    public SubscriberEntity Subscribe(string ipAddress, string hostname, string topic)
+    public Subscription Subscribe(string ipAddress, string hostname, string topic)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(ipAddress);
         ArgumentException.ThrowIfNullOrWhiteSpace(hostname);
         ArgumentException.ThrowIfNullOrWhiteSpace(topic);
 
-        var subscriberEntity = new SubscriberEntity(ipAddress, hostname, topic);
+        var subscription = new Subscription(ipAddress, hostname, topic);
+        
+        _logger.LogDebug($"Subscriber {subscription.Subscriber.Hostname} - {subscription.Subscriber.IpAddress} subscribed to topic {subscription.Subscriber.Topic} at {subscription.Subscriber.Timestamp}");
 
-        var subscribers = _topicSubscribers.GetOrAdd(topic.Trim(), _ => new List<SubscriberEntity>());
+        var subscribers = _topicSubscriptions.GetOrAdd(topic.Trim(), _ => new List<Subscription>());
         lock (_lock)
         {
-            subscribers.Add(subscriberEntity);
+            subscribers.Add(subscription);
 
             var messages = GetPendingMessagesToByTopic(topic);
             // Send pending messages when a subscriber connects
             foreach (var message in messages)
             {
-                var writtenMessage = subscriberEntity.MessageChannel.Writer.TryWrite(message);
-                _logger.LogDebug($"Written message {message.Id}: {writtenMessage}");
+                var writtenMessage = subscription.MessageChannel.Writer.TryWrite(message);
+                _logger.LogDebug($"Written message {message.Id}: {writtenMessage} for subscription {subscription.Subscriber.Hostname} - {subscription.Subscriber.IpAddress} - {subscription.Subscriber.Topic}");
             }
         }
 
-        return subscriberEntity;
+        return subscription;
     }
 
     /// <summary>
@@ -61,9 +63,9 @@ internal sealed class MessageBroker : IDisposable
     /// <param name="id"></param>
     public void UnSubscribe(Guid id)
     {
-        foreach (var topic in _topicSubscribers.Keys)
+        foreach (var topic in _topicSubscriptions.Keys)
         {
-            var subscribers = _topicSubscribers[topic];
+            var subscribers = _topicSubscriptions[topic];
             lock (_lock)
             {
                 subscribers.RemoveAll(s => s.Id == id);
@@ -81,7 +83,7 @@ internal sealed class MessageBroker : IDisposable
     {
         var message = AddMessageInStorage(topic, payload);
 
-        if (!_topicSubscribers.TryGetValue(topic, out var subscribers)) return message.Id;
+        if (!_topicSubscriptions.TryGetValue(topic, out var subscribers)) return message.Id;
         if (subscribers.Count <= 0) return message.Id;
         
         foreach (var subscriber in subscribers)
@@ -152,5 +154,20 @@ internal sealed class MessageBroker : IDisposable
     public void Dispose()
     {
         _database.Dispose();
+    }
+}
+
+internal class Subscription
+{
+    public Guid Id { get; }
+    public Channel<MessageModel> MessageChannel { get; }
+    public SubscriberModel Subscriber { get; }
+
+    public Subscription(string ipAddress, string hostname, string topic)
+    {
+        Id = Guid.NewGuid();
+        MessageChannel = Channel.CreateUnbounded<MessageModel>();
+        Subscriber = new SubscriberModel(hostname, ipAddress, topic,
+            new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds());
     }
 }

@@ -1,6 +1,6 @@
 ﻿using System.Net;
+using System.Text;
 using System.Text.Json;
-using Felis.Models;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -39,10 +39,10 @@ internal static class BrokerEndpoints
 
                 var subscriberEntity = messageBroker.Subscribe(clientIp.MapToIPv4().ToString(), clientHostname, topic);
 
-                context.Response.Headers.ContentType = "text/event-stream";
+                context.Response.Headers.ContentType = "application/octet-stream";
                 context.Response.Headers.CacheControl = "no-cache";
                 context.Response.Headers.Connection = "keep-alive";
-
+                
                 var cancellationToken = context.RequestAborted;
 
                 await foreach (var message in subscriberEntity.MessageChannel.Reader.ReadAllAsync(cancellationToken))
@@ -54,13 +54,15 @@ internal static class BrokerEndpoints
                     }
 
                     var messageString = JsonSerializer.Serialize(message);
-                    var sseMessage = $"data: {messageString}\n\n";
+                    var buffer = Encoding.Default.GetBytes(messageString);
 
-                    await context.Response.WriteAsync(sseMessage, cancellationToken: cancellationToken);
+                    await context.Response.Body.WriteAsync(buffer, cancellationToken);
                     await context.Response.Body.FlushAsync(cancellationToken);
 
                     messageBroker.Send(message.Id);
                 }
+
+                return Results.Empty;
             }).ExcludeFromDescription();
     }
 }

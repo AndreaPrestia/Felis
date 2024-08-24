@@ -1,32 +1,49 @@
 # Felis
 A light-weight web based message broker totally written in .NET based on HTTP3/QUIC.
 
-The Felis project is made by the **Broker** part, containing the logic for dispatching, storing and validating messages. It stores the message in a LiteDB storage.
+The Felis project is made by the **Broker** part, containing the logic for dispatching, storing and validating messages.
+It stores the message in a **LiteDB** storage.
 
-**How can I use it?**
+**Requirements**
 
-This repository provides the examples of usage:
+- .NET 8
+- QUIC support
+- HTTP3 support
+- TLS13 support
 
-- **Felis.Broker.Console**
-- **Felis.Publisher.Net.Console**
-- **Felis.Subscriber.Net.Console**
-- **Felis.Publisher.Node.Console**
-- **Felis.Subscriber.Node.Console**
-- **Felis.Publisher.Python.Console**
-- **Felis.Subscriber.Python.Console**
+**Dependencies**
 
-**Felis.Broker.Console**
+- LiteDB 5.0.21
+- Microsoft.AspNetCore.Authentication.Certificate 8.0.8
+- Microsoft.Extensions.Logging.Abstractions 8.0.1
 
-An console application, containing the two endpoints exposed by Felis Broker.
+**Usage of Broker**
 
-The two endpoints are:
+Code example:
 
-- {topic} POST
-- {topic} GET
+```
+    var currentDirectory = Path.GetDirectoryName(Directory.GetCurrentDirectory());
+    var pfxPath = Path.Combine(currentDirectory!, @"..\..\..\Output.pfx");
+    var certificatePath = Path.GetFullPath(pfxPath);
 
-These endpoints are documented in the following chapters.
+    var builder = Host.CreateDefaultBuilder(args)
+        .ConfigureLogging(logging =>
+        {
+            logging.ClearProviders();
+            logging.AddConsole();
+            logging.SetMinimumLevel(LogLevel.Debug);
+        })
+        .AddFelisBroker(certificatePath, "Password.1", 7110);
 
-**{topic} POST**
+    var host = builder.Build();
+
+    await host.RunAsync();
+```
+The example above initialize the **Felis Broker** in a console application, using logging to console.
+
+The **AddFelisBroker** method takes **certPath**, **certPassword**, **port** as input parameters to use the broker with mTLS authentication.
+
+**Publish of a message to a topic with POST**
 
 This endpoint is used to publish a message with whatever contract in the payload, by topic, to every listener subscribed to Felis.
 This endpoint returns the unique identifier of the message published, assigned by the broker.
@@ -46,6 +63,7 @@ curl -X 'POST' \
 The string of the message to dispatch.
 
 ***Response***
+
 Status code | Type | Context |
 --- | --- | --- |
 202 | AcceptedResult | When the request is successfully processed. |
@@ -53,7 +71,7 @@ Status code | Type | Context |
 401 | UnauthorizedResult | When an operation fails due to missing authorization. |
 403 | ForbiddenResult | When an operation fails because it is not allowed in the context. |
 
-**{topic} GET**
+**Subscribe to a topic with GET**
 
 This endpoint is used to subscribe to a subset of topics using SSE. It is **not** documented in swagger.
 
@@ -64,11 +82,13 @@ curl -X 'GET' \
 ```
 
 ***Request***
+
 Property | Type | Context |
 --- | --- | --- |
 topic | string | the topic to subscribe to. |
 
 ***Response***
+
 Status code | Type | Context |
 --- | --- | --- |
 200 | Ok | When the SSE subscription is successfully made and the text/event-stream header is returned to the client. |
@@ -97,31 +117,21 @@ topic | string | the topic where the message has been published.           |
 payload | string | the actual content of the message published on the topic. |
 timestamp | number | the timestamp of the message when it was published.       |
 
-**Usage of Broker**
+**How can I test it?**
 
-Code example:
+This repository provides the examples of usage:
 
-```
-    var currentDirectory = Path.GetDirectoryName(Directory.GetCurrentDirectory());
-    var pfxPath = Path.Combine(currentDirectory!, @"..\..\..\Output.pfx");
-    var certificatePath = Path.GetFullPath(pfxPath);
+- **Felis.Broker.Console**
+- **Felis.Publisher.Net.Console**
+- **Felis.Subscriber.Net.Console**
+- **Felis.Publisher.Node.Console**
+- **Felis.Subscriber.Node.Console**
+- **Felis.Publisher.Python.Console**
+- **Felis.Subscriber.Python.Console**
 
-    var builder = Host.CreateDefaultBuilder(args)
-        .ConfigureLogging(logging =>
-        {
-            logging.ClearProviders();
-            logging.AddConsole();
-            logging.SetMinimumLevel(LogLevel.Debug);
-        })
-        .AddFelisBroker(certificatePath, "Password.1", 7110);
+**Felis.Broker.Console**
 
-    var host = builder.Build();
-
-    await host.RunAsync();
-```
-The example above initialize the **Felis Broker** in a console application.
-
-The **AddFelisBroker** method takes **certPath**, **certPassword**, **port** as input parameters to use the broker with mTLS authentication.
+A console application, containing the two endpoints, **POST** and **GET** exposed by Felis Broker and documented in the following chapters.
 
 **Publish a message**
 

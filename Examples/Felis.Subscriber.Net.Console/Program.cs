@@ -72,40 +72,6 @@ try
                 Console.Error.WriteLine(ex.Message);
             }
         }
-        //using var reader = new StreamReader(stream);
-
-        // while (!reader.EndOfStream)
-        // {
-        //     try
-        //     {
-        //         var message = await reader.ReadLineAsync(CancellationToken.None);
-        //         if (!string.IsNullOrWhiteSpace(message) && message.StartsWith("data:"))
-        //         {
-        //             var jsonMessage = message.Split("data:").LastOrDefault();
-        //
-        //             if (!string.IsNullOrWhiteSpace(jsonMessage))
-        //             {
-        //                 try
-        //                 {
-        //                     var messageDeserialized = JsonSerializer.Deserialize<MessageModel>(jsonMessage);
-        //
-        //                     var messageFormat =
-        //                         $"Received message - {messageDeserialized?.Id} with topic - {messageDeserialized?.Topic} with payload - {messageDeserialized?.Payload}";
-        //                   
-        //                     Console.WriteLine(messageFormat);
-        //                 }
-        //                 catch (Exception e)
-        //                 {
-        //                     Console.Error.WriteLine(e.Message);
-        //                 }
-        //             }
-        //         }
-        //     }
-        //     catch (Exception ex)
-        //     {
-        //         Console.Error.WriteLine(ex.Message);
-        //     }
-        // }
     }
     else
     {

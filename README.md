@@ -39,7 +39,7 @@ Code example:
 
     await host.RunAsync();
 ```
-The example above initialize the **Felis Broker** in a console application, using logging to console.
+The example above initialize the **Felis Broker** in a console application, logging to console.
 
 The **AddFelisBroker** method takes **certPath**, **certPassword**, **port** as input parameters to use the broker with mTLS authentication.
 

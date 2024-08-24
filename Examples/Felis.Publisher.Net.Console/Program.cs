@@ -36,7 +36,7 @@ try
 
         response.EnsureSuccessStatusCode();
 
-        await Task.Delay(300);
+        await Task.Delay(20);
     }
 }
 catch (Exception ex)

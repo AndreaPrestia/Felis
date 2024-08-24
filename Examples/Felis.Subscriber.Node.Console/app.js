@@ -1,17 +1,17 @@
 'use strict';
 
-import { join } from 'path';
-import { connect } from 'http2';
-import { readFileSync } from 'fs';
+const fs = require('fs');
+const path = require('path');
+const http2 = require('http2');
 
 const endpoint = 'https://localhost:7110';
 
-const pfxPath = join(__dirname, '../Output.pfx');
+const pfxPath = path.join(__dirname, '../Output.pfx');
 const password = 'Password.1';
 
 // Create a client session
-const client = connect(endpoint, {
-    pfx: readFileSync(pfxPath),
+const client = http2.connect(endpoint, {
+    pfx: fs.readFileSync(pfxPath),
     passphrase: password,
     rejectUnauthorized: false
 });

@@ -1,8 +1,8 @@
 # Felis
 A light-weight web based message broker totally written in .NET based on HTTP3/QUIC.
 
-The Felis project is made by the **Broker** part, containing the logic for dispatching, storing and validating messages.
-It stores the message in a **LiteDB** storage.
+The Felis project contains the logic for dispatching, storing and validating messages.
+It stores the messages in a **LiteDB** database.
 
 **Requirements**
 
@@ -39,7 +39,7 @@ Code example:
 
     await host.RunAsync();
 ```
-The example above initialize the **Felis Broker** in a console application, using logging to console.
+The example above initialize the **Felis Broker** in a console application, logging to console.
 
 The **AddFelisBroker** method takes **certPath**, **certPassword**, **port** as input parameters to use the broker with mTLS authentication.
 

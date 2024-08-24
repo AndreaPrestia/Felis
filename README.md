@@ -22,24 +22,24 @@ It stores the messages in a **LiteDB** database.
 Code example:
 
 ```
-    var currentDirectory = Path.GetDirectoryName(Directory.GetCurrentDirectory());
-    var pfxPath = Path.Combine(currentDirectory!, @"..\..\..\Output.pfx");
-    var certificatePath = Path.GetFullPath(pfxPath);
+var currentDirectory = Path.GetDirectoryName(Directory.GetCurrentDirectory());
+var pfxPath = Path.Combine(currentDirectory!, @"..\..\..\Output.pfx");
+var certificatePath = Path.GetFullPath(pfxPath);
 
-    var builder = Host.CreateDefaultBuilder(args)
-        .ConfigureLogging(logging =>
-        {
-            logging.ClearProviders();
-            logging.AddConsole();
-            logging.SetMinimumLevel(LogLevel.Debug);
-        })
-        .AddFelisBroker(certificatePath, "Password.1", 7110);
+var builder = Host.CreateDefaultBuilder(args)
+    .ConfigureLogging(logging =>
+    {
+        logging.ClearProviders();
+        logging.AddConsole();
+        logging.SetMinimumLevel(LogLevel.Debug);
+    })
+    .AddFelisBroker(certificatePath, "Password.1", 7110);
 
-    var host = builder.Build();
+var host = builder.Build();
 
-    await host.RunAsync();
+await host.RunAsync();
 ```
-The example above initialize the **Felis Broker** in a console application, logging to console.
+The example above initialize the **Felis Broker** in a console application, with console logging provider.
 
 The **AddFelisBroker** method takes **certPath**, **certPassword**, **port** as input parameters to use the broker with mTLS authentication.
 
@@ -89,21 +89,22 @@ topic | string | the topic to subscribe to. |
 
 ***Response***
 
-Status code | Type | Context |
---- | --- | --- |
-200 | Ok | When the SSE subscription is successfully made and the text/event-stream header is returned to the client. |
-400 | BadRequestResult | When a validation or something not related to the authorization process fails. |
-401 | UnauthorizedResult | When an operation fails due to missing authorization. |
-403 | ForbiddenResult | When an operation fails because it is not allowed in the context. |
+Status code | Type | Context                                                                                                       |
+--- | --- |---------------------------------------------------------------------------------------------------------------|
+200 | Ok | When the subscription is successfully made and the application/octet-stream header is returned to the client. |
+204 | NoContentResult | When nothing is more available from the topic |
+400 | BadRequestResult | When a validation or something not related to the authorization process fails.                                |
+401 | UnauthorizedResult | When an operation fails due to missing authorization.                                                         |
+403 | ForbiddenResult | When an operation fails because it is not allowed in the context.                                             |
 
 This endpoint pushes to the subscriber this json:
 
 ```
 {
-        "id": "ac4625da-e922-4c2b-a7e7-aef21ece963c",
-        "topic": "test",
-        "payload": "{\"description\":\"Test\"}",
-        "timestamp": 1724421633359
+    "id": "ac4625da-e922-4c2b-a7e7-aef21ece963c",
+    "topic": "test",
+    "payload": "{\"description\":\"Test\"}",
+    "timestamp": 1724421633359
 }
 ```
 The JSON above represent the **Message** coming from the broker.
@@ -129,6 +130,8 @@ This repository provides the examples of usage:
 - **Felis.Publisher.Python.Console**
 - **Felis.Subscriber.Python.Console**
 
+Please be aware that the Python examples could have some problem sometimes, i'm not an expert of that language :P.
+
 **Felis.Broker.Console**
 
 A console application, containing the two endpoints, **POST** and **GET** exposed by Felis Broker and documented in the following chapters.
@@ -137,10 +140,7 @@ A console application, containing the two endpoints, **POST** and **GET** expose
 
 To ease the testing process, I have two console application that publish to Felis broker.
 
-This applications sends messages on the three topics of the **subscribers** examples:
-- Test
-- TestAsync
-- TestError
+These applications sends messages on the **Test** topic of the **subscribers** examples.
 
 **Usage of Publishers**
 
@@ -164,3 +164,4 @@ Though there is room for further improvement, the project is fit for becoming a 
 
 - Unit testing.
 - Stress testing.
+- Dockerize examples.

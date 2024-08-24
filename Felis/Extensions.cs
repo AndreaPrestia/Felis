@@ -18,7 +18,7 @@ namespace Felis;
 public static class Extensions
 {
     /// <summary>
-    /// Adds the Felis broker with credentials and port
+    /// Adds the Felis broker with certificate path, password and listening port
     /// </summary>
     /// <param name="builder"></param>
     /// <param name="certPath">Cert path</param>

@@ -17,7 +17,7 @@ try
     using var httpClient = new HttpClient(new HttpClientHandler
     {
         ClientCertificateOptions = ClientCertificateOption.Manual,
-        SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
+        SslProtocols = SslProtocols.Tls13,
         ServerCertificateCustomValidationCallback = ValidateServerCertificate,
         ClientCertificates = { clientCertificate }
     })

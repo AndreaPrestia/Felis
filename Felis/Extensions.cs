@@ -1,4 +1,5 @@
-﻿using Felis.Endpoints;
+﻿using System.Net;
+using Felis.Endpoints;
 using Felis.Middlewares;
 using LiteDB;
 using Microsoft.AspNetCore.Builder;
@@ -24,8 +25,10 @@ public static class Extensions
     /// <param name="certPath">Cert path</param>
     /// <param name="certPassword">Cert password</param>
     /// <param name="port">Port to bind to listen incoming connections</param>
+    /// <param name="certificateForwardingHeader">Header to use for certificate forwarding when Felis is under a proxy. Default value is 'X-ARR-ClientCert'</param>
     /// <returns>IHostBuilder</returns>
-    public static IHostBuilder AddFelisBroker(this IHostBuilder builder, string certPath, string certPassword, int port)
+    public static IHostBuilder AddFelisBroker(this IHostBuilder builder, string certPath, string certPassword, int port,
+        string certificateForwardingHeader = "X-ARR-ClientCert")
     {
         return builder.ConfigureWebHostDefaults(webBuilder =>
         {
@@ -34,12 +37,13 @@ public static class Extensions
                 options.ListenAnyIP(port, listenOptions =>
                 {
                     listenOptions.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
-                    listenOptions.UseHttps(new X509Certificate2(certPath, certPassword), httpsOptions =>
+                    var certificate = new X509Certificate2(certPath, certPassword);
+                    listenOptions.UseHttps(certificate, httpsOptions =>
                     {
-                        httpsOptions.SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13;
+                        httpsOptions.SslProtocols = SslProtocols.Tls13;
                         httpsOptions.ClientCertificateMode = ClientCertificateMode.AllowCertificate;
                         httpsOptions.AllowAnyClientCertificate();
-                        httpsOptions.ClientCertificateValidation = (cert, chain, policyErrors) => true;
+                        httpsOptions.ClientCertificateValidation = (cert, _, _) => cert.Thumbprint == certificate.Thumbprint && cert.Issuer == certificate.Issuer;
                     });
                 });
             }).ConfigureServices(services =>
@@ -47,13 +51,32 @@ public static class Extensions
                 services.Configure<ForwardedHeadersOptions>(options =>
                 {
                     options.ForwardedHeaders =
-      ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+                        ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
                     options.KnownNetworks.Clear();
                     options.KnownProxies.Clear();
                 });
 
                 services.AddCertificateForwarding(
-    options => { options.CertificateHeader = "X-ARR-ClientCert"; });
+                    options =>
+                    {
+                        options.CertificateHeader = certificateForwardingHeader;
+
+                        if (string.Equals("ssl-client-cert", certificateForwardingHeader))
+                        {
+                            options.HeaderConverter = (headerValue) =>
+                            {
+                                X509Certificate2? clientCertificate = null;
+
+                                if (!string.IsNullOrWhiteSpace(headerValue))
+                                {
+                                    clientCertificate = X509Certificate2.CreateFromPem(
+                                        WebUtility.UrlDecode(headerValue));
+                                }
+
+                                return clientCertificate!;
+                            };
+                        }
+                    });
 
                 services.Configure<JsonOptions>(options =>
                 {
@@ -65,9 +88,6 @@ public static class Extensions
                 services.AddSingleton<MessageBroker>();
             }).Configure(app =>
             {
-                app.UseWhen(context => context.Request.Path.ToString().StartsWith("/publish")
-                                       || context.Request.Path.ToString().Contains("/subscriber"),
-                    appBranch => { appBranch.UseMiddleware<AuthorizationMiddleware>(); });
                 app.UseMiddleware<ErrorMiddleware>();
 
                 app.UseRouting();
@@ -77,11 +97,10 @@ public static class Extensions
                 app.UseEndpoints(endpoints =>
                 {
                     endpoints.MapBrokerEndpoints();
-                    endpoints.MapGet("/", () => "Felis Broker is up and running!").ExcludeFromDescription();
+                    endpoints.MapGet("/", () => "Felis Broker is up and running!");
                 });
 
                 app.UseHttpsRedirection();
-
                 app.UseForwardedHeaders();
             });
         });

@@ -4,7 +4,6 @@ using System.Net;
 using System.Net.Security;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
-using System.Text;
 using System.Text.Json;
 using static System.Net.ServicePointManager;
 
@@ -29,8 +28,6 @@ try
         BaseAddress = uri
     };
 
-    SecurityProtocol |= SecurityProtocolType.Tls13;
-
     var request = new HttpRequestMessage(HttpMethod.Get,
         $"/Test");
     request.Version = new Version(3, 0);
@@ -42,29 +39,28 @@ try
     {
         await using var stream = await response.Content.ReadAsStreamAsync(CancellationToken.None);
 
-        var buffer = new byte[1024];
-        int bytesRead;
+        using var reader = new StreamReader(stream);
 
-        while ((bytesRead = await stream.ReadAsync(buffer)) > 0)
+        while (!reader.EndOfStream)
         {
             try
             {
-                if (bytesRead == 0) continue;
-                
-                try
+                var jsonMessage = await reader.ReadLineAsync(CancellationToken.None);
+                if (!string.IsNullOrWhiteSpace(jsonMessage))
                 {
-                    var jsonMessage = Encoding.Default.GetString(buffer, 0, bytesRead);
-                    
-                    var messageDeserialized = JsonSerializer.Deserialize<MessageModel>(jsonMessage);
+                    try
+                    {
+                        var messageDeserialized = JsonSerializer.Deserialize<MessageModel>(jsonMessage);
 
-                    var messageFormat =
-                        $"Received message - {messageDeserialized?.Id} with topic - {messageDeserialized?.Topic} with payload - {messageDeserialized?.Payload}";
-
-                    Console.WriteLine(messageFormat);
-                }
-                catch (Exception ex)
-                {
-                    Console.Error.WriteLine(ex.Message);
+                        var messageFormat =
+                            $"Received message - {messageDeserialized?.Id} with topic - {messageDeserialized?.Topic} with payload - {messageDeserialized?.Payload}";
+                          
+                        Console.WriteLine(messageFormat);
+                    }
+                    catch (Exception e)
+                    {
+                        Console.Error.WriteLine(e.Message);
+                    }
                 }
             }
             catch (Exception ex)

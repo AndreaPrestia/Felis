@@ -1,5 +1,5 @@
 # Felis
-A light-weight web based message broker totally written in .NET based on HTTP3/QUIC.
+A light-weight message broker totally written in .NET based on HTTP3/QUIC and JSON.
 
 The Felis project contains the logic for dispatching, storing and validating messages.
 It stores the messages in a **LiteDB** database.
@@ -71,14 +71,28 @@ Status code | Type | Context |
 401 | UnauthorizedResult | When an operation fails due to missing authorization. |
 403 | ForbiddenResult | When an operation fails because it is not allowed in the context. |
 
+When an error occurs it is used the standard [RFC7807](https://datatracker.ietf.org/doc/html/rfc7807) to return HTTPS APIs errors with a **Content-Type** header with value **application/problem+json** 
+and the following object:
+
+```
+{
+    Type = "https://httpstatuses.io/500",
+    Detail = "Error details",
+    Status = 500,
+    Title = "An error has occurred",
+    Instance = "/Test POST",
+}
+```
+
 **Subscribe to a topic with GET**
 
-This endpoint is used to subscribe to a subset of topics using SSE. It is **not** documented in swagger.
+This endpoint is used to subscribe to a subset of topics using application/x-ndjson content-type to stream structured data. 
 
 ```
 curl -X 'GET' \
   'https://localhost:7110/topic' \
-  -H 'accept: application/json'
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/x-ndjson'
 ```
 
 ***Request***
@@ -117,6 +131,19 @@ id | guid   | the message unique id assigned by the broker.             |
 topic | string | the topic where the message has been published.           |
 payload | string | the actual content of the message published on the topic. |
 timestamp | number | the timestamp of the message when it was published.       |
+
+When an error occurs it is used the standard [RFC7807](https://datatracker.ietf.org/doc/html/rfc7807) to return HTTPS APIs errors with a **Content-Type** header with value **application/problem+json**
+and the following object:
+
+```
+{
+    Type = "https://httpstatuses.io/500",
+    Detail = "Error details",
+    Status = 500,
+    Title = "An error has occurred",
+    Instance = "/Test GET",
+}
+```
 
 **How can I test it?**
 

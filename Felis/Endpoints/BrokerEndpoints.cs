@@ -1,5 +1,4 @@
 ﻿using System.Net;
-using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -24,10 +23,7 @@ internal static class BrokerEndpoints
                     var messageId = messageBroker.Publish(topic, payload);
 
                     return Results.Accepted("/publish", messageId);
-                }).WithName("Publish").Produces<CreatedResult>(StatusCodes.Status201Created)
-            .Produces<BadRequestResult>(StatusCodes.Status400BadRequest)
-            .Produces<UnauthorizedResult>(StatusCodes.Status401Unauthorized)
-            .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
+                });
 
         endpointRouteBuilder.MapGet("/{topic}",
             async (HttpContext context, [FromServices] MessageBroker messageBroker, [FromRoute] string topic) =>
@@ -39,7 +35,7 @@ internal static class BrokerEndpoints
 
                 var subscriberEntity = messageBroker.Subscribe(clientIp.MapToIPv4().ToString(), clientHostname, topic);
 
-                context.Response.Headers.ContentType = "application/octet-stream";
+                context.Response.Headers.ContentType = "application/x-ndjson";
                 context.Response.Headers.CacheControl = "no-cache";
                 context.Response.Headers.Connection = "keep-alive";
                 
@@ -54,15 +50,14 @@ internal static class BrokerEndpoints
                     }
 
                     var messageString = JsonSerializer.Serialize(message);
-                    var buffer = Encoding.Default.GetBytes(messageString);
 
-                    await context.Response.Body.WriteAsync(buffer, cancellationToken);
+                    await context.Response.WriteAsync($"{messageString}\n", cancellationToken);
                     await context.Response.Body.FlushAsync(cancellationToken);
 
                     messageBroker.Send(message.Id);
                 }
 
                 return Results.Empty;
-            }).ExcludeFromDescription();
+            });
     }
 }

@@ -105,7 +105,7 @@ topic | string | the topic to subscribe to. |
 
 Status code | Type | Context                                                                                                       |
 --- | --- |---------------------------------------------------------------------------------------------------------------|
-200 | Ok | When the subscription is successfully made and the application/octet-stream header is returned to the client. |
+200 | Ok | When the subscription is successfully made and the application/x-ndjson header is returned to the client. |
 204 | NoContentResult | When nothing is more available from the topic |
 400 | BadRequestResult | When a validation or something not related to the authorization process fails.                                |
 401 | UnauthorizedResult | When an operation fails due to missing authorization.                                                         |

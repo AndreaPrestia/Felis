@@ -2,29 +2,32 @@
 
 const fs = require('fs');
 const path = require('path');
-const https = require('https');
-const EventSource = require('eventsource');
+const http2 = require('http2');
 
-const sseUrl = 'https://localhost:7110/Test';
+const endpoint = 'https://localhost:7110';
 
 const pfxPath = path.join(__dirname, '../Output.pfx');
 const password = 'Password.1';
 
-const agent = new https.Agent({
+// Create a client session
+const client = http2.connect(endpoint, {
     pfx: fs.readFileSync(pfxPath),
     passphrase: password,
-    rejectUnauthorized: false 
+    rejectUnauthorized: false
 });
 
-const eventSource = new EventSource(sseUrl, {
-    https: { agent }
+const req = client.request({
+    ':method': 'GET',
+    ':path': `/Test`
 });
 
-eventSource.onmessage = (event) => {
-    console.debug(`Received: ${event.data}`);
+req.on('response', (headers, flags) => {
+    console.debug('Response headers:', headers);
+});
 
-    if (event.data) {
-        const messageDeserialized = JSON.parse(event.data);
+req.on('data', (data) => {
+    try {
+        const messageDeserialized = JSON.parse(data);
 
         if (messageDeserialized) {
             var messageFormat =
@@ -36,22 +39,16 @@ eventSource.onmessage = (event) => {
             catch (e) {
                 console.error(`Error in Felis.Subscriber.Node.Console ${e.message}`);
             }
-
         }
     }
-};
+    catch (error) {
+        console.error(`Error in Felis.Subscriber.Node.Console ${error.message}`);
+    }
+});
 
-eventSource.onerror = (err) => {
-    console.error('SSE error:', err);
-    // Optionally close the connection if there are errors
-    //eventSource.close();
-};
+req.on('end', () => {
+    console.debug('Message sent and response received.');
+    client.close();
+});
 
-// Optional: handle when the connection opens
-eventSource.onopen = () => {
-    console.debug('SSE connection opened.');
-};
-
-const sleep = (ms) => {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
+req.end();

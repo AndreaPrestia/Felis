@@ -1,6 +1,5 @@
 ﻿using System.Net;
 using System.Text.Json;
-using Felis.Models;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -24,10 +23,7 @@ internal static class BrokerEndpoints
                     var messageId = messageBroker.Publish(topic, payload);
 
                     return Results.Accepted("/publish", messageId);
-                }).WithName("Publish").Produces<CreatedResult>(StatusCodes.Status201Created)
-            .Produces<BadRequestResult>(StatusCodes.Status400BadRequest)
-            .Produces<UnauthorizedResult>(StatusCodes.Status401Unauthorized)
-            .Produces<ForbidResult>(StatusCodes.Status403Forbidden);
+                });
 
         endpointRouteBuilder.MapGet("/{topic}",
             async (HttpContext context, [FromServices] MessageBroker messageBroker, [FromRoute] string topic) =>
@@ -37,30 +33,31 @@ internal static class BrokerEndpoints
 
                 var clientHostname = (await Dns.GetHostEntryAsync(clientIp)).HostName;
 
-                var subscriberEntity = messageBroker.Subscribe(clientIp.MapToIPv4().ToString(), clientHostname, topic);
+                var subscriptionEntity = messageBroker.Subscribe(clientIp.MapToIPv4().ToString(), clientHostname, topic);
 
-                context.Response.Headers.ContentType = "text/event-stream";
+                context.Response.Headers.ContentType = "application/x-ndjson";
                 context.Response.Headers.CacheControl = "no-cache";
                 context.Response.Headers.Connection = "keep-alive";
-
+                
                 var cancellationToken = context.RequestAborted;
 
-                await foreach (var message in subscriberEntity.MessageChannel.Reader.ReadAllAsync(cancellationToken))
+                await foreach (var message in subscriptionEntity.MessageChannel.Reader.ReadAllAsync(cancellationToken))
                 {
                     if (cancellationToken.IsCancellationRequested)
                     {
-                        messageBroker.UnSubscribe(subscriberEntity.Id);
+                        messageBroker.UnSubscribe(subscriptionEntity.Id);
                         break;
                     }
 
                     var messageString = JsonSerializer.Serialize(message);
-                    var sseMessage = $"data: {messageString}\n\n";
 
-                    await context.Response.WriteAsync(sseMessage, cancellationToken: cancellationToken);
+                    await context.Response.WriteAsync($"{messageString}\n", cancellationToken);
                     await context.Response.Body.FlushAsync(cancellationToken);
 
-                    messageBroker.Send(message.Id);
+                    messageBroker.Send(message.Id, subscriptionEntity.Subscriber);
                 }
-            }).ExcludeFromDescription();
+
+                return Results.Empty;
+            });
     }
 }

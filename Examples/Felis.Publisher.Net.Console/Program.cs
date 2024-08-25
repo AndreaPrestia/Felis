@@ -17,7 +17,7 @@ try
     using var httpClient = new HttpClient(new HttpClientHandler
     {
         ClientCertificateOptions = ClientCertificateOption.Manual,
-        SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
+        SslProtocols = SslProtocols.Tls13,
         ServerCertificateCustomValidationCallback = ValidateServerCertificate,
         ClientCertificates = { clientCertificate }
     })
@@ -36,7 +36,7 @@ try
 
         response.EnsureSuccessStatusCode();
 
-        await Task.Delay(3000);
+        await Task.Delay(20);
     }
 }
 catch (Exception ex)

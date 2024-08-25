@@ -58,7 +58,7 @@ public class ErrorMiddleware
                     Detail = ex.Message,
                     Status = status.Item1,
                     Title = status.Item2,
-                    Instance = $"{url}",
+                    Instance = $"{url} {method}",
                 }));
         }
     }

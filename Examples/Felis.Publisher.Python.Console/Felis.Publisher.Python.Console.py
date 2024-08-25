@@ -1,10 +1,8 @@
-import base64
 from datetime import datetime
 import time
 import ssl
-from requests.adapters import HTTPAdapter
-from urllib3.poolmanager import PoolManager
 import requests
+from requests.adapters import HTTPAdapter
 
 class SSLAdapter(HTTPAdapter):
     def __init__(self, pfx_path, pfx_password, *args, **kwargs):

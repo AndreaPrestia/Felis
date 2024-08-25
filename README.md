@@ -191,4 +191,4 @@ Though there is room for further improvement, the project is fit for becoming a 
 
 - Unit testing.
 - Stress testing.
-- Dockerize examples.
+- Dockerized examples.

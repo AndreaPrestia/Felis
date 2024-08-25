@@ -1,6 +1,7 @@
 ﻿using LiteDB;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
+using System.Text.Json.Serialization;
 using System.Threading.Channels;
 
 namespace Felis;
@@ -161,6 +162,7 @@ internal sealed class MessageBroker : IDisposable
 
 internal record MessageModel(Guid Id, string Topic, string? Payload, long Timestamp)
 {
+    [JsonIgnore]
     public long? Sent { get; set; }
 };
 

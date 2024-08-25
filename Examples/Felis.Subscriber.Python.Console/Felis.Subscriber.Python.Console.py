@@ -1,9 +1,6 @@
 import json
-import sseclient
 import requests
-import ssl
-from requests.adapters import HTTPAdapter
-from urllib3.poolmanager import PoolManager
+from digital_certificate.cert import Certificate
 
 def subscribe_to_stream(url):
     headers = {
@@ -11,7 +8,7 @@ def subscribe_to_stream(url):
     }
 
     try:
-        with requests.get(url, headers=headers, stream=True) as response:
+        with session.get(url, headers=headers, stream=True, cert=(_cert.pfxFile, _cert.private_key)) as response:
             # Ensure we have a successful connection
             response.raise_for_status()
 
@@ -31,29 +28,14 @@ def subscribe_to_stream(url):
     except requests.exceptions.RequestException as e:
         print(f"Error: {e}")
 
-class SSLAdapter(HTTPAdapter):
-    def __init__(self, pfx_path, pfx_password, *args, **kwargs):
-        self.pfx_path = pfx_path
-        self.pfx_password = pfx_password
-        super().__init__(*args, **kwargs)
+_cert = Certificate(
+    pfx_file="../Output.pfx",
+    password=b"Password.1"
+)
 
-    def init_poolmanager(self, *args, **kwargs):
-        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-        context.load_pkcs12(self.pfx_path, self.pfx_password)
-        kwargs['ssl_context'] = context
-        return super().init_poolmanager(*args, **kwargs)
-
-    def proxy_manager_for(self, *args, **kwargs):
-        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-        context.load_pkcs12(self.pfx_path, self.pfx_password)
-        kwargs['ssl_context'] = context
-        return super().proxy_manager_for(*args, **kwargs)
-
-pfx_path = '../Output.pfx'
-pfx_password = 'Password.1'
+_cert.read_pfx_file()
 
 session = requests.Session()
-session.mount('https://', SSLAdapter(pfx_path, pfx_password))
 
 stream_url = 'https://localhost:7110/Test'
 

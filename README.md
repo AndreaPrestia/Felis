@@ -154,14 +154,10 @@ This repository provides the examples of usage:
 - **Felis.Subscriber.Net.Console**
 - **Felis.Publisher.Node.Console**
 - **Felis.Subscriber.Node.Console**
-- **Felis.Publisher.Python.Console**
-- **Felis.Subscriber.Python.Console**
-
-Please be aware that the Python examples could have some problem sometimes, i'm not an expert of that language :P.
 
 **Felis.Broker.Console**
 
-A console application, containing the two endpoints, **POST** and **GET** exposed by Felis Broker and documented in the following chapters.
+A console application, that reference Felis project.
 
 **Publish a message**
 

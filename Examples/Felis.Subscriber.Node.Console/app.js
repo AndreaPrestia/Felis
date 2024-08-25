@@ -25,9 +25,9 @@ req.on('response', (headers, flags) => {
     console.debug('Response headers:', headers);
 });
 
-req.on('data', (chunk) => {
+req.on('data', (data) => {
     try {
-        const messageDeserialized = JSON.parse(chunk);
+        const messageDeserialized = JSON.parse(data);
 
         if (messageDeserialized) {
             var messageFormat =

@@ -39,7 +39,8 @@ internal sealed class MessageBroker : IDisposable
         var subscription = new Subscription(ipAddress, hostname, topic);
 
         _logger.LogDebug(
-            $"Subscriber {subscription.Hostname} - {subscription.IpAddress} subscribed to topic {subscription.Topic} at {subscription.Timestamp}");
+            "Subscribed '{hostname}' with IP: '{ipAddress}' to topic '{topic}' at {timestamp}",
+            subscription.Subscriber.Hostname, subscription.Subscriber.IpAddress, subscription.Subscriber.Topic, subscription.Subscriber.Timestamp);
 
         var subscribers = _topicSubscriptions.GetOrAdd(topic.Trim(), _ => new List<Subscription>());
         lock (_lock)
@@ -52,7 +53,8 @@ internal sealed class MessageBroker : IDisposable
             {
                 var writtenMessage = subscription.MessageChannel.Writer.TryWrite(message);
                 _logger.LogDebug(
-                    $"Written message {message.Id}: {writtenMessage} for subscription {subscription.Hostname} - {subscription.IpAddress} - {subscription.Topic}");
+                    "Written message '{id}': {operationResult} for subscriber '{hostname}' with IP '{ipAddress}' for topic '{topic}'",
+                    message.Id, writtenMessage, subscription.Subscriber.Hostname, subscription.Subscriber.IpAddress, subscription.Subscriber.Topic);
             }
         }
 
@@ -70,7 +72,8 @@ internal sealed class MessageBroker : IDisposable
             var subscribers = _topicSubscriptions[topic];
             lock (_lock)
             {
-                subscribers.RemoveAll(s => s.Id == id);
+                var unSubscribeResult = subscribers.RemoveAll(s => s.Id == id);
+                _logger.LogInformation("UnSubscribed {id}: {operationResult}", id, unSubscribeResult);
             }
         }
     }
@@ -91,7 +94,7 @@ internal sealed class MessageBroker : IDisposable
         foreach (var subscriber in subscribers)
         {
             var writtenMessage = subscriber.MessageChannel.Writer.TryWrite(message);
-            _logger.LogDebug($"Written message {message.Id}: {writtenMessage}");
+            _logger.LogDebug("Written message '{id}': {operationResult}", message.Id, writtenMessage);
         }
 
         return message.Id;
@@ -101,12 +104,14 @@ internal sealed class MessageBroker : IDisposable
     /// Sets a message in sent status
     /// </summary>
     /// <param name="messageId"></param>
+    /// <param name="subscriber"></param>
     /// <returns>If message has been set as sent or not</returns>
-    public bool Send(Guid messageId)
+    public void Send(Guid messageId, SubscriberModel subscriber)
     {
         if (messageId == Guid.Empty)
         {
-            throw new ArgumentException(nameof(messageId));
+            _logger.LogWarning("messageId is an empty Guid. No processing will be done");
+            return;
         }
 
         lock (_lock)
@@ -114,17 +119,21 @@ internal sealed class MessageBroker : IDisposable
             var messageFound = _messageCollection.FindById(messageId) ?? throw new InvalidOperationException(
                 $"Message {messageId} not found. The send will not be set.");
 
-            if (messageFound.Sent.HasValue)
+            var sentModel = messageFound.Send.FirstOrDefault(e =>
+                e.Subscriber.IpAddress == subscriber.IpAddress && e.Subscriber.Hostname == subscriber.Hostname &&
+                e.Subscriber.Topic == subscriber.Topic);
+
+            if (sentModel != null)
             {
-                throw new InvalidOperationException(
-                    $"Message {messageId} already sent at {messageFound.Sent.Value}. The send will not be set.");
+                _logger.LogWarning("Message '{id}' already sent at {timestamp}. The send will not be set.", messageId, sentModel.Sent);
             }
 
-            messageFound.Sent = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
+            messageFound.Send.Add(new SendModel(subscriber,
+                new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds()));
 
             var updateResult = _messageCollection.Update(messageFound.Id, messageFound);
 
-            return updateResult;
+            _logger.LogDebug("Message '{id}' sent: {operationResult}", messageId, updateResult);
         }
     }
 
@@ -139,6 +148,8 @@ internal sealed class MessageBroker : IDisposable
                 new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds());
 
             _messageCollection.Insert(message.Id, message);
+            
+            _logger.LogDebug("Added message '{id}' in storage", message.Id);
 
             return message;
         }
@@ -150,7 +161,8 @@ internal sealed class MessageBroker : IDisposable
 
         lock (_lock)
         {
-            return _messageCollection.Find(x => x.Topic == topic && x.Sent == null && x.Payload != null).OrderBy(x => x.Timestamp).ToList();
+            return _messageCollection.Find(x => x.Topic == topic && x.Send.Count == 0 && x.Payload != null)
+                .OrderBy(x => x.Timestamp).ToList();
         }
     }
 
@@ -162,26 +174,24 @@ internal sealed class MessageBroker : IDisposable
 
 internal record MessageModel(Guid Id, string Topic, string? Payload, long Timestamp)
 {
-    [JsonIgnore]
-    public long? Sent { get; set; }
+    [JsonIgnore] public List<SendModel> Send { get; } = new();
 };
 
-internal class Subscription
+internal record SubscriberModel(string Hostname, string IpAddress, string Topic, long Timestamp);
+
+internal record SendModel(SubscriberModel Subscriber, long Sent);
+
+internal record Subscription
 {
     public Guid Id { get; }
     public Channel<MessageModel> MessageChannel { get; }
-    public string? Hostname { get; }
-    public string? IpAddress { get; }
-    public string Topic { get; }
-    public long Timestamp { get; }
+    public SubscriberModel Subscriber { get; }
 
     public Subscription(string ipAddress, string hostname, string topic)
     {
         Id = Guid.NewGuid();
         MessageChannel = Channel.CreateUnbounded<MessageModel>();
-        Hostname = hostname;
-        IpAddress = ipAddress;
-        Topic = topic;
-        Timestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
+        Subscriber = new SubscriberModel(hostname, ipAddress, topic,
+            new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds());
     }
 }

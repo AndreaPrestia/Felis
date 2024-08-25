@@ -33,7 +33,7 @@ internal static class BrokerEndpoints
 
                 var clientHostname = (await Dns.GetHostEntryAsync(clientIp)).HostName;
 
-                var subscriberEntity = messageBroker.Subscribe(clientIp.MapToIPv4().ToString(), clientHostname, topic);
+                var subscriptionEntity = messageBroker.Subscribe(clientIp.MapToIPv4().ToString(), clientHostname, topic);
 
                 context.Response.Headers.ContentType = "application/x-ndjson";
                 context.Response.Headers.CacheControl = "no-cache";
@@ -41,11 +41,11 @@ internal static class BrokerEndpoints
                 
                 var cancellationToken = context.RequestAborted;
 
-                await foreach (var message in subscriberEntity.MessageChannel.Reader.ReadAllAsync(cancellationToken))
+                await foreach (var message in subscriptionEntity.MessageChannel.Reader.ReadAllAsync(cancellationToken))
                 {
                     if (cancellationToken.IsCancellationRequested)
                     {
-                        messageBroker.UnSubscribe(subscriberEntity.Id);
+                        messageBroker.UnSubscribe(subscriptionEntity.Id);
                         break;
                     }
 
@@ -54,7 +54,7 @@ internal static class BrokerEndpoints
                     await context.Response.WriteAsync($"{messageString}\n", cancellationToken);
                     await context.Response.Body.FlushAsync(cancellationToken);
 
-                    messageBroker.Send(message.Id);
+                    messageBroker.Send(message.Id, subscriptionEntity.Subscriber);
                 }
 
                 return Results.Empty;

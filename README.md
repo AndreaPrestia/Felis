@@ -225,8 +225,10 @@ This repository provides the examples of usage:
 - **Felis.Broker.Console**
 - **Felis.Publisher.Net.Console**
 - **Felis.Subscriber.Net.Console**
+- **Felis.Subscriber.NoAck.Net.Console**
 - **Felis.Publisher.Node.Console**
 - **Felis.Subscriber.Node.Console**
+- **Felis.Subscriber.NoAck.Node.Console**
 
 **Felis.Broker.Console**
 
@@ -251,6 +253,8 @@ These application contains the logic to subscribe to messages by topic.
 **Usage of Subscribers**
 
 Just launch the **Subscriber** applications in the **Examples** directory.
+
+The subscribers with the **NoAck** reference in their name demonstrates how they can reprocess a message N times as defined by the publisher.
 
 **Conclusion**
 

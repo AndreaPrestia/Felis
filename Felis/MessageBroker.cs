@@ -23,8 +23,10 @@ internal sealed class MessageBroker : IDisposable
         _logger = logger;
         _database = database;
         _messageCollection = _database.GetCollection<MessageModel>("messages");
+        _messageCollection.EnsureIndex(x => x.Timestamp);
+        _messageCollection.EnsureIndex(x => x.Topic);
         _timer = new Timer();
-        _timer.Interval = 5000;
+        _timer.Interval = 7000;
         _timer.Elapsed += OnTimedEvent!;
         _timer.AutoReset = true;
         _timer.Enabled = true;
@@ -66,7 +68,7 @@ internal sealed class MessageBroker : IDisposable
                     message.Id, writtenMessage, subscription.Subscriber.Hostname, subscription.Subscriber.IpAddress,
                     subscription.Subscriber.Topic);
             }
-            
+
             return subscription;
         }
     }
@@ -130,8 +132,13 @@ internal sealed class MessageBroker : IDisposable
                 return;
             }
 
-            var messageFound = _messageCollection.FindById(messageId) ?? throw new InvalidOperationException(
-                $"Message '{messageId}' not found. The send will not be set.");
+            var messageFound = _messageCollection.FindById(messageId);
+
+            if (messageFound == null)
+            {
+                _logger.LogWarning("Message '{messageId}' not found. The send will not be set.", messageId);
+                return;
+            }
 
             var sentModel = messageFound.Tracking.FirstOrDefault(e =>
                 e.Subscriber.IpAddress == subscriber.IpAddress && e.Subscriber.Hostname == subscriber.Hostname &&
@@ -147,7 +154,7 @@ internal sealed class MessageBroker : IDisposable
             messageFound.Tracking.Add(new TrackingModel(subscriber,
                 new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds()));
 
-            var updateResult = _messageCollection.Update(messageFound.Id, messageFound);
+            var updateResult = _messageCollection.Update(messageId, messageFound);
 
             _logger.LogDebug("Message '{id}' sent: {operationResult}", messageId, updateResult);
         }
@@ -170,8 +177,13 @@ internal sealed class MessageBroker : IDisposable
                 return;
             }
 
-            var messageFound = _messageCollection.FindById(messageId) ?? throw new InvalidOperationException(
-                $"Message '{messageId}' not found. The ack will not be set.");
+            var messageFound = _messageCollection.FindById(messageId);
+
+            if (messageFound == null)
+            {
+                _logger.LogWarning("Message '{messageId}' not found. The ack will not be set.", messageId);
+                return;
+            }
 
             var sentModel = messageFound.Tracking.FirstOrDefault(e =>
                 e.Subscriber.IpAddress == ipAddress && e.Subscriber.Hostname == hostname &&
@@ -185,7 +197,7 @@ internal sealed class MessageBroker : IDisposable
 
             sentModel.Ack = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
 
-            var updateResult = _messageCollection.Update(messageFound.Id, messageFound);
+            var updateResult = _messageCollection.Update(messageFound);
 
             _logger.LogDebug("Message '{id}' sent: {operationResult}", messageId, updateResult);
         }
@@ -224,104 +236,76 @@ internal sealed class MessageBroker : IDisposable
                 .OrderBy(x => x.Timestamp).ToList();
         }
     }
-    
+
     private void OnTimedEvent(object source, System.Timers.ElapsedEventArgs e)
     {
         lock (_lock)
         {
-            //find messages with subscribers to rejected because reached the retry limit
-            var messagesToRejectWithRetriesDone = _messageCollection.Query().Where(x => x.RetryAttempts.HasValue && x.Tracking.Any(trackingModel =>
-                _topicSubscriptions.Values.SelectMany(r => r).ToList().Any(ts =>
-                    ts.Subscriber.IpAddress == trackingModel.Subscriber.IpAddress &&
-                    ts.Subscriber.Hostname == trackingModel.Subscriber.Hostname && ts.Subscriber.Topic == x.Topic && trackingModel.Ack == null && trackingModel.Rejected == null && trackingModel.Retries.Count == x.RetryAttempts.Value))).ToList();
-           
-            if (messagesToRejectWithRetriesDone != null && messagesToRejectWithRetriesDone.Any())
+            var messagesToUpdate = _messageCollection.Query().Where(x => x.RetryAttempts.HasValue && x.Tracking.Count > 0)
+                .OrderBy(m => m.Timestamp).ToList();
+
+            if (messagesToUpdate != null && messagesToUpdate.Any())
             {
-                foreach (var messageToRejectWithRetryDone in messagesToRejectWithRetriesDone)
+                _database.BeginTrans();
+                try
                 {
-                    messageToRejectWithRetryDone.Tracking.Where(trackingModel =>
-                            _topicSubscriptions.Values.SelectMany(r => r).ToList().Any(ts =>
-                                ts.Subscriber.IpAddress == trackingModel.Subscriber.IpAddress &&
-                                ts.Subscriber.Hostname == trackingModel.Subscriber.Hostname &&
-                                ts.Subscriber.Topic == messageToRejectWithRetryDone.Topic && trackingModel.Ack == null && trackingModel.Rejected == null && trackingModel.Retries.Count == messageToRejectWithRetryDone.RetryAttempts!.Value)).ToList()
-                        .ForEach(
-                            r =>
-                            {
-                                r.Rejected = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
-                            });
-
-                    var updatedMessageToRejectResult = _messageCollection.Update(messageToRejectWithRetryDone);
-                    _logger.LogDebug("Updated rejected message with retry done '{id}': {operationResult}", messageToRejectWithRetryDone.Id, updatedMessageToRejectResult);
-                }
-            }
-            
-            //find message with disconnected subs and reject them
-            var messagesToReject = _messageCollection.Query().Where(x => x.Tracking.Any(trackingModel =>
-                _topicSubscriptions.Values.SelectMany(r => r).ToList().Any(ts =>
-                    ts.Subscriber.IpAddress == trackingModel.Subscriber.IpAddress &&
-                    ts.Subscriber.Hostname == trackingModel.Subscriber.Hostname && ts.Subscriber.Topic == x.Topic && trackingModel.Ack == null && trackingModel.Rejected == null))).ToList();
-
-            if (messagesToReject != null && messagesToReject.Any())
-            {
-                foreach (var messageToReject in messagesToReject)
-                {
-                    messageToReject.Tracking.Where(trackingModel =>
-                            _topicSubscriptions.Values.SelectMany(r => r).ToList().Any(ts =>
-                                ts.Subscriber.IpAddress == trackingModel.Subscriber.IpAddress &&
-                                ts.Subscriber.Hostname == trackingModel.Subscriber.Hostname &&
-                                ts.Subscriber.Topic == messageToReject.Topic && trackingModel.Ack == null && trackingModel.Rejected == null)).ToList()
-                        .ForEach(
-                            r =>
-                            {
-                                r.Rejected = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
-                            });
-
-                    var updatedMessageToRejectResult = _messageCollection.Update(messageToReject);
-                    _logger.LogDebug("Updated rejected message without subscribers '{id}': {operationResult}", messageToReject.Id, updatedMessageToRejectResult);
-                }
-            }
-
-            var currentTimestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
-            
-            //find messages with subscribers connected that has not received ack
-            var messagesToRetry = _messageCollection.Query().Where(x => x.RetryAttempts.HasValue && x.Tracking.Any(trackingModel =>
-                _topicSubscriptions.Values.SelectMany(r => r).ToList().Any(ts =>
-                    ts.Subscriber.IpAddress == trackingModel.Subscriber.IpAddress &&
-                    ts.Subscriber.Hostname == trackingModel.Subscriber.Hostname && ts.Subscriber.Topic == x.Topic 
-                    && trackingModel.Ack == null 
-                    && trackingModel.Rejected == null && trackingModel.Retries.Count < x.RetryAttempts.Value && currentTimestamp - trackingModel.Sent > 60))).ToList();
-           
-            if (messagesToRetry != null && messagesToRetry.Any())
-            {
-                foreach (var messageToRetry in messagesToRetry)
-                {
-                    messageToRetry.Tracking.Where(trackingModel =>
-                            _topicSubscriptions.Values.SelectMany(r => r).ToList().Any(ts =>
-                                ts.Subscriber.IpAddress == trackingModel.Subscriber.IpAddress &&
-                                ts.Subscriber.Hostname == trackingModel.Subscriber.Hostname &&
-                                ts.Subscriber.Topic == messageToRetry.Topic 
-                                && trackingModel.Ack == null 
-                                && trackingModel.Rejected == null 
-                                && trackingModel.Retries.Count < messageToRetry.RetryAttempts!.Value
-                                && currentTimestamp - trackingModel.Sent > 60)).ToList()
-                        .ForEach(
-                            r =>
-                            {
-                                r.Retries.Add(new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds());
-                                //schedule message on the channel for subscriber
-                                _topicSubscriptions[messageToRetry.Topic].ForEach(subscription =>
+                    foreach (var messageToUpdate in messagesToUpdate)
+                    {
+                        //find messages with subscribers to rejected because reached the retry limit
+                        messageToUpdate.Tracking.Where(trackingModel =>
+                                _topicSubscriptions.Values.Any(s => s.Any(ts =>
+                                    ts.Subscriber.IpAddress == trackingModel.Subscriber.IpAddress &&
+                                    ts.Subscriber.Hostname == trackingModel.Subscriber.Hostname &&
+                                    ts.Subscriber.Topic == messageToUpdate.Topic) && trackingModel.Ack == null &&
+                                    trackingModel.Rejected == null &&
+                                    trackingModel.Retries.Count == messageToUpdate.RetryAttempts!.Value)).ToList()
+                            .ForEach(
+                                r =>
                                 {
-                                    if (subscription.Subscriber.IpAddress == r.Subscriber.IpAddress &&
-                                        subscription.Subscriber.Hostname == r.Subscriber.Hostname)
-                                    {
-                                        subscription.MessageChannel.Writer.TryWrite(messageToRetry);
-                                        _logger.LogDebug("Enqueued for retry message '{messageId}' for subscription '{subscriptionId}' for subscriber with IP'{ipAddress}' for topic '{topic}'", messageToRetry.Id, subscription.Id, subscription.Subscriber.IpAddress, messageToRetry.Topic);
-                                    }
+                                    r.Rejected = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
                                 });
-                            });
 
-                    var updatedMessageToRetryResult = _messageCollection.Update(messageToRetry);
-                    _logger.LogDebug("Updated message to retry done '{id}': {operationResult}", messageToRetry.Id, updatedMessageToRetryResult);
+                        //find messages with subscribers to be enqueued again
+                        var currentTimestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
+
+                        messageToUpdate.Tracking.Where(trackingModel =>
+                                _topicSubscriptions.Values.Any(s => s.Any(ts =>
+                                    ts.Subscriber.IpAddress == trackingModel.Subscriber.IpAddress &&
+                                    ts.Subscriber.Hostname == trackingModel.Subscriber.Hostname &&
+                                    ts.Subscriber.Topic == messageToUpdate.Topic)
+                                    && trackingModel.Ack == null
+                                    && trackingModel.Rejected == null
+                                    && trackingModel.Retries.Count < messageToUpdate.RetryAttempts!.Value - 1
+                                    && currentTimestamp - trackingModel.Sent > 60)).ToList()
+                            .ForEach(
+                                r =>
+                                {
+                                    r.Retries.Add(new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds());
+                                    //schedule message on the channel for subscriber
+                                    _topicSubscriptions[messageToUpdate.Topic].ForEach(subscription =>
+                                    {
+                                        if (subscription.Subscriber.IpAddress == r.Subscriber.IpAddress &&
+                                            subscription.Subscriber.Hostname == r.Subscriber.Hostname)
+                                        {
+                                            subscription.MessageChannel.Writer.TryWrite(messageToUpdate);
+                                            _logger.LogDebug(
+                                                "Enqueued for retry message '{messageId}' for subscription '{subscriptionId}' for subscriber with IP'{ipAddress}' for topic '{topic}'",
+                                                messageToUpdate.Id, subscription.Id, subscription.Subscriber.IpAddress,
+                                                messageToUpdate.Topic);
+                                        }
+                                    });
+                                });
+                    }
+
+                    var updatedMessageToUpdateResult = _messageCollection.Update(messagesToUpdate);
+                    _logger.LogDebug("Updated messages {operationResult}", updatedMessageToUpdateResult);
+
+                    _database.Commit();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError("An error '{error}' has occurred during retry check", ex.Message);
+                    _database.Rollback();
                 }
             }
         }
@@ -336,7 +320,7 @@ internal sealed class MessageBroker : IDisposable
 internal record MessageModel(Guid Id, string Topic, string? Payload, long Timestamp)
 {
     [JsonIgnore] public int? RetryAttempts { get; set; }
-    [JsonIgnore] public List<TrackingModel> Tracking { get; } = new();
+    [JsonIgnore] public List<TrackingModel> Tracking { get; set; } = new();
 };
 
 internal record SubscriberModel(string Hostname, string IpAddress, string Topic, long Timestamp);

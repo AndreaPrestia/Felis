@@ -61,7 +61,7 @@ internal static class BrokerEndpoints
                 return Results.Empty;
             });
 
-        endpointRouteBuilder.MapPost("/messages/{id}/ack",
+        endpointRouteBuilder.MapGet("/messages/{id}/ack",
             async (HttpContext context, [FromServices] MessageBroker messageBroker, [FromRoute] Guid id) =>
             {
                 var clientIp = (context.Connection.RemoteIpAddress) ??

@@ -54,10 +54,7 @@ try
                             $"Received message - {messageDeserialized?.Id} with topic - {messageDeserialized?.Topic} with payload - {messageDeserialized?.Payload}";
                           
                         Console.WriteLine(messageFormat);
-
-                        var ackResponse = await httpClient.GetAsync($"/messages/{messageDeserialized?.Id}/ack");
-                        
-                        ackResponse.EnsureSuccessStatusCode();
+                        Console.WriteLine($"I will not send ACK, so the message '{messageDeserialized?.Id}' will be reprocessed other times until the retry policy is consumed.");
                     }
                     catch (Exception e)
                     {

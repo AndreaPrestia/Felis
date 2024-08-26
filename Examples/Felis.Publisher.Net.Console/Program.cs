@@ -24,6 +24,8 @@ try
     {
         BaseAddress = uri
     };
+    
+    httpClient.DefaultRequestHeaders.Add("x-retry", "3");
 
     while (true)
     {
@@ -36,7 +38,7 @@ try
 
         response.EnsureSuccessStatusCode();
 
-        await Task.Delay(20);
+        await Task.Delay(5000);
     }
 }
 catch (Exception ex)

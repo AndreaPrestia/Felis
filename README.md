@@ -52,15 +52,29 @@ This endpoint returns the unique identifier of the message published, assigned b
 curl -X 'POST' \
   'https://localhost:7110/topic' \
   -H 'accept: application/json' \
-  -H 'Content-Type: application/json' \
+  -H 'content-Type: application/json' \
+  -H 'x-retry: 5' \
   -d '{
         "description": "Test description"
 }'
 ```
 
-***Request***
+****Request body****
+```
+{
+        "description": "Test description"
+}
+```
 
-The string of the message to dispatch.
+The string of the message to dispatch. The json above its just an example.
+
+****Request headers****
+
+Header | Value                                | Context                                                                     |
+--- |--------------------------------------|-----------------------------------------------------------------------------|
+accept | application/json                     | The accept header.                                                          |
+content-Type | application/json                     | The content type returned.                                                  |
+x-retry | 5  (a number that is more than zero) | How many retries on ACK failures apply to the message for every subscriber. |
 
 ***Response***
 
@@ -92,14 +106,20 @@ This endpoint is used to subscribe to a subset of topics using application/x-ndj
 curl -X 'GET' \
   'https://localhost:7110/topic' \
   -H 'accept: application/json' \
-  -H 'Content-Type: application/x-ndjson'
 ```
 
-***Request***
+***Request route***
 
 Property | Type | Context |
 --- | --- | --- |
 topic | string | the topic to subscribe to. |
+
+****Request Headers****
+
+Header | Value                                | Context                                                                     |
+--- |--------------------------------------|-----------------------------------------------------------------------------|
+accept | application/json                     | The accept header.                                                          |
+
 
 ***Response***
 
@@ -131,6 +151,59 @@ id | guid   | the message unique id assigned by the broker.             |
 topic | string | the topic where the message has been published.           |
 payload | string | the actual content of the message published on the topic. |
 timestamp | number | the timestamp of the message when it was published.       |
+
+****Response Headers****
+
+Header | Value                | Context                                   |
+--- |----------------------|-------------------------------------------|
+content-Type | application/x-ndjson | The content type returned as json stream. |
+cache-control | no-cache             | It avoids to cache the response           |
+connection | keep-alive           | It keeps the connection alive             |
+
+When an error occurs it is used the standard [RFC7807](https://datatracker.ietf.org/doc/html/rfc7807) to return HTTPS APIs errors with a **Content-Type** header with value **application/problem+json**
+and the following object:
+
+```
+{
+    Type = "https://httpstatuses.io/500",
+    Detail = "Error details",
+    Status = 500,
+    Title = "An error has occurred",
+    Instance = "/Test GET",
+}
+```
+
+**ACK a message receive**
+
+This endpoint is used to ACK a message receive. If its not invoked after a receive and the message has been published with an **x-retry** header it will be re-sent N times as defined in the **x-retry** header.
+Be aware that a message that is not ACK in under 1 minute from dispatch and/or after the retries are completed is considered **rejected**.
+
+```
+curl -X 'GET' \
+  'https://localhost:7110/messages/ac4625da-e922-4c2b-a7e7-aef21ece963c/ack' \
+  -H 'accept: application/json' \
+```
+
+***Request route***
+
+Property | Type | Context                |
+--- | --- |------------------------|
+id | string | the message id to ACK. |
+
+****Request Headers****
+
+Header | Value                                | Context                                                                     |
+--- |--------------------------------------|-----------------------------------------------------------------------------|
+accept | application/json                     | The accept header.                                                          |
+
+***Response***
+
+Status code | Type | Context                                                                                                       |
+--- | --- |---------------------------------------------------------------------------------------------------------------|
+204 | NoContentResult | When nothing is more available from the topic |
+400 | BadRequestResult | When a validation or something not related to the authorization process fails.                                |
+401 | UnauthorizedResult | When an operation fails due to missing authorization.                                                         |
+403 | ForbiddenResult | When an operation fails because it is not allowed in the context.                                             |
 
 When an error occurs it is used the standard [RFC7807](https://datatracker.ietf.org/doc/html/rfc7807) to return HTTPS APIs errors with a **Content-Type** header with value **application/problem+json**
 and the following object:

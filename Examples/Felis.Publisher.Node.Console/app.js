@@ -62,6 +62,3 @@ const sleep = (ms) => {
         console.error(`Error in Felis.Publisher.Node.Console ${e.message}`);
     }
 })();
-
-
-

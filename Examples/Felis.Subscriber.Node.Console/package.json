@@ -1,18 +1,14 @@
 {
   "name": "felis.subscriber.node.console",
-  "version": "1.0.0",
-  "description": "",
+  "version": "0.0.0",
+  "description": "Felis.Subscriber.Node.Console",
   "main": "app.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "author": {
+    "name": ""
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "devDependencies": {
-    "eslint": "^9.8.0"
+    "eslint": "^8.21.0"
   },
-  "dependencies": {
-    "eventsource": "^2.0.2"
+  "eslintConfig": {
   }
 }

@@ -4,6 +4,8 @@ services:
     build:
       context: .
       dockerfile: Examples/Felis.Broker.Console/Dockerfile
+    ports:
+      - "7110:7110"
 
   felis.publisher.net.console:
     image: ${DOCKER_REGISTRY-}felispublishernetconsole

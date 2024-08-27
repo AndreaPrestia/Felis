@@ -8,11 +8,7 @@ try
     Console.WriteLine("Started Felis.Publisher.Net.Console");
 
     var uri = new Uri("https://localhost:7110");
-
-    var currentDirectory = Path.GetDirectoryName(Directory.GetCurrentDirectory());
-    var pfxPath = Path.Combine(currentDirectory!, @"..\..\..\Output.pfx");
-    var certificatePath = Path.GetFullPath(pfxPath);
-    var clientCertificate = new X509Certificate2(certificatePath, "Password.1");
+    var clientCertificate = new X509Certificate2("Output.pfx", "Password.1");
 
     using var httpClient = new HttpClient(new HttpClientHandler
     {

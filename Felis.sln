@@ -6,9 +6,6 @@ MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Felis", "Felis\Felis.csproj", "{EF2F82C1-9624-4F20-965C-19DB9018A141}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples", "Examples", "{4C950E14-197A-4B6C-8130-44EBE06BA7EB}"
-	ProjectSection(SolutionItems) = preProject
-		Examples\Output.pfx = Examples\Output.pfx
-	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Felis.Broker.Console", "Examples\Felis.Broker.Console\Felis.Broker.Console.csproj", "{5764F447-D3B1-491F-B995-D5390569B1B6}"
 EndProject

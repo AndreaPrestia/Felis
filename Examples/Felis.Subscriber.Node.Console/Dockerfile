@@ -5,11 +5,11 @@ FROM node:18
 WORKDIR /Examples/Felis.Subscriber.Node.Console
 
 # Copy app source code
-COPY package*.json ./
-COPY . .
-
+COPY package.json .
 # Install dependencies
-RUN npm install --production
+
+RUN npm install
+COPY . ./
 
 # Run the Node.js console app
 CMD ["node", "app.js"]

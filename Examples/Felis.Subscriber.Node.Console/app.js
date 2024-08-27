@@ -6,7 +6,7 @@ const http2 = require('http2');
 
 const endpoint = 'https://localhost:7110';
 
-const pfxPath = path.join(__dirname, '../Output.pfx');
+const pfxPath = path.join(__dirname, 'Output.pfx');
 const password = 'Password.1';
 
 // Create a client session

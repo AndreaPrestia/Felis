@@ -30,6 +30,9 @@
   <ItemGroup>
     <Content Include="app.js" />
     <Content Include="Dockerfile" />
+    <Content Include="Output.pfx">
+      <Publish>True</Publish>
+    </Content>
     <Content Include="package.json" />
     <Content Include="README.md" />
   </ItemGroup>

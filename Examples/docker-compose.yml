@@ -1,0 +1,40 @@
+﻿version: '4.33.1'
+
+services:
+  broker:
+    build: ./Examples/Felis.Broker.Console
+    container_name: broker
+    ports:
+      - "7110:7110"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      
+  dotnet-publisher:
+    build: ./Examples/Felis.Publisher.Net.Console
+    container_name: dotnet-publisher
+    entrypoint: ["dotnet", "Felis.Publisher.Net.Console.dll"]
+
+  dotnet-subscriber:
+    build: ./Examples/Felis.Subscriber.Net.Console
+    container_name: dotnet-subscriber
+    entrypoint: ["dotnet", "Felis.Subscriber.Net.Console.dll"]
+
+  dotnet-subscriber-no-ack:
+    build: ./Examples/Felis.Subscriber.NoAck.Net.Console
+    container_name: dotnet-subscriber-no-ack
+    entrypoint: ["dotnet", "Felis.Subscriber.NoAck.Net.Console.dll"]
+
+  node-publisher:
+    build: ./Examples/Felis.Publisher.Node.Console
+    container_name: node-publisher
+    entrypoint: ["node", "app.js"]
+  
+  node-subscriber:
+    build: ./Examples/Felis.Subscriber.Node.Console
+    container_name: node-subscriber
+    entrypoint: [ "node", "app.js" ]
+    
+  node-subscriber-no-ack:
+    build: ./Examples/Felis.Subscriber.NoAck.Node.Console
+    container_name: node-subscriber-no-ack
+    entrypoint: [ "node", "app.js" ]

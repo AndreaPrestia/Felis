@@ -4,10 +4,10 @@ const http2 = require('http2');
 const fs = require('fs');
 const path = require('path');
 
-const publishMessage = async (topic) => {
+const publishMessage = (topic) => {
     const endpoint = 'https://localhost:7110';
 
-    const pfxPath = path.join(__dirname, '../Output.pfx');
+    const pfxPath = path.join(__dirname, 'Output.pfx');
     const password = 'Password.1';
 
     // Create a client session
@@ -62,6 +62,3 @@ const sleep = (ms) => {
         console.error(`Error in Felis.Publisher.Node.Console ${e.message}`);
     }
 })();
-
-
-

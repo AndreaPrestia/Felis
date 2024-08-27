@@ -14,9 +14,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <EmbeddedResource Include="Output.pfx">
-        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      </EmbeddedResource>
+      <EmbeddedResource Include="Output.pfx" />
     </ItemGroup>
 
     <ItemGroup>

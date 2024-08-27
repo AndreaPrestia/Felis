@@ -5,7 +5,7 @@ using System.Security.Cryptography.X509Certificates;
 
 try
 {
-    Console.WriteLine("Started Felis.Publisher.Net.Console");
+    Console.WriteLine("Started Felis.Publisher.Ttl.Net.Console");
 
     var uri = new Uri("https://localhost:7110");
     var clientCertificate = new X509Certificate2("Output.pfx", "Password.1");
@@ -15,20 +15,21 @@ try
         ClientCertificateOptions = ClientCertificateOption.Manual,
         SslProtocols = SslProtocols.Tls13,
         ServerCertificateCustomValidationCallback = ValidateServerCertificate,
-        ClientCertificates = { clientCertificate } 
+        ClientCertificates = { clientCertificate }
     })
     {
         BaseAddress = uri
     };
     
     httpClient.DefaultRequestHeaders.Add("x-retry", "3");
+    httpClient.DefaultRequestHeaders.Add("x-ttl", "5");
 
     while (true)
     {
         var response = await httpClient.PostAsJsonAsync("/Test",
             new
             {
-                Description = $"Test at: {DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()} from .NET publisher"
+                Description = $"Test at: {DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()} from .NET publisher with TTL of 10 seconds"
             },
             CancellationToken.None);
 
@@ -39,7 +40,7 @@ try
 }
 catch (Exception ex)
 {
-    Console.Error.WriteLine($"Error in Felis.Publisher.Net.Console {ex.Message}");
+    Console.Error.WriteLine($"Error in Felis.Publisher.Ttl.Net.Console {ex.Message}");
 }
 
 static bool ValidateServerCertificate(HttpRequestMessage request, X509Certificate2? certificate, X509Chain? chain, SslPolicyErrors errors)

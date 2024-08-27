@@ -35,23 +35,15 @@ req.on('data', (data) => {
 
             try {
                 console.info(messageFormat);
-
-                const ackReq = client.request({
-                    ':method': 'GET',
-                    ':path': `/messages/${messageDeserialized.Id}/ack`
-                });
-
-                ackReq.on('response', (headers, flags) => {
-                    console.debug('ACK Response headers:', headers);
-                });
+                console.info(`I will not send ACK, so the message '${messageDeserialized.Id}' will be reprocessed other times until the retry policy is consumed.`)
             }
             catch (e) {
-                console.error(`Error in Felis.Subscriber.Node.Console ${e.message}`);
+                console.error(`Error in Felis.Subscriber.NoAck.Node.Console ${e.message}`);
             }
         }
     }
     catch (error) {
-        console.error(`Error in Felis.Subscriber.Node.Console ${error.message}`);
+        console.error(`Error in Felis.Subscriber.NoAck.Node.Console ${error.message}`);
     }
 });
 

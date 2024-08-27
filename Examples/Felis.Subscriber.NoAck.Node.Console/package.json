@@ -1,7 +1,7 @@
 {
-  "name": "felis.subscriber.node.console",
+  "name": "felis.subscriber.no-ack.node.console",
   "version": "0.0.0",
-  "description": "Felis.Subscriber.Node.Console",
+  "description": "Felis.Subscriber.NoAck.Node.Console",
   "main": "app.js",
   "author": {
     "name": ""

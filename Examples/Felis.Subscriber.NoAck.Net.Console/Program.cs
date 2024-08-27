@@ -7,7 +7,7 @@ using System.Text.Json;
 
 try
 {
-    Console.WriteLine("Started Felis.Subscriber.Net.Console");
+    Console.WriteLine("Started Felis.Subscriber.NoAck.Net.Console");
 
     var uri = new Uri("https://localhost:7110");
     var clientCertificate = new X509Certificate2("Output.pfx", "Password.1");
@@ -51,10 +51,7 @@ try
                             $"Received message - {messageDeserialized?.Id} with topic - {messageDeserialized?.Topic} with payload - {messageDeserialized?.Payload} with expiration - {messageDeserialized?.Expiration}";
                           
                         Console.WriteLine(messageFormat);
-
-                        var ackResponse = await httpClient.GetAsync($"/messages/{messageDeserialized?.Id}/ack");
-                        
-                        ackResponse.EnsureSuccessStatusCode();
+                        Console.WriteLine($"I will not send ACK, so the message '{messageDeserialized?.Id}' will be reprocessed other times until the retry policy is consumed.");
                     }
                     catch (Exception e)
                     {
@@ -75,7 +72,7 @@ try
 }
 catch (Exception ex)
 {
-    Console.Error.WriteLine($"Error in Felis.Subscriber.Net.Console {ex.Message}");
+    Console.Error.WriteLine($"Error in Felis.Subscriber.NoAck.Net.Console {ex.Message}");
 }
 
 static bool ValidateServerCertificate(HttpRequestMessage request, X509Certificate2? certificate, X509Chain? chain,

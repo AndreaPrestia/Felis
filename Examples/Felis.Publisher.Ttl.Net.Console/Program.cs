@@ -33,7 +33,7 @@ try
         var response = await httpClient.PostAsJsonAsync("/Test",
             new
             {
-                Description = $"TestTtl at: {DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()} from .NET publisher with TTL of 10 seconds"
+                Description = $"Test at: {DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()} from .NET publisher with TTL of 10 seconds"
             },
             CancellationToken.None);
 

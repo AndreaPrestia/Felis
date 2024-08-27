@@ -54,6 +54,7 @@ curl -X 'POST' \
   -H 'accept: application/json' \
   -H 'content-Type: application/json' \
   -H 'x-retry: 5' \
+  -H 'x-ttl: 10' \
   -d '{
         "description": "Test description"
 }'
@@ -70,11 +71,12 @@ The string of the message to dispatch. The json above its just an example.
 
 ****Request headers****
 
-Header | Value                                | Context                                                                     |
---- |--------------------------------------|-----------------------------------------------------------------------------|
-accept | application/json                     | The accept header.                                                          |
-content-Type | application/json                     | The content type returned.                                                  |
-x-retry | 5  (a number that is more than zero) | How many retries on ACK failures apply to the message for every subscriber. |
+Header | Value                                 | Context                                                                                            |
+--- |---------------------------------------|----------------------------------------------------------------------------------------------------|
+accept | application/json                      | The accept header.                                                                                 |
+content-Type | application/json                      | The content type returned.                                                                         |
+x-retry | 5  (a number that is more than zero)  | How many retries on ACK failures apply to the message for every subscriber.                        |
+x-ttl | 10  (a number that is more than zero) | How many seconds a message can live. If not specified (or 0 value is used) the message is durable. |
 
 ***Response***
 

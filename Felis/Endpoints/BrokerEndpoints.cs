@@ -14,13 +14,13 @@ internal static class BrokerEndpoints
         ArgumentNullException.ThrowIfNull(endpointRouteBuilder);
 
         endpointRouteBuilder.MapPost("/{topic}",
-            async (HttpContext context, [FromServices] MessageBroker messageBroker, [FromRoute] string topic, [FromHeader(Name = "x-retry")] int? retryAttempts) =>
+            async (HttpContext context, [FromServices] MessageBroker messageBroker, [FromRoute] string topic, [FromHeader(Name = "x-retry")] int? retryAttempts, [FromHeader(Name = "x-ttl")] int? ttl) =>
             {
                 ArgumentNullException.ThrowIfNull(context.Request.Body);
                 using var reader = new StreamReader(context.Request.Body);
                 var payload = await reader.ReadToEndAsync();
 
-                var messageId = messageBroker.Publish(topic, payload, retryAttempts);
+                var messageId = messageBroker.Publish(topic, payload, retryAttempts, ttl);
 
                 return Results.Accepted("/publish", messageId);
             });

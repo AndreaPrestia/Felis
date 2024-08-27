@@ -27,7 +27,7 @@ try
     };
 
     var request = new HttpRequestMessage(HttpMethod.Get,
-        $"/Test");
+        "/Test");
     request.Version = new Version(3, 0);
 
     using var response =

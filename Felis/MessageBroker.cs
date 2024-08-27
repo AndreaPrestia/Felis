@@ -1,6 +1,8 @@
 ﻿using LiteDB;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.Channels;
 using Timer = System.Timers.Timer;
@@ -96,12 +98,13 @@ internal sealed class MessageBroker : IDisposable
     /// <param name="topic"></param>
     /// <param name="payload"></param>
     /// <param name="retryAttempts"></param>
+    /// <param name="ttl"></param>
     /// <returns>Message id</returns>
-    public Guid Publish(string topic, string payload, int? retryAttempts)
+    public Guid Publish(string topic, string payload, int? retryAttempts, int? ttl)
     {
         lock (_lock)
         {
-            var message = AddMessageInStorage(topic, payload, retryAttempts);
+            var message = AddMessageInStorage(topic, payload, retryAttempts, ttl);
 
             if (!_topicSubscriptions.TryGetValue(topic, out var subscribers)) return message.Id;
             if (subscribers.Count <= 0) return message.Id;
@@ -203,7 +206,7 @@ internal sealed class MessageBroker : IDisposable
         }
     }
 
-    private MessageModel AddMessageInStorage(string topic, string payload, int? retryAttempts)
+    private MessageModel AddMessageInStorage(string topic, string payload, int? retryAttempts, int? ttl)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(topic);
         ArgumentException.ThrowIfNullOrWhiteSpace(payload);
@@ -213,9 +216,14 @@ internal sealed class MessageBroker : IDisposable
             var message = new MessageModel(Guid.NewGuid(), topic, payload,
                 new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds());
 
+            if (ttl.HasValue)
+            {
+                message.Expiration = new DateTimeOffset(DateTime.UtcNow.AddSeconds(ttl.Value)).ToUnixTimeMilliseconds();
+            }
+            
             if (retryAttempts.HasValue)
             {
-                message.RetryAttempts = retryAttempts;
+                message.RetryAttempts = retryAttempts.Value;
             }
 
             _messageCollection.Insert(message.Id, message);
@@ -232,7 +240,9 @@ internal sealed class MessageBroker : IDisposable
 
         lock (_lock)
         {
-            return _messageCollection.Find(x => x.Topic == topic && x.Tracking.Count == 0 && x.Payload != null)
+            var currentTimeStamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
+            
+            return _messageCollection.Find(x => x.Topic == topic && x.Tracking.Count == 0 && x.Payload != null && (x.Expiration == null || (x.Expiration.Value > currentTimeStamp)))
                 .OrderBy(x => x.Timestamp).ToList();
         }
     }
@@ -241,64 +251,79 @@ internal sealed class MessageBroker : IDisposable
     {
         lock (_lock)
         {
-            var messagesToUpdate = _messageCollection.Query().Where(x => x.RetryAttempts.HasValue && x.Tracking.Count > 0)
+            var candidatesMessagesToUpdate = _messageCollection.Query().Where(x => x.RetryAttempts > 0 && x.Tracking.Count(t => t.Ack == null 
+                    && t.Rejected == null 
+                    && t.Retries.Count <= x.RetryAttempts) > 0)
                 .OrderBy(m => m.Timestamp).ToList();
 
-            if (messagesToUpdate != null && messagesToUpdate.Any())
+            var messagesToUpdate = new List<MessageModel>();
+            
+            if (candidatesMessagesToUpdate != null && candidatesMessagesToUpdate.Any())
             {
                 _database.BeginTrans();
                 try
                 {
-                    foreach (var messageToUpdate in messagesToUpdate)
+                    foreach (var candidateMessageToUpdate in candidatesMessagesToUpdate)
                     {
                         //find messages with subscribers to rejected because reached the retry limit
-                        messageToUpdate.Tracking.Where(trackingModel =>
+                        candidateMessageToUpdate.Tracking.Where(trackingModel =>
                                 _topicSubscriptions.Values.Any(s => s.Any(ts =>
-                                    ts.Subscriber.IpAddress == trackingModel.Subscriber.IpAddress &&
-                                    ts.Subscriber.Hostname == trackingModel.Subscriber.Hostname &&
-                                    ts.Subscriber.Topic == messageToUpdate.Topic) && trackingModel.Ack == null &&
+                                    ts.Subscriber.Hash == trackingModel.Subscriber.Hash) && trackingModel.Ack == null &&
                                     trackingModel.Rejected == null &&
-                                    trackingModel.Retries.Count == messageToUpdate.RetryAttempts!.Value)).ToList()
+                                    trackingModel.Retries.Count == candidateMessageToUpdate.RetryAttempts)).ToList()
                             .ForEach(
                                 r =>
                                 {
                                     r.Rejected = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
+
+                                    if (messagesToUpdate.All(x => x.Id != candidateMessageToUpdate.Id))
+                                    {
+                                        messagesToUpdate.Add(candidateMessageToUpdate);
+                                    }
                                 });
 
                         //find messages with subscribers to be enqueued again
                         var currentTimestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
 
-                        messageToUpdate.Tracking.Where(trackingModel =>
-                                _topicSubscriptions.Values.Any(s => s.Any(ts =>
-                                    ts.Subscriber.IpAddress == trackingModel.Subscriber.IpAddress &&
-                                    ts.Subscriber.Hostname == trackingModel.Subscriber.Hostname &&
-                                    ts.Subscriber.Topic == messageToUpdate.Topic)
+                        candidateMessageToUpdate.Tracking.Where(trackingModel =>
+                                _topicSubscriptions.Values.Any(s => s.Any(ts => ts.Subscriber.Hash == trackingModel.Subscriber.Hash)
                                     && trackingModel.Ack == null
                                     && trackingModel.Rejected == null
-                                    && trackingModel.Retries.Count < messageToUpdate.RetryAttempts!.Value - 1
+                                    && trackingModel.Retries.Count < candidateMessageToUpdate.RetryAttempts - 1
                                     && currentTimestamp - trackingModel.Sent > 60)).ToList()
                             .ForEach(
                                 r =>
                                 {
                                     r.Retries.Add(new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds());
                                     //schedule message on the channel for subscriber
-                                    _topicSubscriptions[messageToUpdate.Topic].ForEach(subscription =>
+                                    _topicSubscriptions[candidateMessageToUpdate.Topic].ForEach(subscription =>
                                     {
-                                        if (subscription.Subscriber.IpAddress == r.Subscriber.IpAddress &&
-                                            subscription.Subscriber.Hostname == r.Subscriber.Hostname)
+                                        if (subscription.Subscriber.Hash == r.Subscriber.Hash)
                                         {
-                                            subscription.MessageChannel.Writer.TryWrite(messageToUpdate);
+                                            subscription.MessageChannel.Writer.TryWrite(candidateMessageToUpdate);
                                             _logger.LogDebug(
                                                 "Enqueued for retry message '{messageId}' for subscription '{subscriptionId}' for subscriber with IP'{ipAddress}' for topic '{topic}'",
-                                                messageToUpdate.Id, subscription.Id, subscription.Subscriber.IpAddress,
-                                                messageToUpdate.Topic);
+                                                candidateMessageToUpdate.Id, subscription.Id, subscription.Subscriber.IpAddress,
+                                                candidateMessageToUpdate.Topic);
+                                            
+                                            if (messagesToUpdate.All(x => x.Id != candidateMessageToUpdate.Id))
+                                            {
+                                                messagesToUpdate.Add(candidateMessageToUpdate);
+                                            }
                                         }
                                     });
                                 });
                     }
 
-                    var updatedMessageToUpdateResult = _messageCollection.Update(messagesToUpdate);
-                    _logger.LogDebug("Updated messages {operationResult}", updatedMessageToUpdateResult);
+                    if (messagesToUpdate.Count > 0)
+                    {
+                        var updatedMessageToUpdateResult = _messageCollection.Update(messagesToUpdate);
+                        _logger.LogDebug("Updated messages {operationResult}", updatedMessageToUpdateResult);
+                    }
+                    else
+                    {
+                        _logger.LogDebug("No messages to update");
+                    }
 
                     _database.Commit();
                 }
@@ -319,11 +344,27 @@ internal sealed class MessageBroker : IDisposable
 
 internal record MessageModel(Guid Id, string Topic, string? Payload, long Timestamp)
 {
-    [JsonIgnore] public int? RetryAttempts { get; set; }
+    public long? Expiration { get; set; }
+    [JsonIgnore] public int RetryAttempts { get; set; }
     [JsonIgnore] public List<TrackingModel> Tracking { get; set; } = new();
 };
 
-internal record SubscriberModel(string Hostname, string IpAddress, string Topic, long Timestamp);
+internal record SubscriberModel(string Hostname, string IpAddress, string Topic, long Timestamp)
+{
+    public string Hash => GetHash();
+
+    private string GetHash()
+    {
+        var md5Hasher = MD5.Create();
+        var data = md5Hasher.ComputeHash(Encoding.Default.GetBytes($"{Hostname}/{IpAddress}/{Topic}"));
+        var stringBuilder = new StringBuilder();
+        for (var i = 0; i < data.Length; i++)
+        {
+            stringBuilder.Append(data[i].ToString("x2"));
+        }
+        return stringBuilder.ToString();
+    }
+};
 
 internal record TrackingModel(SubscriberModel Subscriber, long Sent)
 {

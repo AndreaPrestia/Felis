@@ -7,7 +7,7 @@ using System.Text.Json;
 
 try
 {
-    Console.WriteLine("Started Felis.Subscriber.Net.Console");
+    Console.WriteLine("Started Felis.Subscriber.NoAck.Net.Console");
 
     var uri = new Uri("https://localhost:7110");
     var currentDirectory = Path.GetDirectoryName(Directory.GetCurrentDirectory());
@@ -27,7 +27,7 @@ try
     };
 
     var request = new HttpRequestMessage(HttpMethod.Get,
-        $"/Test");
+        "/Test");
     request.Version = new Version(3, 0);
 
     using var response =
@@ -75,7 +75,7 @@ try
 }
 catch (Exception ex)
 {
-    Console.Error.WriteLine($"Error in Felis.Subscriber.Net.Console {ex.Message}");
+    Console.Error.WriteLine($"Error in Felis.Subscriber.NoAck.Net.Console {ex.Message}");
 }
 
 static bool ValidateServerCertificate(HttpRequestMessage request, X509Certificate2? certificate, X509Chain? chain,

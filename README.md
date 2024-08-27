@@ -140,7 +140,8 @@ This endpoint pushes to the subscriber this json:
     "id": "ac4625da-e922-4c2b-a7e7-aef21ece963c",
     "topic": "test",
     "payload": "{\"description\":\"Test\"}",
-    "timestamp": 1724421633359
+    "timestamp": 1724421633359,
+    "expiration": 1724421644459
 }
 ```
 The JSON above represent the **Message** coming from the broker.
@@ -153,6 +154,7 @@ id | guid   | the message unique id assigned by the broker.             |
 topic | string | the topic where the message has been published.           |
 payload | string | the actual content of the message published on the topic. |
 timestamp | number | the timestamp of the message when it was published.       |
+expiration | number | the message's expiration timestamp. It can be null.       |
 
 ****Response Headers****
 

@@ -242,7 +242,7 @@ internal sealed class MessageBroker : IDisposable
         {
             var currentTimeStamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
             
-            return _messageCollection.Find(x => x.Topic == topic && x.Tracking.Count == 0 && x.Payload != null && (x.Expiration == null || (x.Expiration.Value > currentTimeStamp)))
+            return _messageCollection.Find(x => x.Topic == topic && x.Tracking.Count == 0 && x.Payload != null && (x.Expiration == null || x.Expiration.Value > currentTimeStamp))
                 .OrderBy(x => x.Timestamp).ToList();
         }
     }
@@ -251,7 +251,10 @@ internal sealed class MessageBroker : IDisposable
     {
         lock (_lock)
         {
-            var candidatesMessagesToUpdate = _messageCollection.Query().Where(x => x.RetryAttempts > 0 && x.Tracking.Count(t => t.Ack == null 
+            //find messages with subscribers to be enqueued again
+            var currentTimestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
+
+            var candidatesMessagesToUpdate = _messageCollection.Query().Where(x => (x.Expiration == null || x.Expiration.Value > currentTimestamp) && x.RetryAttempts > 0 && x.Tracking.Count(t => t.Ack == null 
                     && t.Rejected == null 
                     && t.Retries.Count <= x.RetryAttempts) > 0)
                 .OrderBy(m => m.Timestamp).ToList();
@@ -282,8 +285,6 @@ internal sealed class MessageBroker : IDisposable
                                     }
                                 });
 
-                        //find messages with subscribers to be enqueued again
-                        var currentTimestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
 
                         candidateMessageToUpdate.Tracking.Where(trackingModel =>
                                 _topicSubscriptions.Values.Any(s => s.Any(ts => ts.Subscriber.Hash == trackingModel.Subscriber.Hash)

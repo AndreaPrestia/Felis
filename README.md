@@ -226,6 +226,7 @@ This repository provides the examples of usage:
 
 - **Felis.Broker.Console**
 - **Felis.Publisher.Net.Console**
+- **Felis.Publisher.Ttl.Net.Console**
 - **Felis.Subscriber.Net.Console**
 - **Felis.Subscriber.NoAck.Net.Console**
 - **Felis.Publisher.Node.Console**
@@ -238,7 +239,7 @@ A console application, that reference Felis project.
 
 **Publish a message**
 
-To ease the testing process, I have two console application that publish to Felis broker.
+To ease the testing process, I have three console applications that publish to Felis broker.
 
 These applications sends messages on the **Test** topic of the **subscribers** examples.
 

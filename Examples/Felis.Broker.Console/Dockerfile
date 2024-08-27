@@ -5,7 +5,6 @@ FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
 USER app
 WORKDIR /app
 
-
 # This stage is used to build the service project
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
@@ -21,8 +20,6 @@ RUN dotnet build "./Felis.Broker.Console.csproj" -c $BUILD_CONFIGURATION -o /app
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
 RUN dotnet publish "./Felis.Broker.Console.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
-
-EXPOSE 7110
 
 # This stage is used in production or when running from VS in regular mode (Default when not using the Debug configuration)
 FROM base AS final

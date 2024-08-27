@@ -6,27 +6,38 @@ services:
       dockerfile: Examples/Felis.Broker.Console/Dockerfile
     ports:
       - "7110:7110"
+    environment:
+      - ASPNETCORE_URLS=https://+:7110;http://+:5000
+
 
   felis.publisher.net.console:
     image: ${DOCKER_REGISTRY-}felispublishernetconsole
     build:
       context: .
       dockerfile: Examples/Felis.Publisher.Net.Console/Dockerfile
+    depends_on:
+      - felis.broker.console
 
   felis.publisher.ttl.net.console:
     image: ${DOCKER_REGISTRY-}felispublisherttlnetconsole
     build:
       context: .
       dockerfile: Examples/Felis.Publisher.Ttl.Net.Console/Dockerfile
+    depends_on:
+      - felis.broker.console
 
   felis.subscriber.net.console:
     image: ${DOCKER_REGISTRY-}felissubscribernetconsole
     build:
       context: .
       dockerfile: Examples/Felis.Subscriber.Net.Console/Dockerfile
+    depends_on:
+      - felis.broker.console
 
   felis.subscriber.noack.net.console:
     image: ${DOCKER_REGISTRY-}felissubscribernoacknetconsole
     build:
       context: .
       dockerfile: Examples/Felis.Subscriber.NoAck.Net.Console/Dockerfile
+    depends_on:
+      - felis.broker.console

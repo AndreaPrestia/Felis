@@ -251,7 +251,7 @@ internal sealed class MessageBroker : IDisposable
     {
         lock (_lock)
         {
-            //find messages with subscribers to be enqueued again
+            //find messages with subscribers to be Queued again
             var currentTimestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
 
             var candidatesMessagesToUpdate = _messageCollection.Query().Where(x => (x.Expiration == null || x.Expiration.Value > currentTimestamp) && x.RetryAttempts > 0 && x.Tracking.Count(t => t.Ack == null 
@@ -303,7 +303,7 @@ internal sealed class MessageBroker : IDisposable
                                         {
                                             subscription.MessageChannel.Writer.TryWrite(candidateMessageToUpdate);
                                             _logger.LogDebug(
-                                                "Enqueued for retry message '{messageId}' for subscription '{subscriptionId}' for subscriber with IP'{ipAddress}' for topic '{topic}'",
+                                                "Queued for retry message '{messageId}' for subscription '{subscriptionId}' for subscriber with IP'{ipAddress}' for topic '{topic}'",
                                                 candidateMessageToUpdate.Id, subscription.Id, subscription.Subscriber.IpAddress,
                                                 candidateMessageToUpdate.Topic);
                                             
@@ -359,9 +359,9 @@ internal record SubscriberModel(string Hostname, string IpAddress, string Topic,
         var md5Hasher = MD5.Create();
         var data = md5Hasher.ComputeHash(Encoding.Default.GetBytes($"{Hostname}/{IpAddress}/{Topic}"));
         var stringBuilder = new StringBuilder();
-        for (var i = 0; i < data.Length; i++)
+        foreach (var t in data)
         {
-            stringBuilder.Append(data[i].ToString("x2"));
+            stringBuilder.Append(t.ToString("x2"));
         }
         return stringBuilder.ToString();
     }

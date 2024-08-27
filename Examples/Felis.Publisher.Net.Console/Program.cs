@@ -15,7 +15,7 @@ try
         ClientCertificateOptions = ClientCertificateOption.Manual,
         SslProtocols = SslProtocols.Tls13,
         ServerCertificateCustomValidationCallback = ValidateServerCertificate,
-        ClientCertificates = { clientCertificate }
+        ClientCertificates = { clientCertificate } 
     })
     {
         BaseAddress = uri

@@ -6,10 +6,10 @@ It stores the messages in a **LiteDB** database.
 
 **Requirements**
 
-- .NET 8
-- QUIC support
-- HTTP3 support
-- TLS13 support
+- [.NET 8](https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-8/overview)
+- [TLS 1.3](https://tls13.xargs.org)
+- [QUIC](https://learn.microsoft.com/en-us/dotnet/fundamentals/networking/quic/quic-overview)
+- [HTTP/3](https://www.rfc-editor.org/rfc/rfc9114)
 
 **Dependencies**
 
@@ -37,7 +37,7 @@ await host.RunAsync();
 ```
 The example above initialize the **Felis Broker** in a console application, with console logging provider.
 
-The **AddFelisBroker** method takes **certPath**, **certPassword**, **port** as input parameters to use the broker with mTLS authentication.
+The **AddFelisBroker** method takes **certPath**, **certPassword**, **port** as input parameters to use the broker with [mTLS](https://www.cloudflare.com/it-it/learning/access-management/what-is-mutual-tls/) authentication.
 
 **Publish of a message to a topic with POST**
 

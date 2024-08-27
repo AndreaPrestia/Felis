@@ -4,7 +4,7 @@ const http2 = require('http2');
 const fs = require('fs');
 const path = require('path');
 
-const publishMessage = async (topic) => {
+const publishMessage = (topic) => {
     const endpoint = 'https://localhost:7110';
 
     const pfxPath = path.join(__dirname, '../Output.pfx');

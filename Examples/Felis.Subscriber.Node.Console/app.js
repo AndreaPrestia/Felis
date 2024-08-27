@@ -30,7 +30,7 @@ req.on('data', (data) => {
         const messageDeserialized = JSON.parse(data);
 
         if (messageDeserialized) {
-            var messageFormat =
+            const messageFormat =
                 `Received message - ${messageDeserialized.Id} with topic - ${messageDeserialized.Topic} with payload - ${messageDeserialized.Payload}`;
 
             try {

@@ -7,8 +7,7 @@
     "name": ""
   },
   "devDependencies": {
-    "eslint": "^8.21.0"
+    "eslint": "^8.57.0"
   },
-  "eslintConfig": {
-  }
+  "eslintConfig": {}
 }

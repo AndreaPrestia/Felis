@@ -30,7 +30,7 @@ req.on('data', (data) => {
         const messageDeserialized = JSON.parse(data);
 
         if (messageDeserialized) {
-            var messageFormat =
+            const messageFormat =
                 `Received message - ${messageDeserialized.Id} with topic - ${messageDeserialized.Topic} with payload - ${messageDeserialized.Payload}`;
 
             try {
@@ -38,12 +38,12 @@ req.on('data', (data) => {
                 console.info(`I will not send ACK, so the message '${messageDeserialized.Id}' will be reprocessed other times until the retry policy is consumed.`)
             }
             catch (e) {
-                console.error(`Error in Felis.Subscriber.Node.Console ${e.message}`);
+                console.error(`Error in Felis.Subscriber.NoAck.Node.Console ${e.message}`);
             }
         }
     }
     catch (error) {
-        console.error(`Error in Felis.Subscriber.Node.Console ${error.message}`);
+        console.error(`Error in Felis.Subscriber.NoAck.Node.Console ${error.message}`);
     }
 });
 

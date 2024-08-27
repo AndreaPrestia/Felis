@@ -22,10 +22,6 @@ It stores the messages in a **LiteDB** database.
 Code example:
 
 ```
-var currentDirectory = Path.GetDirectoryName(Directory.GetCurrentDirectory());
-var pfxPath = Path.Combine(currentDirectory!, @"..\..\..\Output.pfx");
-var certificatePath = Path.GetFullPath(pfxPath);
-
 var builder = Host.CreateDefaultBuilder(args)
     .ConfigureLogging(logging =>
     {
@@ -33,7 +29,7 @@ var builder = Host.CreateDefaultBuilder(args)
         logging.AddConsole();
         logging.SetMinimumLevel(LogLevel.Debug);
     })
-    .AddFelisBroker(certificatePath, "Password.1", 7110);
+    .AddFelisBroker("Output.pfx", "Password.1", 7110);
 
 var host = builder.Build();
 

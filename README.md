@@ -260,9 +260,3 @@ The subscribers with the **NoAck** reference in their name demonstrates how they
 **Conclusion**
 
 Though there is room for further improvement, the project is fit for becoming a sound and usable product in a short time. I hope that my work can inspire similar projects or help someone else.
-
-**TODO**
-
-- Unit testing.
-- Stress testing.
-- Dockerized examples.

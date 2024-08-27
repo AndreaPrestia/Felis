@@ -51,7 +51,7 @@ try
                         var messageDeserialized = JsonSerializer.Deserialize<MessageModel>(jsonMessage);
 
                         var messageFormat =
-                            $"Received message - {messageDeserialized?.Id} with topic - {messageDeserialized?.Topic} with payload - {messageDeserialized?.Payload}";
+                            $"Received message - {messageDeserialized?.Id} with topic - {messageDeserialized?.Topic} with payload - {messageDeserialized?.Payload} with expiration - {messageDeserialized?.Expiration}";
                           
                         Console.WriteLine(messageFormat);
                         Console.WriteLine($"I will not send ACK, so the message '{messageDeserialized?.Id}' will be reprocessed other times until the retry policy is consumed.");
@@ -84,4 +84,4 @@ static bool ValidateServerCertificate(HttpRequestMessage request, X509Certificat
     return certificate != null && chain != null;
 }
 
-public record MessageModel(Guid Id, string Topic, string Payload);
+public record MessageModel(Guid Id, string Topic, string Payload, long? Expiration);

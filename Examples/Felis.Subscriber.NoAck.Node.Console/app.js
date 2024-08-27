@@ -31,7 +31,7 @@ req.on('data', (data) => {
 
         if (messageDeserialized) {
             const messageFormat =
-                `Received message - ${messageDeserialized.Id} with topic - ${messageDeserialized.Topic} with payload - ${messageDeserialized.Payload}`;
+                `Received message - ${messageDeserialized.Id} with topic - ${messageDeserialized.Topic} with payload - ${messageDeserialized.Payload} with expiration - ${messageDeserialized.Expiration}`;
 
             try {
                 console.info(messageFormat);

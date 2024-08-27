@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Felis.Subscriber.NoAck.Net.Console": {
+      "commandName": "Project"
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker"
+    }
+  }
+}

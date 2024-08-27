@@ -1,0 +1,50 @@
+services:
+  felis.broker.console:
+    image: ${DOCKER_REGISTRY-}felisbrokerconsole
+    build:
+      context: .
+      dockerfile: Examples/Felis.Broker.Console/Dockerfile
+
+  felis.publisher.net.console:
+    image: ${DOCKER_REGISTRY-}felispublishernetconsole
+    build:
+      context: .
+      dockerfile: Examples/Felis.Publisher.Net.Console/Dockerfile
+
+  felis.publisher.node.console:
+    image: ${DOCKER_REGISTRY-}felispublishernodeconsole
+    build:
+      context: .
+      dockerfile: Examples/Felis.Publisher.Node.Console/Dockerfile
+
+  felis.publisher.ttl.net.console:
+    image: ${DOCKER_REGISTRY-}felispublisherttlnetconsole
+    build:
+      context: .
+      dockerfile: Examples/Felis.Publisher.Ttl.Net.Console/Dockerfile
+
+  felis.subscriber.net.console:
+    image: ${DOCKER_REGISTRY-}felissubscribernetconsole
+    build:
+      context: .
+      dockerfile: Examples/Felis.Subscriber.Net.Console/Dockerfile
+
+  felis.subscriber.node.console:
+    image: ${DOCKER_REGISTRY-}felissubscribernodeconsole
+    build:
+      context: .
+      dockerfile: Examples/Felis.Subscriber.Node.Console/Dockerfile
+
+
+  felis.subscriber.noack.net.console:
+    image: ${DOCKER_REGISTRY-}felissubscribernoacknetconsole
+    build:
+      context: .
+      dockerfile: Examples/Felis.Subscriber.NoAck.Net.Console/Dockerfile
+  
+  felis.subscriber.noack.node.console:
+    image: ${DOCKER_REGISTRY-}felissubscribernoacknodeconsole
+    build:
+      context: .
+      dockerfile: Examples/Felis.Subscriber.NoAck.Node.Console/Dockerfile
+

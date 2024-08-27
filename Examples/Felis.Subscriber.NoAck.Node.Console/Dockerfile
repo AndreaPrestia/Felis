@@ -2,7 +2,7 @@
 FROM node:18
 
 # Create app directory
-WORKDIR /src/Examples/Felis.Subscriber.NoAck.Node.Console
+WORKDIR /Examples/Felis.Subscriber.NoAck.Node.Console
 
 # Copy app source code
 COPY package*.json ./

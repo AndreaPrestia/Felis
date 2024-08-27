@@ -1,0 +1,15 @@
+{
+  "profiles": {
+    "Docker Compose": {
+      "commandName": "DockerCompose",
+      "commandVersion": "1.0",
+      "serviceActions": {
+        "felis.broker.console": "StartDebugging",
+        "felis.publisher.net.console": "StartDebugging",
+        "felis.publisher.ttl.net.console": "StartDebugging",
+        "felis.subscriber.net.console": "StartDebugging",
+        "felis.subscriber.noack.net.console": "StartDebugging"
+      }
+    }
+  }
+}

@@ -10,22 +10,19 @@ WORKDIR /app
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["Examples/Felis.Broker.Console/Felis.Broker.Console.csproj", "Examples/Felis.Broker.Console/"]
-COPY ["Felis/Felis.csproj", "Felis/"]
-RUN dotnet restore "./Examples/Felis.Broker.Console/Felis.Broker.Console.csproj"
+COPY ["Examples/Felis.Publisher.Ttl.Net.Console/Felis.Publisher.Ttl.Net.Console.csproj", "Examples/Felis.Publisher.Ttl.Net.Console/"]
+RUN dotnet restore "./Examples/Felis.Publisher.Ttl.Net.Console/Felis.Publisher.Ttl.Net.Console.csproj"
 COPY . .
-WORKDIR "/src/Examples/Felis.Broker.Console"
-RUN dotnet build "./Felis.Broker.Console.csproj" -c $BUILD_CONFIGURATION -o /app/build
+WORKDIR "/src/Examples/Felis.Publisher.Ttl.Net.Console"
+RUN dotnet build "./Felis.Publisher.Ttl.Net.Console.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 # This stage is used to publish the service project to be copied to the final stage
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./Felis.Broker.Console.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
-
-EXPOSE 7110
+RUN dotnet publish "./Felis.Publisher.Ttl.Net.Console.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 # This stage is used in production or when running from VS in regular mode (Default when not using the Debug configuration)
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "Felis.Broker.Console.dll"]
+ENTRYPOINT ["dotnet", "Felis.Publisher.Ttl.Net.Console.dll"]

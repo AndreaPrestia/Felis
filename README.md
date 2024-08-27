@@ -1,7 +1,7 @@
-# Felis ![Alt text](Felis.jpg)
+# ![Alt text](Felis.jpg)
 A light-weight message broker totally written in .NET based on HTTP3/QUIC and JSON.
 
-The Felis project contains the logic for dispatching, storing and validating messages.
+The **Felis** project contains the logic for dispatching, storing and validating messages.
 It stores the messages in a **LiteDB** database.
 
 **Requirements**

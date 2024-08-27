@@ -352,9 +352,9 @@ internal record MessageModel(Guid Id, string Topic, string? Payload, long Timest
 
 internal record SubscriberModel(string Hostname, string IpAddress, string Topic, long Timestamp)
 {
-    public string Hash => GetHash();
+    public string Hash => ComputeHash();
 
-    private string GetHash()
+    private string ComputeHash()
     {
         var md5Hasher = MD5.Create();
         var data = md5Hasher.ComputeHash(Encoding.Default.GetBytes($"{Hostname}/{IpAddress}/{Topic}"));

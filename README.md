@@ -1,4 +1,4 @@
-# Felis
+# Felis ![Alt text](Felis.jpg)
 A light-weight message broker totally written in .NET based on HTTP3/QUIC and JSON.
 
 The Felis project contains the logic for dispatching, storing and validating messages.

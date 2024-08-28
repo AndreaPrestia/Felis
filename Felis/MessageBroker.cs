@@ -220,7 +220,7 @@ internal sealed class MessageBroker : IDisposable
             {
                 message.Expiration = new DateTimeOffset(DateTime.UtcNow.AddSeconds(ttl.Value)).ToUnixTimeMilliseconds();
             }
-            
+
             if (retryAttempts.HasValue)
             {
                 message.RetryAttempts = retryAttempts.Value;
@@ -241,7 +241,7 @@ internal sealed class MessageBroker : IDisposable
         lock (_lock)
         {
             var currentTimeStamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
-            
+
             return _messageCollection.Find(x => x.Topic == topic && x.Tracking.Count == 0 && x.Payload != null && (x.Expiration == null || x.Expiration.Value > currentTimeStamp))
                 .OrderBy(x => x.Timestamp).ToList();
         }
@@ -251,21 +251,22 @@ internal sealed class MessageBroker : IDisposable
     {
         lock (_lock)
         {
-            //find messages with subscribers to be Queued again
-            var currentTimestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
-
-            var candidatesMessagesToUpdate = _messageCollection.Query().Where(x => (x.Expiration == null || x.Expiration.Value > currentTimestamp) && x.RetryAttempts > 0 && x.Tracking.Count(t => t.Ack == null 
-                    && t.Rejected == null 
-                    && t.Retries.Count <= x.RetryAttempts) > 0)
-                .OrderBy(m => m.Timestamp).ToList();
-
-            var messagesToUpdate = new List<MessageModel>();
-            
-            if (candidatesMessagesToUpdate != null && candidatesMessagesToUpdate.Any())
+            try
             {
-                _database.BeginTrans();
-                try
+                //find messages with subscribers to be Queued again
+                var currentTimestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
+
+                var candidatesMessagesToUpdate = _messageCollection.Query().Where(x => (x.Expiration == null || x.Expiration.Value > currentTimestamp) && x.RetryAttempts > 0 && x.Tracking.Count(t => t.Ack == null
+                        && t.Rejected == null
+                        && t.Retries.Count <= x.RetryAttempts) > 0)
+                    .OrderBy(m => m.Timestamp).ToList();
+
+                var messagesToUpdate = new List<MessageModel>();
+
+                if (candidatesMessagesToUpdate != null && candidatesMessagesToUpdate.Any())
                 {
+                    _database.BeginTrans();
+
                     foreach (var candidateMessageToUpdate in candidatesMessagesToUpdate)
                     {
                         //find messages with subscribers to rejected because reached the retry limit
@@ -306,7 +307,7 @@ internal sealed class MessageBroker : IDisposable
                                                 "Queued for retry message '{messageId}' for subscription '{subscriptionId}' for subscriber with IP'{ipAddress}' for topic '{topic}'",
                                                 candidateMessageToUpdate.Id, subscription.Id, subscription.Subscriber.IpAddress,
                                                 candidateMessageToUpdate.Topic);
-                                            
+
                                             if (messagesToUpdate.All(x => x.Id != candidateMessageToUpdate.Id))
                                             {
                                                 messagesToUpdate.Add(candidateMessageToUpdate);
@@ -329,18 +330,18 @@ internal sealed class MessageBroker : IDisposable
                     _database.Commit();
                 }
                 catch (Exception ex)
-                {
-                    _logger.LogError("An error '{error}' has occurred during retry check", ex.Message);
-                    _database.Rollback();
-                }
+            {
+                _logger.LogError("An error '{error}' has occurred during retry check", ex.Message);
+                _database.Rollback();
             }
         }
     }
+}
 
-    public void Dispose()
-    {
-        _database.Dispose();
-    }
+public void Dispose()
+{
+    _database.Dispose();
+}
 }
 
 internal record MessageModel(Guid Id, string Topic, string? Payload, long Timestamp)

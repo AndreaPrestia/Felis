@@ -15,7 +15,6 @@ It stores the messages in a **LiteDB** database.
 
 - LiteDB 5.0.21
 - Microsoft.AspNetCore.Authentication.Certificate 8.0.8
-- Microsoft.Extensions.Logging.Abstractions 8.0.1
 
 **Usage of Broker**
 

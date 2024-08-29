@@ -329,19 +329,19 @@ internal sealed class MessageBroker : IDisposable
 
                     _database.Commit();
                 }
-                catch (Exception ex)
+            }
+            catch (Exception ex)
             {
                 _logger.LogError("An error '{error}' has occurred during retry check", ex.Message);
                 _database.Rollback();
             }
         }
     }
-}
 
-public void Dispose()
-{
-    _database.Dispose();
-}
+    public void Dispose()
+    {
+        _database.Dispose();
+    }
 }
 
 internal record MessageModel(Guid Id, string Topic, string? Payload, long Timestamp)

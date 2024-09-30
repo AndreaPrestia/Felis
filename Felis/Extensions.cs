@@ -4,7 +4,6 @@ using Felis.Middlewares;
 using LiteDB;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -36,7 +35,7 @@ public static class Extensions
             {
                 options.ListenAnyIP(port, listenOptions =>
                 {
-                    listenOptions.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
+                    listenOptions.Protocols = HttpProtocols.Http1AndHttp2;
                     var certificate = new X509Certificate2(certPath, certPassword);
                     listenOptions.UseHttps(certificate, httpsOptions =>
                     {

@@ -1,5 +1,5 @@
 # ![Alt text](Felis.jpg)
-A light-weight message broker totally written in .NET based on HTTP3/QUIC and JSON.
+A light-weight message broker totally written in .NET based on HTTP and JSON.
 
 The **Felis** project contains the logic for dispatching, storing and validating messages.
 It stores the messages in a **LiteDB** database.
@@ -8,8 +8,8 @@ It stores the messages in a **LiteDB** database.
 
 - [.NET 8](https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-8/overview)
 - [TLS 1.3](https://tls13.xargs.org)
-- [QUIC](https://learn.microsoft.com/en-us/dotnet/fundamentals/networking/quic/quic-overview)
-- [HTTP/3](https://www.rfc-editor.org/rfc/rfc9114)
+- [HTTP/2](https://developer.mozilla.org/en-US/docs/Glossary/HTTP_2)
+- [NDJSON](https://docs.foursquare.com/analytics-products/docs/data-formats-json)
 
 **Dependencies**
 

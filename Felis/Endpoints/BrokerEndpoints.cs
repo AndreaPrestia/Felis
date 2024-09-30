@@ -22,7 +22,7 @@ internal static class BrokerEndpoints
 
                 var messageId = messageBroker.Publish(topic, payload, retryAttempts, ttl);
 
-                return Results.Accepted("/publish", messageId);
+                return Results.Accepted($"/{topic}", messageId);
             });
 
         endpointRouteBuilder.MapGet("/{topic}",

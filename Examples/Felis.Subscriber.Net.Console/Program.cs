@@ -51,10 +51,6 @@ try
                             $"Received message - {messageDeserialized?.Id} with topic - {messageDeserialized?.Topic} with payload - {messageDeserialized?.Payload} with expiration - {messageDeserialized?.Expiration}";
                           
                         Console.WriteLine(messageFormat);
-
-                        var ackResponse = await httpClient.GetAsync($"/messages/{messageDeserialized?.Id}/ack");
-                        
-                        ackResponse.EnsureSuccessStatusCode();
                     }
                     catch (Exception e)
                     {

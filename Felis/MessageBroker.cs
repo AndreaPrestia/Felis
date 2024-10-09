@@ -1,8 +1,6 @@
 ﻿using LiteDB;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.Channels;
 using Timer = System.Timers.Timer;
@@ -11,12 +9,13 @@ namespace Felis;
 
 internal sealed class MessageBroker : IDisposable
 {
-    private readonly ConcurrentDictionary<string, List<Subscription>> _topicSubscriptions = new();
     private readonly ILogger<MessageBroker> _logger;
     private readonly ILiteDatabase _database;
     private readonly ILiteCollection<MessageModel> _messageCollection;
     private readonly object _lock = new();
-    private readonly Timer _timer;
+    private readonly Timer _topicTimer;
+    private readonly ConcurrentDictionary<string, List<SubscriptionModel>> _subscriptions = new();
+    private readonly ConcurrentDictionary<string, int> _topicIndex = new();
 
     public MessageBroker(ILogger<MessageBroker> logger, ILiteDatabase database)
     {
@@ -27,11 +26,11 @@ internal sealed class MessageBroker : IDisposable
         _messageCollection = _database.GetCollection<MessageModel>("messages");
         _messageCollection.EnsureIndex(x => x.Timestamp);
         _messageCollection.EnsureIndex(x => x.Topic);
-        _timer = new Timer();
-        _timer.Interval = 7000;
-        _timer.Elapsed += OnTimedEvent!;
-        _timer.AutoReset = true;
-        _timer.Enabled = true;
+        _topicTimer = new Timer();
+        _topicTimer.Interval = 5000;
+        _topicTimer.Elapsed += OnTopicTimedEvent!;
+        _topicTimer.AutoReset = true;
+        _topicTimer.Enabled = true;
     }
 
     /// <summary>
@@ -40,54 +39,60 @@ internal sealed class MessageBroker : IDisposable
     /// <param name="ipAddress"></param>
     /// <param name="hostname"></param>
     /// <param name="topic"></param>
+    /// <param name="exclusive"></param>
     /// <returns></returns>
-    public Subscription Subscribe(string ipAddress, string hostname, string topic)
+    internal SubscriptionModel Subscribe(string topic, string ipAddress, string hostname, bool? exclusive)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(topic);
         ArgumentException.ThrowIfNullOrWhiteSpace(ipAddress);
         ArgumentException.ThrowIfNullOrWhiteSpace(hostname);
-        ArgumentException.ThrowIfNullOrWhiteSpace(topic);
 
         lock (_lock)
         {
-            var subscription = new Subscription(ipAddress, hostname, topic);
+            var subscription = new SubscriptionModel(Guid.NewGuid(), hostname, ipAddress,
+                new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), exclusive);
 
-            _logger.LogDebug(
-                "Subscribed '{hostname}' with IP: '{ipAddress}' to topic '{topic}' at {timestamp}",
-                subscription.Subscriber.Hostname, subscription.Subscriber.IpAddress, subscription.Subscriber.Topic,
-                subscription.Subscriber.Timestamp);
+            var subscriptions = _subscriptions.GetOrAdd(topic.Trim(), _ => new List<SubscriptionModel>());
 
-            var subscribers = _topicSubscriptions.GetOrAdd(topic.Trim(), _ => new List<Subscription>());
+            subscriptions.Add(subscription);
 
-            subscribers.Add(subscription);
-
-            var messages = GetPendingMessagesToByTopic(topic);
-            // Send pending messages when a subscriber connects
-            foreach (var message in messages)
+            if (!_topicIndex.ContainsKey(topic))
             {
-                var writtenMessage = subscription.MessageChannel.Writer.TryWrite(message);
-                _logger.LogDebug(
-                    "Written message '{id}': {operationResult} for subscriber '{hostname}' with IP '{ipAddress}' for topic '{topic}'",
-                    message.Id, writtenMessage, subscription.Subscriber.Hostname, subscription.Subscriber.IpAddress,
-                    subscription.Subscriber.Topic);
+                _topicIndex.TryAdd(topic, 0);
             }
+
+            _logger.LogInformation(
+                "Subscribed '{id}' with hostname: '{hostname}' with IP: '{ipAddress}' to topic '{topic}' at {timestamp}",
+                subscription.Id, subscription.Hostname, subscription.IpAddress, topic,
+                subscription.Timestamp);
 
             return subscription;
         }
     }
 
     /// <summary>
-    /// Removes a subscriber by id
+    /// Removes a subscriber from a topic
     /// </summary>
-    /// <param name="id"></param>
-    public void UnSubscribe(Guid id)
+    /// <param name="topic"></param>
+    /// <param name="subscription"></param>
+    internal void UnSubscribe(string topic, SubscriptionModel subscription)
     {
-        foreach (var topic in _topicSubscriptions.Keys)
+        ArgumentException.ThrowIfNullOrWhiteSpace(topic);
+        ArgumentNullException.ThrowIfNull(subscription);
+
+        lock (_lock)
         {
-            lock (_lock)
+            _logger.LogDebug("Remove subscription from topic '{topic}'", topic);
+            var unSubscribeResult = _subscriptions[topic].Remove(subscription);
+            _logger.LogInformation(
+                "UnSubscribed '{id}' with hostname: '{hostname}' with IP: '{ipAddress}' to topic '{topic}' at {timestamp} with operation result '{operationResult}'",
+                subscription.Id, subscription.Hostname, subscription.IpAddress, topic,
+                subscription.Timestamp, unSubscribeResult);
+
+            if (_topicIndex.TryGetValue(topic, out int currentIndex))
             {
-                var subscribers = _topicSubscriptions[topic];
-                var unSubscribeResult = subscribers.RemoveAll(s => s.Id == id);
-                _logger.LogInformation("UnSubscribed {id}: {operationResult}", id, unSubscribeResult);
+                currentIndex = (currentIndex + 1) % _subscriptions[topic].Count;
+                _topicIndex[topic] = currentIndex;
             }
         }
     }
@@ -95,245 +100,39 @@ internal sealed class MessageBroker : IDisposable
     /// <summary>
     /// Publish a message to a topic
     /// </summary>
-    /// <param name="topic"></param>
-    /// <param name="payload"></param>
-    /// <param name="retryAttempts"></param>
-    /// <param name="ttl"></param>
+    /// <param name="topic">The destination topic</param>
+    /// <param name="payload">The message payload</param>
+    /// <param name="ttl">The message TTL</param>
+    /// <param name="broadcast">Tells if the message must be broad-casted or sent to only one subscriber in a round robin manner</param>
     /// <returns>Message id</returns>
-    public Guid Publish(string topic, string payload, int? retryAttempts, int? ttl)
+    internal Guid Publish(string topic, string payload, int? ttl, bool? broadcast)
     {
         lock (_lock)
         {
-            var message = AddMessageInStorage(topic, payload, retryAttempts, ttl);
+            ArgumentException.ThrowIfNullOrWhiteSpace(topic);
+            ArgumentException.ThrowIfNullOrWhiteSpace(payload);
 
-            if (!_topicSubscriptions.TryGetValue(topic, out var subscribers)) return message.Id;
-            if (subscribers.Count <= 0) return message.Id;
-
-            foreach (var subscriber in subscribers)
+            lock (_lock)
             {
-                var writtenMessage = subscriber.MessageChannel.Writer.TryWrite(message);
-                _logger.LogDebug("Written message '{id}': {operationResult}", message.Id, writtenMessage);
-            }
+                var timestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
 
-            return message.Id;
-        }
-    }
-
-    /// <summary>
-    /// Sets a message in sent status
-    /// </summary>
-    /// <param name="messageId"></param>
-    /// <param name="subscriber"></param>
-    /// <returns>If message has been set as sent or not</returns>
-    public void Send(Guid messageId, SubscriberModel subscriber)
-    {
-        lock (_lock)
-        {
-            if (messageId == Guid.Empty)
-            {
-                _logger.LogWarning("messageId is an empty Guid. No processing will be done");
-                return;
-            }
-
-            var messageFound = _messageCollection.FindById(messageId);
-
-            if (messageFound == null)
-            {
-                _logger.LogWarning("Message '{messageId}' not found. The send will not be set.", messageId);
-                return;
-            }
-
-            var sentModel = messageFound.Tracking.FirstOrDefault(e =>
-                e.Subscriber.IpAddress == subscriber.IpAddress && e.Subscriber.Hostname == subscriber.Hostname &&
-                e.Subscriber.Topic == subscriber.Topic);
-
-            if (sentModel != null)
-            {
-                _logger.LogWarning("Message '{id}' already sent at {timestamp}. The send will not be set.", messageId,
-                    sentModel.Sent);
-                return;
-            }
-
-            messageFound.Tracking.Add(new TrackingModel(subscriber,
-                new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds()));
-
-            var updateResult = _messageCollection.Update(messageId, messageFound);
-
-            _logger.LogDebug("Message '{id}' sent: {operationResult}", messageId, updateResult);
-        }
-    }
-
-    /// <summary>
-    /// Sets ack date to a message for a subscriber
-    /// </summary>
-    /// <param name="messageId"></param>
-    /// <param name="ipAddress"></param>
-    /// <param name="hostname"></param>
-    /// <returns>If message has been set as sent or not</returns>
-    public void Ack(Guid messageId, string ipAddress, string hostname)
-    {
-        lock (_lock)
-        {
-            if (messageId == Guid.Empty)
-            {
-                _logger.LogWarning("messageId is an empty Guid. No processing will be done");
-                return;
-            }
-
-            var messageFound = _messageCollection.FindById(messageId);
-
-            if (messageFound == null)
-            {
-                _logger.LogWarning("Message '{messageId}' not found. The ack will not be set.", messageId);
-                return;
-            }
-
-            var sentModel = messageFound.Tracking.FirstOrDefault(e =>
-                e.Subscriber.IpAddress == ipAddress && e.Subscriber.Hostname == hostname &&
-                e.Subscriber.Topic == messageFound.Topic && e.Ack == null && e.Rejected == null);
-
-            if (sentModel == null)
-            {
-                _logger.LogWarning("Message '{id}' not found. The ack will not be set.", messageId);
-                return;
-            }
-
-            sentModel.Ack = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
-
-            var updateResult = _messageCollection.Update(messageFound);
-
-            _logger.LogDebug("Message '{id}' sent: {operationResult}", messageId, updateResult);
-        }
-    }
-
-    private MessageModel AddMessageInStorage(string topic, string payload, int? retryAttempts, int? ttl)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(topic);
-        ArgumentException.ThrowIfNullOrWhiteSpace(payload);
-
-        lock (_lock)
-        {
-            var message = new MessageModel(Guid.NewGuid(), topic, payload,
-                new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds());
-
-            if (ttl.HasValue)
-            {
-                message.Expiration = new DateTimeOffset(DateTime.UtcNow.AddSeconds(ttl.Value)).ToUnixTimeMilliseconds();
-            }
-
-            if (retryAttempts.HasValue)
-            {
-                message.RetryAttempts = retryAttempts.Value;
-            }
-
-            _messageCollection.Insert(message.Id, message);
-
-            _logger.LogDebug("Added message '{id}' in storage", message.Id);
-
-            return message;
-        }
-    }
-
-    private List<MessageModel> GetPendingMessagesToByTopic(string topic)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(topic);
-
-        lock (_lock)
-        {
-            var currentTimeStamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
-
-            return _messageCollection.Find(x => x.Topic == topic && x.Tracking.Count == 0 && x.Payload != null && (x.Expiration == null || x.Expiration.Value > currentTimeStamp))
-                .OrderBy(x => x.Timestamp).ToList();
-        }
-    }
-
-    private void OnTimedEvent(object source, System.Timers.ElapsedEventArgs e)
-    {
-        lock (_lock)
-        {
-            try
-            {
-                //find messages with subscribers to be Queued again
-                var currentTimestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
-
-                var candidatesMessagesToUpdate = _messageCollection.Query().Where(x => (x.Expiration == null || x.Expiration.Value > currentTimestamp) && x.RetryAttempts > 0 && x.Tracking.Count(t => t.Ack == null
-                        && t.Rejected == null
-                        && t.Retries.Count <= x.RetryAttempts) > 0)
-                    .OrderBy(m => m.Timestamp).ToList();
-
-                var messagesToUpdate = new List<MessageModel>();
-
-                if (candidatesMessagesToUpdate != null && candidatesMessagesToUpdate.Any())
+                var message = new MessageModel(Guid.NewGuid(), topic, payload,
+                    timestamp)
                 {
-                    _database.BeginTrans();
+                    Broadcast = broadcast.HasValue && broadcast.Value
+                };
 
-                    foreach (var candidateMessageToUpdate in candidatesMessagesToUpdate)
-                    {
-                        //find messages with subscribers to rejected because reached the retry limit
-                        candidateMessageToUpdate.Tracking.Where(trackingModel =>
-                                _topicSubscriptions.Values.Any(s => s.Any(ts =>
-                                    ts.Subscriber.Hash == trackingModel.Subscriber.Hash) && trackingModel.Ack == null &&
-                                    trackingModel.Rejected == null &&
-                                    trackingModel.Retries.Count == candidateMessageToUpdate.RetryAttempts)).ToList()
-                            .ForEach(
-                                r =>
-                                {
-                                    r.Rejected = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
-
-                                    if (messagesToUpdate.All(x => x.Id != candidateMessageToUpdate.Id))
-                                    {
-                                        messagesToUpdate.Add(candidateMessageToUpdate);
-                                    }
-                                });
-
-
-                        candidateMessageToUpdate.Tracking.Where(trackingModel =>
-                                _topicSubscriptions.Values.Any(s => s.Any(ts => ts.Subscriber.Hash == trackingModel.Subscriber.Hash)
-                                    && trackingModel.Ack == null
-                                    && trackingModel.Rejected == null
-                                    && trackingModel.Retries.Count < candidateMessageToUpdate.RetryAttempts - 1
-                                    && currentTimestamp - trackingModel.Sent > 60)).ToList()
-                            .ForEach(
-                                r =>
-                                {
-                                    r.Retries.Add(new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds());
-                                    //schedule message on the channel for subscriber
-                                    _topicSubscriptions[candidateMessageToUpdate.Topic].ForEach(subscription =>
-                                    {
-                                        if (subscription.Subscriber.Hash == r.Subscriber.Hash)
-                                        {
-                                            subscription.MessageChannel.Writer.TryWrite(candidateMessageToUpdate);
-                                            _logger.LogDebug(
-                                                "Queued for retry message '{messageId}' for subscription '{subscriptionId}' for subscriber with IP'{ipAddress}' for topic '{topic}'",
-                                                candidateMessageToUpdate.Id, subscription.Id, subscription.Subscriber.IpAddress,
-                                                candidateMessageToUpdate.Topic);
-
-                                            if (messagesToUpdate.All(x => x.Id != candidateMessageToUpdate.Id))
-                                            {
-                                                messagesToUpdate.Add(candidateMessageToUpdate);
-                                            }
-                                        }
-                                    });
-                                });
-                    }
-
-                    if (messagesToUpdate.Count > 0)
-                    {
-                        var updatedMessageToUpdateResult = _messageCollection.Update(messagesToUpdate);
-                        _logger.LogDebug("Updated messages {operationResult}", updatedMessageToUpdateResult);
-                    }
-                    else
-                    {
-                        _logger.LogDebug("No messages to update");
-                    }
-
-                    _database.Commit();
+                if (ttl.HasValue)
+                {
+                    message.Expiration =
+                        new DateTimeOffset(DateTime.UtcNow.AddSeconds(ttl.Value)).ToUnixTimeMilliseconds();
                 }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError("An error '{error}' has occurred during retry check", ex.Message);
-                _database.Rollback();
+
+                _messageCollection.Insert(message.Id, message);
+
+                _logger.LogDebug("Added message '{id}' in storage with payload '{payload}'", message.Id, message.Payload);
+
+                return message.Id;
             }
         }
     }
@@ -341,51 +140,136 @@ internal sealed class MessageBroker : IDisposable
     public void Dispose()
     {
         _database.Dispose();
+        _topicTimer.Dispose();
+    }
+
+    private async void OnTopicTimedEvent(object source, System.Timers.ElapsedEventArgs e)
+    {
+        var currentTimeStamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
+
+        await Parallel.ForEachAsync(_subscriptions.Keys, async (topic, token) =>
+            {
+                try
+                {
+                    var nextMessages = _messageCollection.Query().Where(x => x.Topic == topic && x.Tracking.Count == 0
+                            && (x.Expiration == null ||
+                                x.Expiration.Value > currentTimeStamp))
+                        .OrderBy(x => x.Timestamp).ToList();
+
+                    if (nextMessages.Count == 0) return;
+
+                    foreach (var nextMessage in nextMessages)
+                    {
+                        if (nextMessage.Broadcast)
+                        {
+                            var subscriptions = _subscriptions[topic];
+
+                            if (subscriptions.Count <= 0) return;
+                            var tasks = subscriptions
+                                .Select(async s =>
+                                {
+                                    await s.MessageChannel.Writer.WriteAsync(nextMessage, token);
+                                    nextMessage.Tracking.Add(new TrackingModel(
+                                        new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), s.Hostname,
+                                        s.IpAddress));
+                                });
+
+                            await Task.WhenAll(tasks);
+                        }
+                        else
+                        {
+                            var subscription = GetNextSubscription(topic);
+
+                            if (subscription != null)
+                            {
+                                await subscription.MessageChannel.Writer.WriteAsync(nextMessage, token);
+                                nextMessage.Tracking.Add(new TrackingModel(
+                                    new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), subscription.Hostname,
+                                    subscription.IpAddress));
+                                _logger.LogInformation("Sent message '{messageId}' to subscription '{subscriptionId}'",
+                                    nextMessage.Id, subscription.Id);
+                            }
+                        }
+
+                        var updateResult = _messageCollection.Update(nextMessage.Id, nextMessage);
+                        _logger.LogDebug("Message '{id}' sent: {operationResult}", nextMessage.Id, updateResult);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError("An error '{error}' has occurred during publish", ex.Message);
+                }
+            });
+    }
+
+    private SubscriptionModel? GetNextSubscription(string topic)
+    {
+        lock (_lock)
+        {
+            if (_subscriptions.IsEmpty)
+            {
+                _logger.LogWarning("No subscriptions available.");
+                return null;
+            }
+
+            if (!_subscriptions.ContainsKey(topic))
+            {
+                _logger.LogWarning("No subscriptions available for topic '{topic}'.", topic);
+                return null;
+            }
+
+            if (_subscriptions[topic].Count == 0)
+            {
+                _logger.LogWarning("No subscriptions for topic '{topic}'. No processing will be done.", topic);
+                return null;
+            }
+
+            var exclusiveSubscription = _subscriptions[topic].FirstOrDefault(x => x.Exclusive.HasValue && x.Exclusive.Value);
+
+            if (exclusiveSubscription != null)
+            {
+                _logger.LogDebug("Found exclusive subscription '{subscriptionId}' for topic '{topic}'",
+                    exclusiveSubscription.Id, topic);
+
+                return exclusiveSubscription;
+            }
+
+            if (!_topicIndex.ContainsKey(topic))
+            {
+                _topicIndex[topic] = 0;
+            }
+
+            var subscription = _subscriptions[topic].ElementAt(_topicIndex[topic]);
+
+            if (subscription == null!)
+            {
+                _logger.LogWarning("No subscription found for topic '{topic}' at index {currentIndex}", topic,
+                    _topicIndex[topic]);
+                return null;
+            }
+
+            _logger.LogDebug("Found subscription for topic '{topic}' for index {currentIndex}", topic, _topicIndex[topic]);
+
+            _topicIndex[topic] = (_topicIndex[topic] + 1) % _subscriptions[topic].Count;
+
+            _logger.LogDebug("New calculated index for next iteration for topic '{topic}' {currentIndex}", topic,
+                _topicIndex[topic]);
+
+            return subscription;
+        }
     }
 }
 
 internal record MessageModel(Guid Id, string Topic, string? Payload, long Timestamp)
 {
     public long? Expiration { get; set; }
-    [JsonIgnore] public int RetryAttempts { get; set; }
+    [JsonIgnore] public bool Broadcast { get; init; }
     [JsonIgnore] public List<TrackingModel> Tracking { get; set; } = new();
 };
 
-internal record SubscriberModel(string Hostname, string IpAddress, string Topic, long Timestamp)
+internal record TrackingModel(long Timestamp, string? Hostname, string? IpAddress);
+
+internal record SubscriptionModel(Guid Id, string Hostname, string IpAddress, long Timestamp, bool? Exclusive)
 {
-    public string Hash => ComputeHash();
-
-    private string ComputeHash()
-    {
-        var md5Hasher = MD5.Create();
-        var data = md5Hasher.ComputeHash(Encoding.Default.GetBytes($"{Hostname}/{IpAddress}/{Topic}"));
-        var stringBuilder = new StringBuilder();
-        foreach (var t in data)
-        {
-            stringBuilder.Append(t.ToString("x2"));
-        }
-        return stringBuilder.ToString();
-    }
-};
-
-internal record TrackingModel(SubscriberModel Subscriber, long Sent)
-{
-    public long? Ack { get; set; }
-    public long? Rejected { get; set; }
-    public List<long> Retries { get; set; } = new();
-}
-
-internal record Subscription
-{
-    public Guid Id { get; }
-    public Channel<MessageModel> MessageChannel { get; }
-    public SubscriberModel Subscriber { get; }
-
-    public Subscription(string ipAddress, string hostname, string topic)
-    {
-        Id = Guid.NewGuid();
-        MessageChannel = Channel.CreateUnbounded<MessageModel>();
-        Subscriber = new SubscriberModel(hostname, ipAddress, topic,
-            new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds());
-    }
+    public Channel<MessageModel> MessageChannel { get; set; } = Channel.CreateUnbounded<MessageModel>();
 }

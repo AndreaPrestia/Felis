@@ -14,19 +14,26 @@ internal static class BrokerEndpoints
         ArgumentNullException.ThrowIfNull(endpointRouteBuilder);
 
         endpointRouteBuilder.MapPost("/{topic}",
-            async (HttpContext context, [FromServices] MessageBroker messageBroker, [FromRoute] string topic, [FromHeader(Name = "x-retry")] int? retryAttempts, [FromHeader(Name = "x-ttl")] int? ttl) =>
+            async (HttpContext context,
+                [FromServices] MessageBroker messageBroker,
+                [FromRoute] string topic,
+                [FromHeader(Name = "x-ttl")] int? ttl,
+                [FromHeader(Name = "x-broadcast")] bool? broadcast) =>
             {
                 ArgumentNullException.ThrowIfNull(context.Request.Body);
                 using var reader = new StreamReader(context.Request.Body);
                 var payload = await reader.ReadToEndAsync();
 
-                var messageId = messageBroker.Publish(topic, payload, retryAttempts, ttl);
+                var messageId = messageBroker.Publish(topic, payload, ttl, broadcast);
 
                 return Results.Accepted($"/{topic}", messageId);
             });
 
         endpointRouteBuilder.MapGet("/{topic}",
-            async (HttpContext context, [FromServices] MessageBroker messageBroker, [FromRoute] string topic) =>
+            async (HttpContext context, 
+                [FromServices] MessageBroker messageBroker, 
+                [FromRoute] string topic, 
+                [FromHeader(Name = "x-exclusive")] bool? exclusive) =>
             {
                 var clientIp = (context.Connection.RemoteIpAddress) ??
                                throw new InvalidOperationException("No Ip address retrieve from Context");
@@ -34,7 +41,7 @@ internal static class BrokerEndpoints
                 var clientHostname = (await Dns.GetHostEntryAsync(clientIp)).HostName;
 
                 var subscriptionEntity =
-                    messageBroker.Subscribe(clientIp.MapToIPv4().ToString(), clientHostname, topic);
+                    messageBroker.Subscribe(topic, clientIp.MapToIPv4().ToString(), clientHostname, exclusive);
 
                 context.Response.Headers.ContentType = "application/x-ndjson";
                 context.Response.Headers.CacheControl = "no-cache";
@@ -46,7 +53,7 @@ internal static class BrokerEndpoints
                 {
                     if (cancellationToken.IsCancellationRequested)
                     {
-                        messageBroker.UnSubscribe(subscriptionEntity.Id);
+                        messageBroker.UnSubscribe(topic, subscriptionEntity);
                         break;
                     }
 
@@ -54,24 +61,9 @@ internal static class BrokerEndpoints
 
                     await context.Response.WriteAsync($"{messageString}\n", cancellationToken);
                     await context.Response.Body.FlushAsync(cancellationToken);
-
-                    messageBroker.Send(message.Id, subscriptionEntity.Subscriber);
                 }
 
                 return Results.Empty;
-            });
-
-        endpointRouteBuilder.MapGet("/messages/{id}/ack",
-            async (HttpContext context, [FromServices] MessageBroker messageBroker, [FromRoute] Guid id) =>
-            {
-                var clientIp = (context.Connection.RemoteIpAddress) ??
-                               throw new InvalidOperationException("No Ip address retrieve from Context");
-
-                var clientHostname = (await Dns.GetHostEntryAsync(clientIp)).HostName;
-
-                messageBroker.Ack(id, clientIp.MapToIPv4().ToString(), clientHostname);
-
-                return Results.NoContent();
             });
     }
 }

@@ -21,8 +21,6 @@ try
         BaseAddress = uri
     };
     
-    httpClient.DefaultRequestHeaders.Add("x-retry", "3");
-
     while (true)
     {
         var response = await httpClient.PostAsJsonAsync("/Test",

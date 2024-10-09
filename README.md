@@ -3,6 +3,7 @@ A light-weight message broker totally written in .NET based on HTTP and JSON.
 
 The **Felis** project contains the logic for dispatching, storing and validating messages.
 It stores the messages in a **LiteDB** database.
+It behaves as message queue and broadcaster if a specific message for a topic is tagged with broadcast property.
 
 **Requirements**
 
@@ -48,7 +49,7 @@ curl -X 'POST' \
   'https://localhost:7110/topic' \
   -H 'accept: application/json' \
   -H 'content-Type: application/json' \
-  -H 'x-retry: 5' \
+  -H 'x-broadcast: false' \
   -H 'x-ttl: 10' \
   -d '{
         "description": "Test description"
@@ -70,7 +71,7 @@ Header | Value                                 | Context                        
 --- |---------------------------------------|----------------------------------------------------------------------------------------------------|
 accept | application/json                      | The accept header.                                                                                 |
 content-Type | application/json                      | The content type returned.                                                                         |
-x-retry | 5  (a number that is more than zero)  | How many retries on ACK failures apply to the message for every subscriber.                        |
+x-broadcast | true/false   | Tells if the message must be broadcasted to all subscribers. If not provided or set to false Felis broker will send enqueued message only to one subscriber in a load balanced manner.                        |
 x-ttl | 10  (a number that is more than zero) | How many seconds a message can live. If not specified (or 0 value is used) the message is durable. |
 
 ***Response***
@@ -103,6 +104,7 @@ This endpoint is used to subscribe to a subset of topics using application/x-ndj
 curl -X 'GET' \
   'https://localhost:7110/topic' \
   -H 'accept: application/json' \
+  -H 'x-exclusive: false' \
 ```
 
 ***Request route***
@@ -116,6 +118,7 @@ topic | string | the topic to subscribe to. |
 Header | Value                                | Context                                                                     |
 --- |--------------------------------------|-----------------------------------------------------------------------------|
 accept | application/json                     | The accept header.                                                          |
+x-exclusive | true/false                     | Tells to the broker that this subscriber is an exclusive one for the topic, so the messages will all go only to it.                                                          |
 
 
 ***Response***
@@ -172,63 +175,13 @@ and the following object:
 }
 ```
 
-**ACK a message receive**
-
-This endpoint is used to ACK a message receive. If its not invoked after a receive and the message has been published with an **x-retry** header it will be re-sent N times as defined in the **x-retry** header.
-Be aware that a message that is not ACK in under 1 minute from dispatch and/or after the retries are completed is considered **rejected**.
-
-```
-curl -X 'GET' \
-  'https://localhost:7110/messages/ac4625da-e922-4c2b-a7e7-aef21ece963c/ack' \
-  -H 'accept: application/json' \
-```
-
-***Request route***
-
-Property | Type | Context                |
---- | --- |------------------------|
-id | string | the message id to ACK. |
-
-****Request Headers****
-
-Header | Value                                | Context                                                                     |
---- |--------------------------------------|-----------------------------------------------------------------------------|
-accept | application/json                     | The accept header.                                                          |
-
-***Response***
-
-Status code | Type | Context                                                                                                       |
---- | --- |---------------------------------------------------------------------------------------------------------------|
-204 | NoContentResult | When nothing is more available from the topic |
-400 | BadRequestResult | When a validation or something not related to the authorization process fails.                                |
-401 | UnauthorizedResult | When an operation fails due to missing authorization.                                                         |
-403 | ForbiddenResult | When an operation fails because it is not allowed in the context.                                             |
-
-When an error occurs it is used the standard [RFC7807](https://datatracker.ietf.org/doc/html/rfc7807) to return HTTPS APIs errors with a **Content-Type** header with value **application/problem+json**
-and the following object:
-
-```
-{
-    Type = "https://httpstatuses.io/500",
-    Detail = "Error details",
-    Status = 500,
-    Title = "An error has occurred",
-    Instance = "/Test GET",
-}
-```
-
 **How can I test it?**
 
 This repository provides the examples of usage:
 
 - **Felis.Broker.Console**
-- **Felis.Publisher.Net.Console**
-- **Felis.Publisher.Ttl.Net.Console**
-- **Felis.Subscriber.Net.Console**
-- **Felis.Subscriber.NoAck.Net.Console**
 - **Felis.Publisher.Node.Console**
 - **Felis.Subscriber.Node.Console**
-- **Felis.Subscriber.NoAck.Node.Console**
 
 **Felis.Broker.Console**
 
@@ -236,9 +189,9 @@ A console application, that reference Felis project.
 
 **Publish a message**
 
-To ease the testing process, I have three console applications that publish to Felis broker.
+To ease the testing process, I have a NodeJS console applications that publish to Felis broker with multiple topics.
 
-These applications sends messages on the **Test** topic of the **subscribers** examples.
+This applications sends messages on the **Generic**, **TTL**, **Broadcast** and **Exclusive** topics.
 
 **Usage of Publishers**
 
@@ -246,15 +199,13 @@ Just launch the **Publisher** applications in the **Examples** directory.
 
 **Subscribe to a topic**
 
-To ease the testing process, I have two console applications that subscribe to Felis broker.
+To ease the testing process, I have a NodeJS console applications that subscribe to Felis broker with multiple subscribers.
 
-These application contains the logic to subscribe to messages by topic.
+This application contains the logic to subscribe to messages by topic.
 
 **Usage of Subscribers**
 
 Just launch the **Subscriber** applications in the **Examples** directory.
-
-The subscribers with the **NoAck** reference in their name demonstrates how they can reprocess a message N times as defined by the publisher.
 
 **Conclusion**
 

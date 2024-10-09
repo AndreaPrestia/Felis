@@ -9,55 +9,92 @@ const endpoint = 'https://localhost:7110';
 const pfxPath = path.join(__dirname, 'Output.pfx');
 const password = 'Password.1';
 
-// Create a client session
-const client = http2.connect(endpoint, {
-    pfx: fs.readFileSync(pfxPath),
-    passphrase: password,
-    rejectUnauthorized: false
-});
+const subscribeToTopic = (id, topic, exclusive) => {
+    return new Promise((resolve, reject) => {
+        // Create a client session
+        const client = http2.connect(endpoint, {
+            pfx: fs.readFileSync(pfxPath),
+            passphrase: password,
+            rejectUnauthorized: false
+        });
 
-const req = client.request({
-    ':method': 'GET',
-    ':path': `/Test`
-});
+        const req = client.request({
+            ':method': 'GET',
+            ':path': `/${topic}`,
+            'x-exclusive': `${exclusive}`
+        });
 
-req.on('response', (headers, flags) => {
-    console.debug('Response headers:', headers);
-});
-
-req.on('data', (data) => {
-    try {
-        const messageDeserialized = JSON.parse(data);
-
-        if (messageDeserialized) {
-            const messageFormat =
-                `Received message - ${messageDeserialized.Id} with topic - ${messageDeserialized.Topic} with payload - ${messageDeserialized.Payload} with expiration - ${messageDeserialized.Expiration}`;
-
+        req.on('data', (data) => {
             try {
-                console.info(messageFormat);
+                const messageDeserialized = JSON.parse(data);
 
-                const ackReq = client.request({
-                    ':method': 'GET',
-                    ':path': `/messages/${messageDeserialized.Id}/ack`
-                });
+                if (messageDeserialized) {
+                    const messageFormat =
+                        `Received message for subscriber: ${id} \n\r
+                        Id: '${messageDeserialized.Id}' \n\r
+                        Topic: '${messageDeserialized.Topic}' \n\r
+                        Timestamp: ${messageDeserialized.Timestamp} \n\r
+                        Payload: '${messageDeserialized.Payload}' \n\r
+                        Expiration: ${messageDeserialized.Expiration}`;
 
-                ackReq.on('response', (headers, flags) => {
-                    console.debug('ACK Response headers:', headers);
-                });
+                    try {
+                        console.info(messageFormat);
+                    }
+                    catch (e) {
+                        console.error(`Error in Felis.Subscriber.Node.Console: '${e.message}'`);
+                    }
+                }
             }
-            catch (e) {
-                console.error(`Error in Felis.Subscriber.Node.Console ${e.message}`);
+            catch (error) {
+                console.error(`Error in Felis.Subscriber.Node.Console: '${error.message}'`);
             }
-        }
-    }
-    catch (error) {
-        console.error(`Error in Felis.Subscriber.Node.Console ${error.message}`);
-    }
-});
+        });
 
-req.on('end', () => {
-    console.debug('Message sent and response received.');
-    client.close();
-});
+        req.on('error', (error) => {
+            console.error(`Request error: '${error}'`);
+            reject(error);
+        });
 
-req.end();
+
+        req.on('end', () => {
+            client.close();
+            resolve();
+        });
+
+        req.end();
+    });
+}
+
+async function subscribeInParallel(n, topic, exclusive) {
+    const subscribers = [];
+
+    for (let i = 0; i < n; i++) {
+        subscribers.push(subscribeToTopic(i + 1, `${topic}`, exclusive));
+    }
+
+    try {
+        await Promise.all(subscribers);
+        console.debug('All subscribers finished.');
+    } catch (error) {
+        console.error('Error with Http2 subscribers:', error.message);
+    }
+}
+
+const runMultipleSubscriptions = async () => {
+    try {
+        const subscriptionGeneric = subscribeInParallel(10, "Generic", false);
+        const subscriptionTTL = subscribeInParallel(20, "TTL", false);
+        const subscriptionBroadcast = subscribeInParallel(20, "Broadcast", false);
+        const subscriptionExclusive = subscribeInParallel(1, "Exclusive", true);
+
+        await Promise.all([subscriptionGeneric, subscriptionTTL, subscriptionBroadcast, subscriptionExclusive]);
+    }
+    catch (e) {
+        console.error(`Error in Felis.Subscriber.Node.Console ${e.message}`);
+    }
+    finally {
+        closeConnection();
+    }
+};
+
+runMultipleSubscriptions();

@@ -60,7 +60,7 @@ internal static class BrokerEndpoints
                         await context.Response.Body.FlushAsync(cancellationToken);
                     }
                 }
-                catch(TaskCanceledException) 
+                catch(OperationCanceledException) 
                 {
                     logger.LogInformation("Subscriber '{id}' closed connection.", subscriptionEntity.Id);
                 }

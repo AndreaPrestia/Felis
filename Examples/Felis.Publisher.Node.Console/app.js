@@ -78,6 +78,7 @@ const sleep = (ms) => {
             makeParallelRequests(20, "TTL", 5, false);
             makeParallelRequests(20, "Broadcast", 0, true);
             makeParallelRequests(20, "Exclusive", 0, false);
+            console.log("Publish finished, waiting 5 seconds to next round");
             await sleep(5000);
         }
     }

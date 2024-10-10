@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Logging;
 
 namespace Felis.Endpoints;
 
@@ -30,11 +31,12 @@ internal static class BrokerEndpoints
             });
 
         endpointRouteBuilder.MapGet("/{topic}",
-            async (HttpContext context, 
+            async (ILoggerFactory loggerFactory, HttpContext context, 
                 [FromServices] MessageBroker messageBroker, 
                 [FromRoute] string topic, 
                 [FromHeader(Name = "x-exclusive")] bool? exclusive) =>
             {
+                var logger = loggerFactory.CreateLogger("Felis");
                 var clientIp = (context.Connection.RemoteIpAddress) ??
                                throw new InvalidOperationException("No Ip address retrieve from Context");
 
@@ -49,19 +51,24 @@ internal static class BrokerEndpoints
 
                 var cancellationToken = context.RequestAborted;
 
-                await foreach (var message in subscriptionEntity.MessageChannel.Reader.ReadAllAsync(cancellationToken))
+                try
                 {
-                    if (cancellationToken.IsCancellationRequested)
+                    await foreach (var message in subscriptionEntity.MessageChannel.Reader.ReadAllAsync(cancellationToken))
                     {
-                        messageBroker.UnSubscribe(topic, subscriptionEntity);
-                        break;
+                        var messageString = JsonSerializer.Serialize(message);
+                        await context.Response.WriteAsync($"{messageString}\n", cancellationToken);
+                        await context.Response.Body.FlushAsync(cancellationToken);
                     }
-
-                    var messageString = JsonSerializer.Serialize(message);
-
-                    await context.Response.WriteAsync($"{messageString}\n", cancellationToken);
-                    await context.Response.Body.FlushAsync(cancellationToken);
                 }
+                catch(TaskCanceledException) 
+                {
+                    logger.LogInformation("Subscriber '{id}' closed connection.", subscriptionEntity.Id);
+                }
+                finally
+                {
+                    messageBroker.UnSubscribe(topic, subscriptionEntity);
+                }
+               
 
                 return Results.Empty;
             });

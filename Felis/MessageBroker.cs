@@ -277,5 +277,5 @@ internal record TrackingModel(long Timestamp, string? Hostname, string? IpAddres
 
 internal record SubscriptionModel(Guid Id, string Hostname, string IpAddress, long Timestamp, bool? Exclusive)
 {
-    public Channel<MessageModel> MessageChannel { get; set; } = Channel.CreateUnbounded<MessageModel>();
+    public Channel<MessageModel> MessageChannel { get; set; } = Channel.CreateBounded<MessageModel>(1);
 }

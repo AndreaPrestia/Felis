@@ -12,7 +12,7 @@ It behaves as message queue and broadcaster if a specific message for a topic is
 - [TLS 1.3](https://tls13.xargs.org)
 - [HTTP/3](https://caniuse.com/http3)
 - [QUIC](https://quicwg.org/)
-- [NDJSON](https://docs.foursquare.com/analytics-products/docs/data-formats-json)
+- [JSON](https://docs.foursquare.com/analytics-products/docs/data-formats-json)
 
 **Dependencies**
 

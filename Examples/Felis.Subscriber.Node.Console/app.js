@@ -66,8 +66,8 @@ async function subscribeInParallel(n, topic, exclusive) {
 const runMultipleSubscriptions = async () => {
     try {
         const subscriptionGeneric = subscribeInParallel(10, "Generic", false);
-        const subscriptionTTL = subscribeInParallel(20, "TTL", false);
-        const subscriptionBroadcast = subscribeInParallel(20, "Broadcast", false);
+        const subscriptionTTL = subscribeInParallel(10, "TTL", false);
+        const subscriptionBroadcast = subscribeInParallel(10, "Broadcast", false);
         const subscriptionExclusive = subscribeInParallel(1, "Exclusive", true);
 
         await Promise.all([subscriptionGeneric, subscriptionTTL, subscriptionBroadcast, subscriptionExclusive]);

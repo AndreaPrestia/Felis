@@ -30,10 +30,14 @@ internal static class BrokerEndpoints
                 return Results.Accepted($"/{topic}", messageId);
             });
 
+        endpointRouteBuilder.MapDelete("/{topic}", ([FromServices] MessageBroker messageBroker, [FromRoute] string topic) => Results.Ok(messageBroker.Reset(topic)));
+
+        endpointRouteBuilder.MapGet("/{topic}/{page:int}/{size:int}", ([FromServices] MessageBroker messageBroker, [FromRoute] string topic, [FromRoute] int page, [FromRoute] int size) => Results.Ok(messageBroker.Messages(topic, page, size)));
+
         endpointRouteBuilder.MapGet("/{topic}",
-            async (ILoggerFactory loggerFactory, HttpContext context, 
-                [FromServices] MessageBroker messageBroker, 
-                [FromRoute] string topic, 
+            async (ILoggerFactory loggerFactory, HttpContext context,
+                [FromServices] MessageBroker messageBroker,
+                [FromRoute] string topic,
                 [FromHeader(Name = "x-exclusive")] bool? exclusive) =>
             {
                 var logger = loggerFactory.CreateLogger("Felis");
@@ -49,18 +53,28 @@ internal static class BrokerEndpoints
                 context.Response.Headers.CacheControl = "no-cache";
                 context.Response.Headers.Connection = "keep-alive";
 
+                var dataStream = context.Response.BodyWriter.AsStream();
+
+                if(dataStream == null)
+                {
+                    logger.LogWarning("Data stream in context null. Subscription {subscriptionId} will be removed.", subscriptionEntity.Id);
+                    messageBroker.UnSubscribe(topic, subscriptionEntity);
+                    return Results.Empty;
+                }
+
                 var cancellationToken = context.RequestAborted;
 
                 try
                 {
                     await foreach (var message in subscriptionEntity.MessageChannel.Reader.ReadAllAsync(cancellationToken))
                     {
-                        var messageString = JsonSerializer.Serialize(message);
-                        await context.Response.WriteAsync($"{messageString}\n", cancellationToken);
-                        await context.Response.Body.FlushAsync(cancellationToken);
+                        var messageString = $"{JsonSerializer.Serialize(message)}\n";
+                        var bytes = System.Text.Encoding.UTF8.GetBytes(messageString);
+                        await dataStream.WriteAsync(bytes, cancellationToken);
+                        await context.Response.Body.FlushAsync();
                     }
                 }
-                catch(OperationCanceledException) 
+                catch (OperationCanceledException)
                 {
                     logger.LogInformation("Subscriber '{id}' closed connection.", subscriptionEntity.Id);
                 }
@@ -68,7 +82,7 @@ internal static class BrokerEndpoints
                 {
                     messageBroker.UnSubscribe(topic, subscriptionEntity);
                 }
-               
+
 
                 return Results.Empty;
             });

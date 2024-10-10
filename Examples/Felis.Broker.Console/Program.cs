@@ -13,7 +13,7 @@ try
             logging.AddConsole();
             logging.SetMinimumLevel(LogLevel.Debug);
         })
-        .AddFelisBroker("Output.pfx", "Password.1", 7110);
+        .AddFelisBroker("Output.pfx", "Password.1", 7110, "Felis.db");
 
     var host = builder.Build();
 

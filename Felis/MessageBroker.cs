@@ -1,7 +1,6 @@
 ﻿using LiteDB;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
-using System.Text.Json.Serialization;
 using System.Threading.Channels;
 using Timer = System.Timers.Timer;
 
@@ -123,16 +122,7 @@ internal sealed class MessageBroker : IDisposable
                 var timestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
 
                 var message = new MessageModel(Guid.NewGuid(), topicTrimmedLowered, payload,
-                    timestamp)
-                {
-                    Broadcast = broadcast.HasValue && broadcast.Value
-                };
-
-                if (ttl.HasValue && ttl.Value > 0)
-                {
-                    message.Expiration =
-                        new DateTimeOffset(DateTime.UtcNow.AddSeconds(ttl.Value)).ToUnixTimeMilliseconds();
-                }
+                    timestamp, ttl.HasValue && ttl.Value > 0 ? new DateTimeOffset(DateTime.UtcNow.AddSeconds(ttl.Value)).ToUnixTimeMilliseconds() : null, broadcast.HasValue && broadcast.Value);
 
                 _messageCollection.Insert(message.Id, message);
 
@@ -140,6 +130,66 @@ internal sealed class MessageBroker : IDisposable
 
                 return message.Id;
             }
+        }
+    }
+
+    /// <summary>
+    /// Resets a queue
+    /// </summary>
+    /// <param name="topic"></param>
+    /// <returns></returns>
+    internal int Reset(string topic)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(topic);
+
+        lock (_lock)
+        {
+            var topicTrimmedLowered = topic.Trim().ToLowerInvariant();
+
+            var deletedResult = _messageCollection.DeleteMany(x => x.Topic == topicTrimmedLowered);
+
+            _logger.LogDebug("Deletes messages for topic '{topic}': {operationResult}", topic, deletedResult);
+
+            return deletedResult;
+        }
+    }
+
+    /// <summary>
+    /// Returns all the messages to process in the queue order by timestamp
+    /// </summary>
+    /// <param name="topic"></param>
+    /// <param name="page"></param>
+    /// <param name="size"></param>
+    /// <returns></returns>
+    internal List<MessageModel> Messages(string topic, int page, int size)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(topic);
+
+        lock (_lock)
+        {
+            var topicTrimmedLowered = topic.Trim().ToLowerInvariant();
+
+            if (page <= 0)
+            {
+                page = 1;
+            }
+
+            if (size <= 0 || size > 100)
+            {
+                size = 100;
+            }
+
+            var skip = (page - 1) * size;
+
+            var messages = _messageCollection
+                .Find(x =>
+                    x.Topic == topicTrimmedLowered)
+                .OrderBy(x => x.Timestamp)
+                .Skip(skip)
+                .Take(size)
+                .ToList();
+
+            return messages;
         }
     }
 
@@ -157,7 +207,7 @@ internal sealed class MessageBroker : IDisposable
             {
                 try
                 {
-                    var nextMessages = _messageCollection.Query().Where(x => x.Topic == topic && x.Tracking.Count == 0
+                    var nextMessages = _messageCollection.Query().Where(x => x.Topic == topic
                             && (x.Expiration == null ||
                                 x.Expiration.Value > currentTimeStamp))
                         .OrderBy(x => x.Timestamp).ToList();
@@ -175,9 +225,7 @@ internal sealed class MessageBroker : IDisposable
                                 .Select(async s =>
                                 {
                                     await s.MessageChannel.Writer.WriteAsync(nextMessage, token);
-                                    nextMessage.Tracking.Add(new TrackingModel(
-                                        new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), s.Hostname,
-                                        s.IpAddress));
+                                    _logger.LogInformation("Message '{messageId}' sent to '{ipAddress}' - '{hostname}' at {timestamp} for topic '{topic}'", nextMessage.Id, s.IpAddress, s.Hostname, new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), nextMessage.Topic);
                                 });
 
                             await Task.WhenAll(tasks);
@@ -189,16 +237,12 @@ internal sealed class MessageBroker : IDisposable
                             if (subscription != null)
                             {
                                 await subscription.MessageChannel.Writer.WriteAsync(nextMessage, token);
-                                nextMessage.Tracking.Add(new TrackingModel(
-                                    new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), subscription.Hostname,
-                                    subscription.IpAddress));
-                                _logger.LogInformation("Sent message '{messageId}' to subscription '{subscriptionId}'",
-                                    nextMessage.Id, subscription.Id);
+                                _logger.LogInformation("Message '{messageId}' sent to '{ipAddress}' - '{hostname}' at {timestamp} for topic '{topic}'", nextMessage.Id, subscription.IpAddress, subscription.Hostname, new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), nextMessage.Topic);
                             }
                         }
 
-                        var updateResult = _messageCollection.Update(nextMessage.Id, nextMessage);
-                        _logger.LogDebug("Message '{id}' sent: {operationResult}", nextMessage.Id, updateResult);
+                        var deleteResult = _messageCollection.Delete(nextMessage.Id);
+                        _logger.LogDebug("Message '{id}' deleted: {operationResult}", nextMessage.Id, deleteResult);
                     }
                 }
                 catch (Exception ex)
@@ -218,19 +262,19 @@ internal sealed class MessageBroker : IDisposable
                 return null;
             }
 
-            if (!_subscriptions.ContainsKey(topic))
+            if (!_subscriptions.TryGetValue(topic, out List<SubscriptionModel>? subscriptions))
             {
                 _logger.LogWarning("No subscriptions available for topic '{topic}'.", topic);
                 return null;
             }
 
-            if (_subscriptions[topic].Count == 0)
+            if (subscriptions == null || subscriptions.Count == 0)
             {
                 _logger.LogWarning("No subscriptions for topic '{topic}'. No processing will be done.", topic);
                 return null;
             }
 
-            var exclusiveSubscription = _subscriptions[topic].FirstOrDefault(x => x.Exclusive.HasValue && x.Exclusive.Value);
+            var exclusiveSubscription = subscriptions.FirstOrDefault(x => x.Exclusive.HasValue && x.Exclusive.Value);
 
             if (exclusiveSubscription != null)
             {
@@ -240,23 +284,23 @@ internal sealed class MessageBroker : IDisposable
                 return exclusiveSubscription;
             }
 
-            if (!_topicIndex.ContainsKey(topic))
+            if (!_topicIndex.TryGetValue(topic, out int currentIndex))
             {
-                _topicIndex[topic] = 0;
+                currentIndex = 0;
+                _topicIndex[topic] = currentIndex;
             }
 
-            var subscription = _subscriptions[topic].ElementAt(_topicIndex[topic]);
+            var subscription = subscriptions.ElementAt(currentIndex);
 
             if (subscription == null!)
             {
-                _logger.LogWarning("No subscription found for topic '{topic}' at index {currentIndex}", topic,
-                    _topicIndex[topic]);
+                _logger.LogWarning("No subscription found for topic '{topic}' at index {currentIndex}", topic, currentIndex);
                 return null;
             }
 
-            _logger.LogDebug("Found subscription for topic '{topic}' for index {currentIndex}", topic, _topicIndex[topic]);
+            _logger.LogDebug("Found subscription for topic '{topic}' for index {currentIndex}", topic, currentIndex);
 
-            _topicIndex[topic] = (_topicIndex[topic] + 1) % _subscriptions[topic].Count;
+            _topicIndex[topic] = (currentIndex + 1) % subscriptions.Count;
 
             _logger.LogDebug("New calculated index for next iteration for topic '{topic}' {currentIndex}", topic,
                 _topicIndex[topic]);
@@ -266,14 +310,7 @@ internal sealed class MessageBroker : IDisposable
     }
 }
 
-internal record MessageModel(Guid Id, string Topic, string? Payload, long Timestamp)
-{
-    public long? Expiration { get; set; }
-    [JsonIgnore] public bool Broadcast { get; init; }
-    [JsonIgnore] public List<TrackingModel> Tracking { get; set; } = new();
-};
-
-internal record TrackingModel(long Timestamp, string? Hostname, string? IpAddress);
+internal record MessageModel(Guid Id, string Topic, string? Payload, long Timestamp, long? Expiration, bool Broadcast);
 
 internal record SubscriptionModel(Guid Id, string Hostname, string IpAddress, long Timestamp, bool? Exclusive)
 {

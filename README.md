@@ -1,5 +1,6 @@
 # ![Alt text](Felis.jpg)
-A light-weight message broker totally written in .NET based on HTTP and JSON.
+
+A light-weight message broker totally written in .NET based on HTTP3, QUIC and JSON.
 
 The **Felis** project contains the logic for dispatching, storing and validating messages.
 It stores the messages in a **LiteDB** database.
@@ -9,7 +10,8 @@ It behaves as message queue and broadcaster if a specific message for a topic is
 
 - [.NET 8](https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-8/overview)
 - [TLS 1.3](https://tls13.xargs.org)
-- [HTTP/2](https://developer.mozilla.org/en-US/docs/Glossary/HTTP_2)
+- [HTTP/3](https://caniuse.com/http3)
+- [QUIC](https://quicwg.org/)
 - [NDJSON](https://docs.foursquare.com/analytics-products/docs/data-formats-json)
 
 **Dependencies**
@@ -29,7 +31,7 @@ var builder = Host.CreateDefaultBuilder(args)
         logging.AddConsole();
         logging.SetMinimumLevel(LogLevel.Debug);
     })
-    .AddFelisBroker("Output.pfx", "Password.1", 7110);
+    .AddFelisBroker("Output.pfx", "Password.1", 7110, "Felis.db");
 
 var host = builder.Build();
 
@@ -37,7 +39,33 @@ await host.RunAsync();
 ```
 The example above initialize the **Felis Broker** in a console application, with console logging provider.
 
-The **AddFelisBroker** method takes **certPath**, **certPassword**, **port** as input parameters to use the broker with [mTLS](https://www.cloudflare.com/it-it/learning/access-management/what-is-mutual-tls/) authentication.
+The **AddFelisBroker** method takes **certPath**, **certPassword**, **port** and **databasePath** as input parameters to use the broker with [mTLS](https://www.cloudflare.com/it-it/learning/access-management/what-is-mutual-tls/) authentication.
+
+**Message entity**
+
+The JSON below represent the **Message entity** coming from the broker.
+
+```
+{
+    "id": "ac4625da-e922-4c2b-a7e7-aef21ece963c",
+    "topic": "test",
+    "payload": "{\"description\":\"Test\"}",
+    "timestamp": 1724421633359,
+    "expiration": 1724421644459,
+    "broadcast": true
+}
+```
+
+The **Message entity** is made of:
+
+Property | Type   | Context                                                              |
+--- |--------|----------------------------------------------------------------------|
+id | guid   | the message unique id assigned by the broker.                        |
+topic | string | the topic where the message has been published.                      |
+payload | string | the actual content of the message published on the topic.            |
+timestamp | number | the timestamp of the message when it was published.                  |
+expiration | number | the message's expiration timestamp. It can be null.                  |
+broadcast | bool   | the message's behaviour, if it's a broadcast message or a queue one. |
 
 **Publish of a message to a topic with POST**
 
@@ -83,19 +111,6 @@ Status code | Type | Context |
 401 | UnauthorizedResult | When an operation fails due to missing authorization. |
 403 | ForbiddenResult | When an operation fails because it is not allowed in the context. |
 
-When an error occurs it is used the standard [RFC7807](https://datatracker.ietf.org/doc/html/rfc7807) to return HTTPS APIs errors with a **Content-Type** header with value **application/problem+json** 
-and the following object:
-
-```
-{
-    Type = "https://httpstatuses.io/500",
-    Detail = "Error details",
-    Status = 500,
-    Title = "An error has occurred",
-    Instance = "/Test POST",
-}
-```
-
 **Subscribe to a topic with GET**
 
 This endpoint is used to subscribe to a subset of topics using application/x-ndjson content-type to stream structured data. 
@@ -120,39 +135,17 @@ Header | Value                                | Context                         
 accept | application/json                     | The accept header.                                                          |
 x-exclusive | true/false                     | Tells to the broker that this subscriber is an exclusive one for the topic, so the messages will all go only to it.                                                          |
 
-
 ***Response***
 
 Status code | Type | Context                                                                                                       |
 --- | --- |---------------------------------------------------------------------------------------------------------------|
-200 | Ok | When the subscription is successfully made and the application/x-ndjson header is returned to the client. |
+200 | Ok | When the subscription is successfully made and the application/x-ndjson header is returned to the client with the **Message entity**. |
 204 | NoContentResult | When nothing is more available from the topic |
 400 | BadRequestResult | When a validation or something not related to the authorization process fails.                                |
 401 | UnauthorizedResult | When an operation fails due to missing authorization.                                                         |
 403 | ForbiddenResult | When an operation fails because it is not allowed in the context.                                             |
 
-This endpoint pushes to the subscriber this json:
-
-```
-{
-    "id": "ac4625da-e922-4c2b-a7e7-aef21ece963c",
-    "topic": "test",
-    "payload": "{\"description\":\"Test\"}",
-    "timestamp": 1724421633359,
-    "expiration": 1724421644459
-}
-```
-The JSON above represent the **Message** coming from the broker.
-
-The **Message** entity is made of:
-
-Property | Type   | Context                                                   |
---- |--------|-----------------------------------------------------------|
-id | guid   | the message unique id assigned by the broker.             |
-topic | string | the topic where the message has been published.           |
-payload | string | the actual content of the message published on the topic. |
-timestamp | number | the timestamp of the message when it was published.       |
-expiration | number | the message's expiration timestamp. It can be null.       |
+This endpoint pushes to the subscriber the **Message entity**.
 
 ****Response Headers****
 
@@ -162,7 +155,73 @@ content-Type | application/x-ndjson | The content type returned as json stream. 
 cache-control | no-cache             | It avoids to cache the response           |
 connection | keep-alive           | It keeps the connection alive             |
 
-When an error occurs it is used the standard [RFC7807](https://datatracker.ietf.org/doc/html/rfc7807) to return HTTPS APIs errors with a **Content-Type** header with value **application/problem+json**
+**Reset a topic with DELETE**
+
+This endpoint is used to publish a message with whatever contract in the payload, by topic, to every listener subscribed to Felis.
+This endpoint returns the unique identifier of the message published, assigned by the broker.
+
+```
+curl -X 'DELETE' \
+  'https://localhost:7110/topic' \
+```
+
+***Response***
+
+Status code | Type               | Context |
+--- |--------------------| --- |
+200 | SuccessResult      | When the request is successfully processed. |
+400 | BadRequestResult   | When a validation or something not related to the authorization process fails. |
+401 | UnauthorizedResult | When an operation fails due to missing authorization. |
+403 | ForbiddenResult    | When an operation fails because it is not allowed in the context. |
+
+This endpoint returns the number of messages deleted from the topic. It deletes all the messages waiting to be dispatched to subscribers.
+
+**Get message from a topic with GET**
+
+This endpoint is used to subscribe to a subset of topics using application/x-ndjson content-type to stream structured data. 
+
+```
+curl -X 'GET' \
+  'https://localhost:7110/topic/1/10' \
+  -H 'accept: application/json' \
+```
+
+***Request route***
+
+Property | Type | Context |
+--- | --- | --- |
+topic | string | the topic to subscribe to. |
+page | number | the page number to search. |
+size | number | the size of the request. The maximum allowed is 100 |
+
+****Request Headers****
+
+Header | Value                                | Context                                                                     |
+--- |--------------------------------------|-----------------------------------------------------------------------------|
+accept | application/json                     | The accept header.                                                          |
+
+***Response***
+
+Status code | Type | Context                                                                                                       |
+--- | --- |---------------------------------------------------------------------------------------------------------------|
+200 | Ok | When the operation is successfully fullfilled. |
+204 | NoContentResult | When nothing is more available from the topic |
+400 | BadRequestResult | When a validation or something not related to the authorization process fails.                                |
+401 | UnauthorizedResult | When an operation fails due to missing authorization.                                                         |
+403 | ForbiddenResult | When an operation fails because it is not allowed in the context.                                             |
+
+This endpoint return an array of **Message entity**.
+
+****Response Headers****
+
+Header | Value                | Context                                   |
+--- |----------------------|-------------------------------------------|
+content-Type | application/json | The content type returned as json. |
+
+
+**Error responses from endpoints**
+
+When an error occurs during an API request it is used the standard [RFC7807](https://datatracker.ietf.org/doc/html/rfc7807) to return HTTPS APIs errors with a **Content-Type** header with value **application/problem+json**
 and the following object:
 
 ```
@@ -171,7 +230,7 @@ and the following object:
     Detail = "Error details",
     Status = 500,
     Title = "An error has occurred",
-    Instance = "/Test GET",
+    Instance = "/Test/1/10 GET",
 }
 ```
 
@@ -210,3 +269,4 @@ Just launch the **Subscriber** applications in the **Examples** directory.
 **Conclusion**
 
 Though there is room for further improvement, the project is fit for becoming a sound and usable product in a short time. I hope that my work can inspire similar projects or help someone else.
+I want to add some sort of alerting when something strange occurs, for example when a queue is too big or too much fails occur.

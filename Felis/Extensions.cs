@@ -12,6 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
+using Microsoft.Extensions.Logging;
 
 namespace Felis;
 
@@ -24,10 +25,11 @@ public static class Extensions
     /// <param name="certPath">Cert path</param>
     /// <param name="certPassword">Cert password</param>
     /// <param name="port">Port to bind to listen incoming connections</param>
+    /// <param name="databasePath">The database path</param>
     /// <param name="certificateForwardingHeader">Header to use for certificate forwarding when Felis is under a proxy. Default value is 'X-ARR-ClientCert'</param>
     /// <returns>IHostBuilder</returns>
     public static IHostBuilder AddFelisBroker(this IHostBuilder builder, string certPath, string certPassword, int port,
-        string certificateForwardingHeader = "X-ARR-ClientCert")
+       string databasePath, string certificateForwardingHeader = "X-ARR-ClientCert")
     {
         return builder.ConfigureWebHostDefaults(webBuilder =>
         {
@@ -35,7 +37,7 @@ public static class Extensions
             {
                 options.ListenAnyIP(port, listenOptions =>
                 {
-                    listenOptions.Protocols = HttpProtocols.Http1AndHttp2;
+                    listenOptions.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
                     var certificate = new X509Certificate2(certPath, certPassword);
                     listenOptions.UseHttps(certificate, httpsOptions =>
                     {
@@ -83,8 +85,7 @@ public static class Extensions
                 });
 
                 services.AddRouting();
-                services.AddSingleton<ILiteDatabase>(_ => new LiteDatabase("Felis.db"));
-                services.AddSingleton<MessageBroker>();
+                services.AddSingleton(_ => new MessageBroker(_.GetRequiredService<ILogger<MessageBroker>>(), new LiteDatabase(databasePath)));
             }).Configure(app =>
             {
                 app.UseMiddleware<ErrorMiddleware>();

@@ -49,21 +49,23 @@ internal sealed class MessageBroker : IDisposable
 
         lock (_lock)
         {
+            var topicTrimmedLowered = topic.Trim().ToLowerInvariant();
+
             var subscription = new SubscriptionModel(Guid.NewGuid(), hostname, ipAddress,
                 new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), exclusive);
 
-            var subscriptions = _subscriptions.GetOrAdd(topic.Trim(), _ => new List<SubscriptionModel>());
+            var subscriptions = _subscriptions.GetOrAdd(topicTrimmedLowered, _ => new List<SubscriptionModel>());
 
             subscriptions.Add(subscription);
 
-            if (!_topicIndex.ContainsKey(topic))
+            if (!_topicIndex.ContainsKey(topicTrimmedLowered))
             {
-                _topicIndex.TryAdd(topic, 0);
+                _topicIndex.TryAdd(topicTrimmedLowered, 0);
             }
 
             _logger.LogInformation(
                 "Subscribed '{id}' with hostname: '{hostname}' with IP: '{ipAddress}' to topic '{topic}' at {timestamp}",
-                subscription.Id, subscription.Hostname, subscription.IpAddress, topic,
+                subscription.Id, subscription.Hostname, subscription.IpAddress, topicTrimmedLowered,
                 subscription.Timestamp);
 
             return subscription;
@@ -82,17 +84,19 @@ internal sealed class MessageBroker : IDisposable
 
         lock (_lock)
         {
-            _logger.LogDebug("Remove subscription from topic '{topic}'", topic);
-            var unSubscribeResult = _subscriptions[topic].Remove(subscription);
+            var topicTrimmedLowered = topic.Trim().ToLowerInvariant();
+
+            _logger.LogDebug("Remove subscription from topic '{topic}'", topicTrimmedLowered);
+            var unSubscribeResult = _subscriptions[topicTrimmedLowered].Remove(subscription);
             _logger.LogInformation(
                 "UnSubscribed '{id}' with hostname: '{hostname}' with IP: '{ipAddress}' to topic '{topic}' at {timestamp} with operation result '{operationResult}'",
-                subscription.Id, subscription.Hostname, subscription.IpAddress, topic,
+                subscription.Id, subscription.Hostname, subscription.IpAddress, topicTrimmedLowered,
                 subscription.Timestamp, unSubscribeResult);
 
-            if (_topicIndex.TryGetValue(topic, out int currentIndex))
+            if (_topicIndex.TryGetValue(topicTrimmedLowered, out int currentIndex))
             {
-                currentIndex = (currentIndex + 1) % _subscriptions[topic].Count;
-                _topicIndex[topic] = currentIndex;
+                currentIndex = (currentIndex + 1) % _subscriptions[topicTrimmedLowered].Count;
+                _topicIndex[topicTrimmedLowered] = currentIndex;
             }
         }
     }
@@ -114,15 +118,17 @@ internal sealed class MessageBroker : IDisposable
 
             lock (_lock)
             {
+                var topicTrimmedLowered = topic.Trim().ToLowerInvariant();
+
                 var timestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
 
-                var message = new MessageModel(Guid.NewGuid(), topic, payload,
+                var message = new MessageModel(Guid.NewGuid(), topicTrimmedLowered, payload,
                     timestamp)
                 {
                     Broadcast = broadcast.HasValue && broadcast.Value
                 };
 
-                if (ttl.HasValue)
+                if (ttl.HasValue && ttl.Value > 0)
                 {
                     message.Expiration =
                         new DateTimeOffset(DateTime.UtcNow.AddSeconds(ttl.Value)).ToUnixTimeMilliseconds();
@@ -130,7 +136,7 @@ internal sealed class MessageBroker : IDisposable
 
                 _messageCollection.Insert(message.Id, message);
 
-                _logger.LogDebug("Added message '{id}' in storage with payload '{payload}'", message.Id, message.Payload);
+                _logger.LogDebug("Added message '{id}' for topic '{topic}' in storage with payload '{payload}'", message.Id, message.Topic, message.Payload);
 
                 return message.Id;
             }

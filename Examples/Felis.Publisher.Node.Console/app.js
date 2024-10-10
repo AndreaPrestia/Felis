@@ -10,15 +10,14 @@ const pfxPath = path.join(__dirname, 'Output.pfx');
 const password = 'Password.1';
 const pfxFile = fs.readFileSync(pfxPath);
 
+const client = http2.connect(endpoint, {
+    pfx: pfxFile,
+    passphrase: password,
+    rejectUnauthorized: false
+});
+
 const publishMessage = (topic, ttl, broadcast) => {
     return new Promise((resolve, reject) => {
-
-        const client = http2.connect(endpoint, {
-            pfx: pfxFile,
-            passphrase: password,
-            rejectUnauthorized: false
-        });
-
         const req = client.request({
             ':method': 'POST',
             ':path': `/${topic}`,
@@ -40,12 +39,16 @@ const publishMessage = (topic, ttl, broadcast) => {
 
         req.on('end', () => {
             console.debug('Message sent and response received.');
-            client.close();
             resolve();
         });
 
         req.end();
     });
+}
+
+function closeConnection() {
+    client.close();
+    console.log('HTTP/2 connection closed.');
 }
 
 async function makeParallelRequests(n, topic, ttl, broadcast) {
@@ -80,5 +83,8 @@ const sleep = (ms) => {
     }
     catch (e) {
         console.error(`Error in Felis.Publisher.Node.Console: '${e.message}'`);
+    }
+    finally {
+        closeConnection();
     }
 })();

@@ -9,15 +9,15 @@ const endpoint = 'https://localhost:7110';
 const pfxPath = path.join(__dirname, 'Output.pfx');
 const password = 'Password.1';
 
+const client = http2.connect(endpoint, {
+    pfx: fs.readFileSync(pfxPath),
+    passphrase: password,
+    rejectUnauthorized: false
+});
+
 const subscribeToTopic = (id, topic, exclusive) => {
     return new Promise((resolve, reject) => {
         // Create a client session
-        const client = http2.connect(endpoint, {
-            pfx: fs.readFileSync(pfxPath),
-            passphrase: password,
-            rejectUnauthorized: false
-        });
-
         const req = client.request({
             ':method': 'GET',
             ':path': `/${topic}`,
@@ -26,13 +26,11 @@ const subscribeToTopic = (id, topic, exclusive) => {
 
         req.on('data', (data) => {
             try {
-                const messageDeserialized = JSON.parse(data);
+                const messageDeserialized = JSON.parse(typeof data === 'string' ? data : data.toString());
 
                 if (messageDeserialized) {
                     const messageFormat =
-                        `Received message for subscriber: ${id} \n\r
-                        Id: '${messageDeserialized.Id}' \n\r
-                        Topic: '${messageDeserialized.Topic}' \n\r
+                        `Message '${messageDeserialized.Id}' for subscriber: ${id} at '${messageDeserialized.Topic}' \n\r
                         Timestamp: ${messageDeserialized.Timestamp} \n\r
                         Payload: '${messageDeserialized.Payload}' \n\r
                         Expiration: ${messageDeserialized.Expiration}`;
@@ -78,6 +76,10 @@ async function subscribeInParallel(n, topic, exclusive) {
     } catch (error) {
         console.error('Error with Http2 subscribers:', error.message);
     }
+}
+function closeConnection() {
+    client.close();
+    console.log('HTTP/2 connection closed.');
 }
 
 const runMultipleSubscriptions = async () => {

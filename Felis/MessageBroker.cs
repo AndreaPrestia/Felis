@@ -26,7 +26,7 @@ internal sealed class MessageBroker : IDisposable
         _messageCollection.EnsureIndex(x => x.Timestamp);
         _messageCollection.EnsureIndex(x => x.Topic);
         _topicTimer = new Timer();
-        _topicTimer.Interval = 5000;
+        _topicTimer.Interval = 1000;
         _topicTimer.Elapsed += OnTopicTimedEvent!;
         _topicTimer.AutoReset = true;
         _topicTimer.Enabled = true;

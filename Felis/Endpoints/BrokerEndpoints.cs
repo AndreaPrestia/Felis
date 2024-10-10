@@ -49,7 +49,7 @@ internal static class BrokerEndpoints
                 var subscriptionEntity =
                     messageBroker.Subscribe(topic, clientIp.MapToIPv4().ToString(), clientHostname, exclusive);
 
-                context.Response.Headers.ContentType = "application/octet-stream";
+                context.Response.Headers.ContentType = "application/json";
                 context.Response.Headers.CacheControl = "no-cache";
                 context.Response.Headers.Connection = "keep-alive";
 

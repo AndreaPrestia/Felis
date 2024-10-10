@@ -176,7 +176,7 @@ Status code | Type               | Context |
 
 This endpoint returns the number of messages deleted from the topic. It deletes all the messages waiting to be dispatched to subscribers.
 
-**Get message from a topic with GET**
+**Get messages from a topic with GET**
 
 This endpoint is used to subscribe to a subset of topics using application/x-ndjson content-type to stream structured data. 
 

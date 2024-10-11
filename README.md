@@ -239,8 +239,8 @@ and the following object:
 This repository provides the examples of usage:
 
 - **Felis.Broker.Console**
-- **Felis.Publisher.Node.Console**
-- **Felis.Subscriber.Node.Console**
+- **Felis.Publisher.Console**
+- **Felis.Subscriber.Console**
 
 **Felis.Broker.Console**
 
@@ -248,7 +248,7 @@ A console application, that reference Felis project.
 
 **Publish a message**
 
-To ease the testing process, I have a NodeJS console applications that publish to Felis broker with multiple topics.
+To ease the testing process, I have a .NET console applications that publish to Felis broker with multiple topics.
 
 This applications sends messages on the **Generic**, **TTL**, **Broadcast** and **Exclusive** topics.
 
@@ -258,7 +258,7 @@ Just launch the **Publisher** applications in the **Examples** directory.
 
 **Subscribe to a topic**
 
-To ease the testing process, I have a NodeJS console applications that subscribe to Felis broker with multiple subscribers.
+To ease the testing process, I have a .NET console applications that subscribe to Felis broker with multiple subscribers.
 
 This application contains the logic to subscribe to messages by topic.
 

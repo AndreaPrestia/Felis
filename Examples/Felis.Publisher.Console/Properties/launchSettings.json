@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Felis.Publisher.Console": {
+      "commandName": "Project"
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker"
+    }
+  }
+}

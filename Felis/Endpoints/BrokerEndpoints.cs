@@ -49,7 +49,7 @@ internal static class BrokerEndpoints
                 var subscriptionEntity =
                     messageBroker.Subscribe(topic, clientIp.MapToIPv4().ToString(), clientHostname, exclusive);
 
-                context.Response.Headers.ContentType = "application/json";
+                context.Response.Headers.ContentType = "application/x-ndjson";
                 context.Response.Headers.CacheControl = "no-cache";
                 context.Response.Headers.Connection = "keep-alive";
 
@@ -68,7 +68,7 @@ internal static class BrokerEndpoints
                 {
                     await foreach (var message in subscriptionEntity.MessageChannel.Reader.ReadAllAsync(cancellationToken))
                     {
-                        var bytes = System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(message));
+                        var bytes = System.Text.Encoding.UTF8.GetBytes($"{JsonSerializer.Serialize(message)}\n");
                         await dataStream.WriteAsync(bytes, cancellationToken);
                         await context.Response.Body.FlushAsync();
                     }

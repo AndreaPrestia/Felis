@@ -1,3 +1,0 @@
-# Felis.Subscriber.Node.Console
-
-

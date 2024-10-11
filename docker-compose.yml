@@ -10,18 +10,18 @@ services:
       - ASPNETCORE_URLS=https://+:7110;http://+:5000
 
 
-  felis.publisher.node.console:
-    image: ${DOCKER_REGISTRY-}felispublishernodeconsole
+  felis.publisher.console:
+    image: ${DOCKER_REGISTRY-}felispublisherconsole
     build:
       context: .
-      dockerfile: Examples/Felis.Publisher.Node.Console/Dockerfile
+      dockerfile: Examples/Felis.Publisher.Console/Dockerfile
     depends_on:
       - felis.broker.console
 
-  felis.subscriber.node.console:
-    image: ${DOCKER_REGISTRY-}felissubscribernodeconsole
+  felis.subscriber.console:
+    image: ${DOCKER_REGISTRY-}felissubscriberconsole
     build:
       context: .
-      dockerfile: Examples/Felis.Subscriber.Node.Console/Dockerfile
+      dockerfile: Examples/Felis.Subscriber.Console/Dockerfile
     depends_on:
       - felis.broker.console

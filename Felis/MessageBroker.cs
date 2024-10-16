@@ -94,7 +94,7 @@ internal sealed class MessageBroker : IDisposable
                 subscription.Id, subscription.Hostname, subscription.IpAddress, topicTrimmedLowered,
                 subscription.Timestamp, unSubscribeResult);
 
-            if (_topicIndex.TryGetValue(topicTrimmedLowered, out int currentIndex))
+            if (_topicIndex.TryGetValue(topicTrimmedLowered, out var currentIndex))
             {
                 currentIndex = (currentIndex + 1) % _subscriptions[topicTrimmedLowered].Count;
                 _topicIndex[topicTrimmedLowered] = currentIndex;
@@ -270,7 +270,7 @@ internal sealed class MessageBroker : IDisposable
                 return null;
             }
 
-            if (subscriptions == null || subscriptions.Count == 0)
+            if (subscriptions == null! || subscriptions.Count == 0)
             {
                 _logger.LogWarning("No subscriptions for topic '{topic}'. No processing will be done.", topic);
                 return null;
@@ -286,7 +286,7 @@ internal sealed class MessageBroker : IDisposable
                 return exclusiveSubscription;
             }
 
-            if (!_topicIndex.TryGetValue(topic, out int currentIndex))
+            if (!_topicIndex.TryGetValue(topic, out var currentIndex))
             {
                 currentIndex = 0;
                 _topicIndex[topic] = currentIndex;

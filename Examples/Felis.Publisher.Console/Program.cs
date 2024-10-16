@@ -5,25 +5,25 @@ try
 {
     Console.WriteLine("Started Felis.Publisher.Console");
 
-    string pfxPath = "Output.pfx";
-    string pfxPassword = "Password.1";
+    const string pfxPath = "Output.pfx";
+    const string pfxPassword = "Password.1";
 
     var clientCertificate = new X509Certificate2(pfxPath, pfxPassword);
 
     while (true)
     {
         var taskGeneric = PublishInParallelAsync(clientCertificate, 20, "Generic", 0, false);
-        var taskTTL = PublishInParallelAsync(clientCertificate, 20, "TTL", 5, false);
+        var taskTtL = PublishInParallelAsync(clientCertificate, 20, "TTL", 5, false);
         var taskBroadcast = PublishInParallelAsync(clientCertificate, 20, "Broadcast", 0, true);
         var taskExclusive = PublishInParallelAsync(clientCertificate, 20, "Exclusive", 0, false);
-        await Task.WhenAll([taskGeneric, taskTTL, taskBroadcast, taskExclusive]);
+        await Task.WhenAll(new [] {taskGeneric, taskTtL, taskBroadcast, taskExclusive});
         Console.WriteLine("Publish finished, waiting 5 seconds to next round");
         Thread.Sleep(5000);
     }
 }
 catch (Exception ex)
 {
-    Console.Error.WriteLine("Error in Felis.Subscriber.Console: {error}", ex.Message);
+    Console.Error.WriteLine("Error in Felis.Subscriber.Console: '{0}'", ex.Message);
 }
 finally
 {
@@ -34,8 +34,8 @@ static async Task PublishInParallelAsync(X509Certificate2 clientCertificate, int
 {
     try
     {
-        Task[] publisherTasks = new Task[numberOfPublishers];
-        for (int i = 0; i < numberOfPublishers; i++)
+        var publisherTasks = new Task[numberOfPublishers];
+        for (var i = 0; i < numberOfPublishers; i++)
         {
             publisherTasks[i] = Task.Run(() => PublishAsync(clientCertificate, topic, ttl, broadcast));
         }
@@ -44,17 +44,16 @@ static async Task PublishInParallelAsync(X509Certificate2 clientCertificate, int
     }
     catch (Exception ex)
     {
-        Console.Error.WriteLine("Error in Felis.Publisher.Console: {error}", ex.Message);
+        Console.Error.WriteLine("Error in Felis.Publisher.Console: '{0}'", ex.Message);
     }
 }
 
 static async Task PublishAsync(X509Certificate2 clientCertificate, string topic, int ttl, bool broadcast)
 {
-    // Create an HttpClientHandler with mutual TLS authentication and disabled server cert validation
     var handler = new HttpClientHandler
     {
         ClientCertificates = { clientCertificate },
-        ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
+        ServerCertificateCustomValidationCallback = (_, _, _, _) => true
     };
 
     using var client = new HttpClient(handler);

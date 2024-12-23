@@ -39,7 +39,7 @@ await host.RunAsync();
 ```
 The example above initialize the **Felis Broker** in a console application, with console logging provider.
 
-The **AddFelisBroker** method takes **certificate**, **port** and **certificateForwardingHeader** as input parameters to use the broker with [mTLS](https://www.cloudflare.com/it-it/learning/access-management/what-is-mutual-tls/) authentication.
+The **AddFelisBroker** method takes **certificate**, **port**, **heartBeatInSeconds** and **certificateForwardingHeader** as input parameters to use the broker with [mTLS](https://www.cloudflare.com/it-it/learning/access-management/what-is-mutual-tls/) authentication.
 
 **Message entity**
 

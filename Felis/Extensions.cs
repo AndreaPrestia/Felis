@@ -25,9 +25,10 @@ public static class Extensions
     /// <param name="builder"></param>
     /// <param name="certificate">The certificate to use</param>
     /// <param name="port">Port to bind to listen incoming connections. Default value is 7000.</param>
+    /// <param name="heartBeatInSeconds">When the Felis broker should send the heartbeat message to keep connections alive</param>
     /// <param name="certificateForwardingHeader">Header to use for certificate forwarding when Felis is under a proxy. Default value is 'X-ARR-ClientCert'</param>
     /// <returns>IHostBuilder</returns>
-    public static IHostBuilder AddFelisBroker(this IHostBuilder builder, X509Certificate2 certificate, int port = 7000, string certificateForwardingHeader = "X-ARR-ClientCert")
+    public static IHostBuilder AddFelisBroker(this IHostBuilder builder, X509Certificate2 certificate, int port = 7000, int heartBeatInSeconds = 2, string certificateForwardingHeader = "X-ARR-ClientCert")
     {
         return builder.ConfigureWebHostDefaults(webBuilder =>
         {
@@ -82,7 +83,7 @@ public static class Extensions
                 });
 
                 services.AddRouting();
-                services.AddSingleton(_ => new MessageBroker(_.GetRequiredService<ILogger<MessageBroker>>(), new LiteDatabase(DatabasePath)));
+                services.AddSingleton(_ => new MessageBroker(_.GetRequiredService<ILogger<MessageBroker>>(), new LiteDatabase(DatabasePath), heartBeatInSeconds));
             }).Configure(app =>
             {
                 app.UseMiddleware<ErrorMiddleware>();

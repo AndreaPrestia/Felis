@@ -13,10 +13,11 @@ internal sealed class MessageBroker : IDisposable
     private readonly ILiteCollection<MessageModel> _messageCollection;
     private readonly object _lock = new();
     private readonly Timer _topicTimer;
+    private readonly Timer _heartbeatTimer;
     private readonly ConcurrentDictionary<string, List<SubscriptionModel>> _subscriptions = new();
     private readonly ConcurrentDictionary<string, int> _topicIndex = new();
 
-    public MessageBroker(ILogger<MessageBroker> logger, ILiteDatabase database)
+    public MessageBroker(ILogger<MessageBroker> logger, ILiteDatabase database, int heartbeatInSeconds)
     {
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(database);
@@ -32,6 +33,13 @@ internal sealed class MessageBroker : IDisposable
         _topicTimer.Elapsed += OnTopicTimedEvent!;
         _topicTimer.AutoReset = true;
         _topicTimer.Enabled = true;
+        _heartbeatTimer = new Timer
+        {
+            Interval = heartbeatInSeconds * 1000
+        };
+        _heartbeatTimer.Elapsed += OnHeartbeatTimedEvent!;
+        _heartbeatTimer.AutoReset = true;
+        _heartbeatTimer.Enabled = true;
     }
 
     /// <summary>
@@ -124,11 +132,15 @@ internal sealed class MessageBroker : IDisposable
                 var timestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
 
                 var message = new MessageModel(Guid.NewGuid(), topicTrimmedLowered, payload,
-                    timestamp, ttl.HasValue && ttl.Value > 0 ? new DateTimeOffset(DateTime.UtcNow.AddSeconds(ttl.Value)).ToUnixTimeMilliseconds() : null, broadcast.HasValue && broadcast.Value);
+                    timestamp,
+                    ttl is > 0
+                        ? new DateTimeOffset(DateTime.UtcNow.AddSeconds(ttl.Value)).ToUnixTimeMilliseconds()
+                        : null, broadcast.HasValue && broadcast.Value);
 
                 _messageCollection.Insert(message.Id, message);
 
-                _logger.LogDebug("Added message '{id}' for topic '{topic}' in storage with payload '{payload}'", message.Id, message.Topic, message.Payload);
+                _logger.LogDebug("Added message '{id}' for topic '{topic}' in storage with payload '{payload}'",
+                    message.Id, message.Topic, message.Payload);
 
                 return message.Id;
             }
@@ -199,6 +211,7 @@ internal sealed class MessageBroker : IDisposable
     {
         _database.Dispose();
         _topicTimer.Dispose();
+        _heartbeatTimer.Dispose();
     }
 
     private async void OnTopicTimedEvent(object source, System.Timers.ElapsedEventArgs e)
@@ -206,52 +219,90 @@ internal sealed class MessageBroker : IDisposable
         var currentTimeStamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
 
         await Parallel.ForEachAsync(_subscriptions.Keys, async (topic, token) =>
+        {
+            try
             {
-                try
+                var nextMessages = _messageCollection.Query().Where(x => x.Topic == topic
+                                                                         && (x.Expiration == null ||
+                                                                             x.Expiration.Value > currentTimeStamp))
+                    .OrderBy(x => x.Timestamp).ToList();
+
+                if (nextMessages.Count == 0) return;
+
+                foreach (var nextMessage in nextMessages)
                 {
-                    var nextMessages = _messageCollection.Query().Where(x => x.Topic == topic
-                            && (x.Expiration == null ||
-                                x.Expiration.Value > currentTimeStamp))
-                        .OrderBy(x => x.Timestamp).ToList();
-
-                    if (nextMessages.Count == 0) return;
-
-                    foreach (var nextMessage in nextMessages)
+                    if (nextMessage.Broadcast)
                     {
-                        if (nextMessage.Broadcast)
-                        {
-                            var subscriptions = _subscriptions[topic];
+                        var subscriptions = _subscriptions[topic];
 
-                            if (subscriptions.Count <= 0) return;
-                            var tasks = subscriptions
-                                .Select(async s =>
-                                {
-                                    await s.MessageChannel.Writer.WriteAsync(nextMessage, token);
-                                    _logger.LogInformation("Message '{messageId}' sent to '{ipAddress}' - '{hostname}' at {timestamp} for topic '{topic}'", nextMessage.Id, s.IpAddress, s.Hostname, new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), nextMessage.Topic);
-                                });
-
-                            await Task.WhenAll(tasks);
-                        }
-                        else
-                        {
-                            var subscription = GetNextSubscription(topic);
-
-                            if (subscription != null)
+                        if (subscriptions.Count <= 0) return;
+                        var tasks = subscriptions
+                            .Select(async s =>
                             {
-                                await subscription.MessageChannel.Writer.WriteAsync(nextMessage, token);
-                                _logger.LogInformation("Message '{messageId}' sent to '{ipAddress}' - '{hostname}' at {timestamp} for topic '{topic}'", nextMessage.Id, subscription.IpAddress, subscription.Hostname, new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), nextMessage.Topic);
-                            }
-                        }
+                                await s.MessageChannel.Writer.WriteAsync(nextMessage, token);
+                                _logger.LogInformation(
+                                    "Message '{messageId}' sent to '{ipAddress}' - '{hostname}' at {timestamp} for topic '{topic}'",
+                                    nextMessage.Id, s.IpAddress, s.Hostname,
+                                    new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), nextMessage.Topic);
+                            });
 
-                        var deleteResult = _messageCollection.Delete(nextMessage.Id);
-                        _logger.LogDebug("Message '{id}' deleted: {operationResult}", nextMessage.Id, deleteResult);
+                        await Task.WhenAll(tasks);
                     }
+                    else
+                    {
+                        var subscription = GetNextSubscription(topic);
+
+                        if (subscription != null)
+                        {
+                            await subscription.MessageChannel.Writer.WriteAsync(nextMessage, token);
+                            _logger.LogInformation(
+                                "Message '{messageId}' sent to '{ipAddress}' - '{hostname}' at {timestamp} for topic '{topic}'",
+                                nextMessage.Id, subscription.IpAddress, subscription.Hostname,
+                                new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), nextMessage.Topic);
+                        }
+                    }
+
+                    var deleteResult = _messageCollection.Delete(nextMessage.Id);
+                    _logger.LogDebug("Message '{id}' deleted: {operationResult}", nextMessage.Id, deleteResult);
                 }
-                catch (Exception ex)
-                {
-                    _logger.LogError("An error '{error}' has occurred during publish", ex.Message);
-                }
-            });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("An error '{error}' has occurred during publish", ex.Message);
+            }
+        });
+    }
+
+    private async void OnHeartbeatTimedEvent(object source, System.Timers.ElapsedEventArgs e)
+    {
+        var currentTimeStamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
+
+        await Parallel.ForEachAsync(_subscriptions, async (subscription, token) =>
+        {
+            try
+            {
+                if (subscription.Value.Count <= 0) return;
+
+                var tasks = subscription
+                    .Value.Select(async s =>
+                    {
+                        var hearBeatMessage = new MessageModel(Guid.NewGuid(), subscription.Key, $"Heartbeat: {currentTimeStamp}",
+                            new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), null, true);
+
+                        await s.MessageChannel.Writer.WriteAsync(hearBeatMessage, token);
+                        _logger.LogInformation(
+                            "Heartbeat Message '{messageId}' sent to '{ipAddress}' - '{hostname}' at {timestamp} for topic '{topic}'",
+                            hearBeatMessage.Id, s.IpAddress, s.Hostname,
+                            new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), hearBeatMessage.Topic);
+                    });
+
+                await Task.WhenAll(tasks);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("An error '{error}' has occurred during publish", ex.Message);
+            }
+        });
     }
 
     private SubscriptionModel? GetNextSubscription(string topic)
@@ -296,7 +347,8 @@ internal sealed class MessageBroker : IDisposable
 
             if (subscription == null!)
             {
-                _logger.LogWarning("No subscription found for topic '{topic}' at index {currentIndex}", topic, currentIndex);
+                _logger.LogWarning("No subscription found for topic '{topic}' at index {currentIndex}", topic,
+                    currentIndex);
                 return null;
             }
 

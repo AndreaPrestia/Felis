@@ -18,18 +18,16 @@ namespace Felis;
 
 public static class Extensions
 {
+    private const string DatabasePath = "Felis.db";
     /// <summary>
     /// Adds the Felis broker with certificate path, password and listening port
     /// </summary>
     /// <param name="builder"></param>
-    /// <param name="certPath">Cert path</param>
-    /// <param name="certPassword">Cert password</param>
-    /// <param name="port">Port to bind to listen incoming connections</param>
-    /// <param name="databasePath">The database path</param>
+    /// <param name="certificate">The certificate to use</param>
+    /// <param name="port">Port to bind to listen incoming connections. Default value is 7000.</param>
     /// <param name="certificateForwardingHeader">Header to use for certificate forwarding when Felis is under a proxy. Default value is 'X-ARR-ClientCert'</param>
     /// <returns>IHostBuilder</returns>
-    public static IHostBuilder AddFelisBroker(this IHostBuilder builder, string certPath, string certPassword, int port,
-       string databasePath, string certificateForwardingHeader = "X-ARR-ClientCert")
+    public static IHostBuilder AddFelisBroker(this IHostBuilder builder, X509Certificate2 certificate, int port = 7000, string certificateForwardingHeader = "X-ARR-ClientCert")
     {
         return builder.ConfigureWebHostDefaults(webBuilder =>
         {
@@ -38,7 +36,6 @@ public static class Extensions
                 options.ListenAnyIP(port, listenOptions =>
                 {
                     listenOptions.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
-                    var certificate = new X509Certificate2(certPath, certPassword);
                     listenOptions.UseHttps(certificate, httpsOptions =>
                     {
                         httpsOptions.SslProtocols = SslProtocols.Tls13;
@@ -85,7 +82,7 @@ public static class Extensions
                 });
 
                 services.AddRouting();
-                services.AddSingleton(_ => new MessageBroker(_.GetRequiredService<ILogger<MessageBroker>>(), new LiteDatabase(databasePath)));
+                services.AddSingleton(_ => new MessageBroker(_.GetRequiredService<ILogger<MessageBroker>>(), new LiteDatabase(DatabasePath)));
             }).Configure(app =>
             {
                 app.UseMiddleware<ErrorMiddleware>();

@@ -31,7 +31,7 @@ var builder = Host.CreateDefaultBuilder(args)
         logging.AddConsole();
         logging.SetMinimumLevel(LogLevel.Debug);
     })
-    .AddFelisBroker("Output.pfx", "Password.1", 7110, "Felis.db");
+    .AddFelisBroker(new X509Certificate2("Output.pfx", "Password.1"), 7110);
 
 var host = builder.Build();
 
@@ -39,7 +39,7 @@ await host.RunAsync();
 ```
 The example above initialize the **Felis Broker** in a console application, with console logging provider.
 
-The **AddFelisBroker** method takes **certPath**, **certPassword**, **port** and **databasePath** as input parameters to use the broker with [mTLS](https://www.cloudflare.com/it-it/learning/access-management/what-is-mutual-tls/) authentication.
+The **AddFelisBroker** method takes **certificate**, **port** and **certificateForwardingHeader** as input parameters to use the broker with [mTLS](https://www.cloudflare.com/it-it/learning/access-management/what-is-mutual-tls/) authentication.
 
 **Message entity**
 

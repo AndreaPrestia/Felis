@@ -1,4 +1,5 @@
-﻿using Felis;
+﻿using System.Security.Cryptography.X509Certificates;
+using Felis;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -13,7 +14,7 @@ try
             logging.AddConsole();
             logging.SetMinimumLevel(LogLevel.Debug);
         })
-        .AddFelisBroker("Output.pfx", "Password.1", 7110, "Felis.db");
+        .AddFelisBroker(new X509Certificate2("Output.pfx", "Password.1"));
 
     var host = builder.Build();
 

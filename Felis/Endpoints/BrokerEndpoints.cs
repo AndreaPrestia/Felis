@@ -70,7 +70,7 @@ internal static class BrokerEndpoints
                     {
                         var bytes = System.Text.Encoding.UTF8.GetBytes($"{JsonSerializer.Serialize(message)}\n");
                         await dataStream.WriteAsync(bytes, cancellationToken);
-                        await context.Response.Body.FlushAsync();
+                        await context.Response.Body.FlushAsync(cancellationToken);
                     }
                 }
                 catch (OperationCanceledException)

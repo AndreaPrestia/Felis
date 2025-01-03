@@ -286,14 +286,14 @@ internal sealed class MessageBroker : IDisposable
                 var tasks = subscription
                     .Value.Select(async s =>
                     {
-                        var hearBeatMessage = new MessageModel(Guid.NewGuid(), subscription.Key, $"Heartbeat: {currentTimeStamp}",
+                        var heartBeatMessage = new MessageModel(Guid.NewGuid(), subscription.Key, $"Heartbeat: {currentTimeStamp}",
                             new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), null, true);
 
-                        await s.MessageChannel.Writer.WriteAsync(hearBeatMessage, token);
+                        await s.MessageChannel.Writer.WriteAsync(heartBeatMessage, token);
                         _logger.LogInformation(
                             "Heartbeat Message '{messageId}' sent to '{ipAddress}' - '{hostname}' at {timestamp} for topic '{topic}'",
-                            hearBeatMessage.Id, s.IpAddress, s.Hostname,
-                            new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), hearBeatMessage.Topic);
+                            heartBeatMessage.Id, s.IpAddress, s.Hostname,
+                            new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), heartBeatMessage.Topic);
                     });
 
                 await Task.WhenAll(tasks);

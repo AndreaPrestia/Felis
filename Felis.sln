@@ -9,8 +9,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples", "Examples", "{4C
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Felis.Broker.Console", "Examples\Felis.Broker.Console\Felis.Broker.Console.csproj", "{5764F447-D3B1-491F-B995-D5390569B1B6}"
 EndProject
-Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "docker-compose.dcproj", "{096358B3-D1BB-4883-BCE0-A0E6A6929F10}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.Subscriber.Console", "Examples\Felis.Subscriber.Console\Felis.Subscriber.Console.csproj", "{5AE255F7-2E72-4654-AF38-7CC586953E5F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.Publisher.Console", "Examples\Felis.Publisher.Console\Felis.Publisher.Console.csproj", "{98EE641E-38C9-4BB7-A2FD-1D2203102703}"
@@ -21,24 +19,20 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{EF2F82C1-9624-4F20-965C-19DB9018A141}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{EF2F82C1-9624-4F20-965C-19DB9018A141}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EF2F82C1-9624-4F20-965C-19DB9018A141}.Debug|Any CPU.ActiveCfg = Release|Any CPU
+		{EF2F82C1-9624-4F20-965C-19DB9018A141}.Debug|Any CPU.Build.0 = Release|Any CPU
 		{EF2F82C1-9624-4F20-965C-19DB9018A141}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EF2F82C1-9624-4F20-965C-19DB9018A141}.Release|Any CPU.Build.0 = Release|Any CPU
-		{5764F447-D3B1-491F-B995-D5390569B1B6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{5764F447-D3B1-491F-B995-D5390569B1B6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5764F447-D3B1-491F-B995-D5390569B1B6}.Debug|Any CPU.ActiveCfg = Release|Any CPU
+		{5764F447-D3B1-491F-B995-D5390569B1B6}.Debug|Any CPU.Build.0 = Release|Any CPU
 		{5764F447-D3B1-491F-B995-D5390569B1B6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5764F447-D3B1-491F-B995-D5390569B1B6}.Release|Any CPU.Build.0 = Release|Any CPU
-		{096358B3-D1BB-4883-BCE0-A0E6A6929F10}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{096358B3-D1BB-4883-BCE0-A0E6A6929F10}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{096358B3-D1BB-4883-BCE0-A0E6A6929F10}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{096358B3-D1BB-4883-BCE0-A0E6A6929F10}.Release|Any CPU.Build.0 = Release|Any CPU
-		{5AE255F7-2E72-4654-AF38-7CC586953E5F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{5AE255F7-2E72-4654-AF38-7CC586953E5F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5AE255F7-2E72-4654-AF38-7CC586953E5F}.Debug|Any CPU.ActiveCfg = Release|Any CPU
+		{5AE255F7-2E72-4654-AF38-7CC586953E5F}.Debug|Any CPU.Build.0 = Release|Any CPU
 		{5AE255F7-2E72-4654-AF38-7CC586953E5F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5AE255F7-2E72-4654-AF38-7CC586953E5F}.Release|Any CPU.Build.0 = Release|Any CPU
-		{98EE641E-38C9-4BB7-A2FD-1D2203102703}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{98EE641E-38C9-4BB7-A2FD-1D2203102703}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{98EE641E-38C9-4BB7-A2FD-1D2203102703}.Debug|Any CPU.ActiveCfg = Release|Any CPU
+		{98EE641E-38C9-4BB7-A2FD-1D2203102703}.Debug|Any CPU.Build.0 = Release|Any CPU
 		{98EE641E-38C9-4BB7-A2FD-1D2203102703}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{98EE641E-38C9-4BB7-A2FD-1D2203102703}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection

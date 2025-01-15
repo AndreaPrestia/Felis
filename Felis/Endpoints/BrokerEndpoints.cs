@@ -41,6 +41,9 @@ internal static class BrokerEndpoints
                 [FromHeader(Name = "x-exclusive")] bool? exclusive) =>
             {
                 var logger = loggerFactory.CreateLogger("Felis");
+
+                var dataStream = context.Response.BodyWriter.AsStream();
+                
                 var clientIp = (context.Connection.RemoteIpAddress) ??
                                throw new InvalidOperationException("No Ip address retrieve from Context");
 
@@ -52,15 +55,6 @@ internal static class BrokerEndpoints
                 context.Response.Headers.ContentType = "application/x-ndjson";
                 context.Response.Headers.CacheControl = "no-cache";
                 context.Response.Headers.Connection = "keep-alive";
-
-                var dataStream = context.Response.BodyWriter.AsStream();
-
-                if(dataStream == null)
-                {
-                    logger.LogWarning("Data stream in context null. Subscription {subscriptionId} will be removed.", subscriptionEntity.Id);
-                    messageBroker.UnSubscribe(topic, subscriptionEntity);
-                    return Results.Empty;
-                }
 
                 var cancellationToken = context.RequestAborted;
 
@@ -81,7 +75,6 @@ internal static class BrokerEndpoints
                 {
                     messageBroker.UnSubscribe(topic, subscriptionEntity);
                 }
-
 
                 return Results.Empty;
             });

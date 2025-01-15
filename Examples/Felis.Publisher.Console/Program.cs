@@ -9,13 +9,14 @@ try
     const string pfxPassword = "Password.1";
 
     var clientCertificate = new X509Certificate2(pfxPath, pfxPassword);
+    var brokerUrl = Environment.GetEnvironmentVariable("BROKER_URL") ?? "https://localhost:7110";
 
     while (true)
     {
-        var taskGeneric = PublishInParallelAsync(clientCertificate, 20, "Generic", 0, false);
-        var taskTtL = PublishInParallelAsync(clientCertificate, 20, "TTL", 5, false);
-        var taskBroadcast = PublishInParallelAsync(clientCertificate, 20, "Broadcast", 0, true);
-        var taskExclusive = PublishInParallelAsync(clientCertificate, 20, "Exclusive", 0, false);
+        var taskGeneric = PublishInParallelAsync(brokerUrl, clientCertificate, 20, "Generic", 0, false);
+        var taskTtL = PublishInParallelAsync(brokerUrl, clientCertificate, 20, "TTL", 5, false);
+        var taskBroadcast = PublishInParallelAsync(brokerUrl, clientCertificate, 20, "Broadcast", 0, true);
+        var taskExclusive = PublishInParallelAsync(brokerUrl, clientCertificate, 20, "Exclusive", 0, false);
         await Task.WhenAll(new [] {taskGeneric, taskTtL, taskBroadcast, taskExclusive});
         Console.WriteLine("Publish finished, waiting 5 seconds to next round");
         Thread.Sleep(5000);
@@ -30,14 +31,14 @@ finally
     Console.WriteLine("Terminated Felis.Publisher.Console");
 }
 
-static async Task PublishInParallelAsync(X509Certificate2 clientCertificate, int numberOfPublishers, string topic, int ttl, bool broadcast)
+static async Task PublishInParallelAsync(string brokerUrl, X509Certificate2 clientCertificate, int numberOfPublishers, string topic, int ttl, bool broadcast)
 {
     try
     {
         var publisherTasks = new Task[numberOfPublishers];
         for (var i = 0; i < numberOfPublishers; i++)
         {
-            publisherTasks[i] = Task.Run(() => PublishAsync(clientCertificate, topic, ttl, broadcast));
+            publisherTasks[i] = Task.Run(() => PublishAsync(brokerUrl, clientCertificate, topic, ttl, broadcast));
         }
 
         await Task.WhenAll(publisherTasks);
@@ -48,7 +49,7 @@ static async Task PublishInParallelAsync(X509Certificate2 clientCertificate, int
     }
 }
 
-static async Task PublishAsync(X509Certificate2 clientCertificate, string topic, int ttl, bool broadcast)
+static async Task PublishAsync(string brokerUrl, X509Certificate2 clientCertificate, string topic, int ttl, bool broadcast)
 {
     var handler = new HttpClientHandler
     {
@@ -64,7 +65,7 @@ static async Task PublishAsync(X509Certificate2 clientCertificate, string topic,
 
     try
     {
-        using var response = await client.PostAsJsonAsync($"https://localhost:7110/{topic}", new
+        using var response = await client.PostAsJsonAsync($"{brokerUrl}/{topic}", new
         {
             description = $"{topic} at {new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds()}"
         });

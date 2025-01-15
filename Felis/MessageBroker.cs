@@ -60,7 +60,7 @@ internal sealed class MessageBroker : IDisposable
         {
             var topicTrimmedLowered = topic.Trim().ToLowerInvariant();
 
-            var subscription = new SubscriptionModel(Guid.NewGuid(), hostname, ipAddress,
+            var subscription = new SubscriptionModel(Guid.NewGuid(), ipAddress, hostname,
                 new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), exclusive);
 
             var subscriptions = _subscriptions.GetOrAdd(topicTrimmedLowered, _ => new List<SubscriptionModel>());
@@ -366,7 +366,7 @@ internal sealed class MessageBroker : IDisposable
 
 internal record MessageModel(Guid Id, string Topic, string? Payload, long Timestamp, long? Expiration, bool Broadcast);
 
-internal record SubscriptionModel(Guid Id, string Hostname, string IpAddress, long Timestamp, bool? Exclusive)
+internal record SubscriptionModel(Guid Id, string IpAddress, string Hostname, long Timestamp, bool? Exclusive)
 {
     public Channel<MessageModel> MessageChannel { get; set; } = Channel.CreateBounded<MessageModel>(1);
 }

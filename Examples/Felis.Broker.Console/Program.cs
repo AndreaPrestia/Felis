@@ -7,9 +7,9 @@ try
 {
     Console.WriteLine("Started Felis.Broker.Console");
 
-    var port = Environment.GetEnvironmentVariable("BROKER_PORT") ?? "7110";
-    var certificateName = Environment.GetEnvironmentVariable("BROKER_CERTIFICATE_NAME") ?? "Output.pfx";
-    var certificatePassword = Environment.GetEnvironmentVariable("BROKER_CERTIFICATE_PASSWORD") ?? "Password.1";
+    var port = args.FirstOrDefault(a => a.StartsWith("--port="))?.Split("=")[1] ?? "7110";
+    var certificateName = args.FirstOrDefault(a => a.StartsWith("--certificate-name="))?.Split("=")[1] ?? "Output.pfx";
+    var certificatePassword = args.FirstOrDefault(a => a.StartsWith("--certificate-password="))?.Split("=")[1] ?? "Password.1";
  
     var builder = Host.CreateDefaultBuilder(args)
         .ConfigureLogging(logging =>

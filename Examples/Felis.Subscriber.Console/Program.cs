@@ -8,7 +8,7 @@ try
     const string pfxPassword = "Password.1";
 
     var clientCertificate = new X509Certificate2(pfxPath, pfxPassword);
-    var brokerUrl = Environment.GetEnvironmentVariable("BROKER_URL") ?? "https://localhost:7110";
+    var brokerUrl = args.FirstOrDefault(a => a.StartsWith("--broker-url="))?.Split("=")[1] ?? "https://localhost:7110";
 
     var taskGeneric = SubscribeInParallelAsync(brokerUrl, clientCertificate, 20, "Generic", false);
     var taskTtL = SubscribeInParallelAsync(brokerUrl, clientCertificate, 10, "TTL", false);

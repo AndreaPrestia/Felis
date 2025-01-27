@@ -1,5 +1,6 @@
 ﻿using System.Security.Cryptography.X509Certificates;
 using Felis;
+using Felis.Http;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -18,7 +19,7 @@ try
             logging.AddConsole();
             logging.SetMinimumLevel(LogLevel.Debug);
         })
-        .AddFelisBroker(new X509Certificate2(certificateName, certificatePassword), int.Parse(port));
+        .AddFelisBroker().WithHttp(new X509Certificate2(certificateName, certificatePassword), int.Parse(port));
 
     var host = builder.Build();
 

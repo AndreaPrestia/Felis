@@ -24,7 +24,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\..\Felis\Felis.csproj" />
+      <ProjectReference Include="..\..\Felis.Http\Felis.Http.csproj" />
     </ItemGroup>
 
 </Project>

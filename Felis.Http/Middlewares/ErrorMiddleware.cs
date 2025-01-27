@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
-namespace Felis.Middlewares;
+namespace Felis.Http.Middlewares;
 
 public class ErrorMiddleware
 {

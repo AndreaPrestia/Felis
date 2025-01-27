@@ -6,7 +6,7 @@ using Timer = System.Timers.Timer;
 
 namespace Felis;
 
-internal sealed class MessageBroker : IDisposable
+public sealed class MessageBroker : IDisposable
 {
     private readonly ILogger<MessageBroker> _logger;
     private readonly ILiteDatabase _database;
@@ -50,7 +50,7 @@ internal sealed class MessageBroker : IDisposable
     /// <param name="topic"></param>
     /// <param name="exclusive"></param>
     /// <returns></returns>
-    internal SubscriptionModel Subscribe(string topic, string ipAddress, string hostname, bool? exclusive)
+    public SubscriptionModel Subscribe(string topic, string ipAddress, string hostname, bool? exclusive)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(topic);
         ArgumentException.ThrowIfNullOrWhiteSpace(ipAddress);
@@ -86,7 +86,7 @@ internal sealed class MessageBroker : IDisposable
     /// </summary>
     /// <param name="topic"></param>
     /// <param name="subscription"></param>
-    internal void UnSubscribe(string topic, SubscriptionModel subscription)
+    public void UnSubscribe(string topic, SubscriptionModel subscription)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(topic);
         ArgumentNullException.ThrowIfNull(subscription);
@@ -118,7 +118,7 @@ internal sealed class MessageBroker : IDisposable
     /// <param name="ttl">The message TTL</param>
     /// <param name="broadcast">Tells if the message must be broad-casted or sent to only one subscriber in a round robin manner</param>
     /// <returns>Message id</returns>
-    internal Guid Publish(string topic, string payload, int? ttl, bool? broadcast)
+    public Guid Publish(string topic, string payload, int? ttl, bool? broadcast)
     {
         lock (_lock)
         {
@@ -152,7 +152,7 @@ internal sealed class MessageBroker : IDisposable
     /// </summary>
     /// <param name="topic"></param>
     /// <returns></returns>
-    internal int Reset(string topic)
+    public int Reset(string topic)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(topic);
 
@@ -175,7 +175,7 @@ internal sealed class MessageBroker : IDisposable
     /// <param name="page"></param>
     /// <param name="size"></param>
     /// <returns></returns>
-    internal List<MessageModel> Messages(string topic, int page, int size)
+    public List<MessageModel> Messages(string topic, int page, int size)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(topic);
 
@@ -364,9 +364,9 @@ internal sealed class MessageBroker : IDisposable
     }
 }
 
-internal record MessageModel(Guid Id, string Topic, string? Payload, long Timestamp, long? Expiration, bool Broadcast);
+public record MessageModel(Guid Id, string Topic, string? Payload, long Timestamp, long? Expiration, bool Broadcast);
 
-internal record SubscriptionModel(Guid Id, string IpAddress, string Hostname, long Timestamp, bool? Exclusive)
+public record SubscriptionModel(Guid Id, string IpAddress, string Hostname, long Timestamp, bool? Exclusive)
 {
     public Channel<MessageModel> MessageChannel { get; set; } = Channel.CreateBounded<MessageModel>(1);
 }

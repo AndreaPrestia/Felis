@@ -6,11 +6,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Logging;
 
-namespace Felis.Endpoints;
+namespace Felis.Http.Endpoints;
 
-internal static class BrokerEndpoints
+public static class BrokerEndpoints
 {
-    public static void MapBrokerEndpoints(this IEndpointRouteBuilder endpointRouteBuilder)
+       public static void MapBrokerEndpoints(this IEndpointRouteBuilder endpointRouteBuilder)
     {
         ArgumentNullException.ThrowIfNull(endpointRouteBuilder);
 

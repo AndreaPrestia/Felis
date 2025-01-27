@@ -7,7 +7,15 @@ using Microsoft.Extensions.Logging;
 try
 {
     Console.WriteLine("Started Felis.Broker.Console");
+    var cts = new CancellationTokenSource();
 
+    Console.CancelKeyPress += (_, eventArgs) =>
+    {
+        Console.WriteLine("Cancel event triggered");
+        cts.Cancel();
+        eventArgs.Cancel = true;
+    };
+    
     var port = args.FirstOrDefault(a => a.StartsWith("--port="))?.Split("=")[1] ?? "7110";
     var certificateName = args.FirstOrDefault(a => a.StartsWith("--certificate-name="))?.Split("=")[1] ?? "Output.pfx";
     var certificatePassword = args.FirstOrDefault(a => a.StartsWith("--certificate-password="))?.Split("=")[1] ?? "Password.1";
@@ -23,7 +31,7 @@ try
 
     var host = builder.Build();
 
-    await host.RunAsync();
+    await host.RunAsync(cts.Token);
 }
 catch (Exception ex)
 {

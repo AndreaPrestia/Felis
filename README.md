@@ -5,21 +5,25 @@ A light-weight message broker totally written in .NET based on HTTP3, QUIC and J
 The **Felis** project contains the logic for dispatching, storing and validating messages.
 It stores the messages in a **LiteDB** database.
 It behaves as message queue and broadcaster if a specific message for a topic is tagged with broadcast property.
+It contains two projects, **Felis** that contains the broker engine and **Felis.Http** that contains the communication 
+between broker and subscribers over http protocol.
 
 **Requirements**
 
 - [.NET 8](https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-8/overview)
+- [JSON](https://docs.foursquare.com/analytics-products/docs/data-formats-json)
 - [TLS 1.3](https://tls13.xargs.org)
 - [HTTP/3](https://caniuse.com/http3)
 - [QUIC](https://quicwg.org/)
-- [JSON](https://docs.foursquare.com/analytics-products/docs/data-formats-json)
 
 **Dependencies**
 
 - LiteDB 5.0.21
 - Microsoft.AspNetCore.Authentication.Certificate 8.0.8
 
-**Usage of Broker**
+**Usage of standalone Broker**
+
+The **Felis** broker can be used as in-process queue/broadcast application.
 
 Code example:
 
@@ -31,15 +35,23 @@ var builder = Host.CreateDefaultBuilder(args)
         logging.AddConsole();
         logging.SetMinimumLevel(LogLevel.Debug);
     })
-    .AddFelisBroker(new X509Certificate2("Output.pfx", "Password.1"), 7110);
+    .AddFelisBroker()
+     .ConfigureServices((_, services) =>
+        {
+            services.AddHostedService<Subscriber>();
+            services.AddHostedService<Publisher>();
+        });
 
 var host = builder.Build();
 
 await host.RunAsync();
 ```
 The example above initialize the **Felis Broker** in a console application, with console logging provider.
+It also provides a **Subscriber** and a **Publisher** as hosted services.
+All this flow is totally in-process.
 
-The **AddFelisBroker** method takes **certificate**, **port**, **heartBeatInSeconds** and **certificateForwardingHeader** as input parameters to use the broker with [mTLS](https://www.cloudflare.com/it-it/learning/access-management/what-is-mutual-tls/) authentication.
+The **AddFelisBroker** method takes **heartBeatInSeconds** as input parameters.
+You can see all the implementation in the **Felis.Broker.Standalone.Console** project.
 
 **Message entity**
 
@@ -159,65 +171,6 @@ connection | keep-alive           | It keeps the connection alive             |
 
 This endpoint is used to publish a message with whatever contract in the payload, by topic, to every listener subscribed to Felis.
 This endpoint returns the unique identifier of the message published, assigned by the broker.
-
-```
-curl -X 'DELETE' \
-  'https://localhost:7110/topic' \
-```
-
-***Response***
-
-Status code | Type               | Context |
---- |--------------------| --- |
-200 | SuccessResult      | When the request is successfully processed. |
-400 | BadRequestResult   | When a validation or something not related to the authorization process fails. |
-401 | UnauthorizedResult | When an operation fails due to missing authorization. |
-403 | ForbiddenResult    | When an operation fails because it is not allowed in the context. |
-
-This endpoint returns the number of messages deleted from the topic. It deletes all the messages waiting to be dispatched to subscribers.
-
-**Get messages from a topic with GET**
-
-This endpoint is used to subscribe to a subset of topics using application/x-ndjson content-type to stream structured data. 
-
-```
-curl -X 'GET' \
-  'https://localhost:7110/topic/1/10' \
-  -H 'accept: application/json' \
-```
-
-***Request route***
-
-Property | Type | Context |
---- | --- | --- |
-topic | string | the topic to subscribe to. |
-page | number | the page number to search. |
-size | number | the size of the request. The maximum allowed is 100 |
-
-****Request Headers****
-
-Header | Value                                | Context                                                                     |
---- |--------------------------------------|-----------------------------------------------------------------------------|
-accept | application/json                     | The accept header.                                                          |
-
-***Response***
-
-Status code | Type | Context                                                                                                       |
---- | --- |---------------------------------------------------------------------------------------------------------------|
-200 | Ok | When the operation is successfully fullfilled. |
-204 | NoContentResult | When nothing is more available from the topic |
-400 | BadRequestResult | When a validation or something not related to the authorization process fails.                                |
-401 | UnauthorizedResult | When an operation fails due to missing authorization.                                                         |
-403 | ForbiddenResult | When an operation fails because it is not allowed in the context.                                             |
-
-This endpoint return an array of **Message entity**.
-
-****Response Headers****
-
-Header | Value                | Context                                   |
---- |----------------------|-------------------------------------------|
-content-Type | application/json | The content type returned as json. |
-
 
 **Error responses from endpoints**
 

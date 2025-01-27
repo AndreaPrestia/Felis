@@ -29,11 +29,7 @@ public static class BrokerEndpoints
 
                 return Results.Accepted($"/{topic}", messageId);
             });
-
-        endpointRouteBuilder.MapDelete("/{topic}", ([FromServices] MessageBroker messageBroker, [FromRoute] string topic) => Results.Ok(messageBroker.Reset(topic)));
-
-        endpointRouteBuilder.MapGet("/{topic}/{page:int}/{size:int}", ([FromServices] MessageBroker messageBroker, [FromRoute] string topic, [FromRoute] int page, [FromRoute] int size) => Results.Ok(messageBroker.Messages(topic, page, size)));
-
+        
         endpointRouteBuilder.MapGet("/{topic}",
             async (ILoggerFactory loggerFactory, HttpContext context,
                 [FromServices] MessageBroker messageBroker,
@@ -50,7 +46,9 @@ public static class BrokerEndpoints
                 var clientHostname = (await Dns.GetHostEntryAsync(clientIp)).HostName;
 
                 var subscriptionEntity =
-                    messageBroker.Subscribe(topic, clientIp.MapToIPv4().ToString(), clientHostname, exclusive);
+                    messageBroker.Subscribe(topic, exclusive);
+                
+                logger.LogInformation("Subscribed {ipAddress}-{hostname} with id {subscriptionId}", subscriptionEntity.Id, clientIp.MapToIPv4().ToString(), clientHostname);
 
                 context.Response.Headers.ContentType = "application/x-ndjson";
                 context.Response.Headers.CacheControl = "no-cache";

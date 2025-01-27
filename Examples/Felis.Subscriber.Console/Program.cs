@@ -3,6 +3,14 @@
 try
 {
     Console.WriteLine("Started Felis.Subscriber.Console");
+    var cts = new CancellationTokenSource();
+
+    Console.CancelKeyPress += (_, eventArgs) =>
+    {
+        Console.WriteLine("Cancel event triggered");
+        cts.Cancel();
+        eventArgs.Cancel = true;
+    };
 
     const string pfxPath = "Output.pfx";
     const string pfxPassword = "Password.1";
@@ -10,10 +18,10 @@ try
     var clientCertificate = new X509Certificate2(pfxPath, pfxPassword);
     var brokerUrl = args.FirstOrDefault(a => a.StartsWith("--broker-url="))?.Split("=")[1] ?? "https://localhost:7110";
 
-    var taskGeneric = SubscribeInParallelAsync(brokerUrl, clientCertificate, 20, "Generic", false);
-    var taskTtL = SubscribeInParallelAsync(brokerUrl, clientCertificate, 10, "TTL", false);
-    var taskBroadcast = SubscribeInParallelAsync(brokerUrl, clientCertificate, 10, "Broadcast", false);
-    var taskExclusive = SubscribeInParallelAsync(brokerUrl, clientCertificate, 1, "Exclusive", true);
+    var taskGeneric = SubscribeInParallelAsync(brokerUrl, clientCertificate, 20, "Generic", false, cts.Token);
+    var taskTtL = SubscribeInParallelAsync(brokerUrl, clientCertificate, 10, "TTL", false, cts.Token);
+    var taskBroadcast = SubscribeInParallelAsync(brokerUrl, clientCertificate, 10, "Broadcast", false, cts.Token);
+    var taskExclusive = SubscribeInParallelAsync(brokerUrl, clientCertificate, 1, "Exclusive", true, cts.Token);
     await Task.WhenAll(new[] { taskGeneric, taskTtL, taskBroadcast, taskExclusive });
 }
 catch (Exception ex)
@@ -25,7 +33,7 @@ finally
     Console.WriteLine("Terminated Felis.Subscriber.Console");
 }
 
-static async Task SubscribeInParallelAsync(string brokerUrl, X509Certificate2 clientCertificate, int numberOfSubscribers, string topic, bool exclusive)
+static async Task SubscribeInParallelAsync(string brokerUrl, X509Certificate2 clientCertificate, int numberOfSubscribers, string topic, bool exclusive, CancellationToken cancellationToken)
 {
     try
     {
@@ -33,7 +41,7 @@ static async Task SubscribeInParallelAsync(string brokerUrl, X509Certificate2 cl
         for (var i = 0; i < numberOfSubscribers; i++)
         {
             var subscriberId = i + 1;
-            subscriberTasks[i] = Task.Run(() => SubscribeAsync(brokerUrl, clientCertificate, subscriberId, topic, exclusive));
+            subscriberTasks[i] = Task.Run(() => SubscribeAsync(brokerUrl, clientCertificate, subscriberId, topic, exclusive, cancellationToken));
         }
 
         await Task.WhenAll(subscriberTasks);
@@ -44,7 +52,7 @@ static async Task SubscribeInParallelAsync(string brokerUrl, X509Certificate2 cl
     }
 }
 
-static async Task SubscribeAsync(string brokerUrl, X509Certificate2 clientCertificate, int subscriberId, string topic, bool exclusive)
+static async Task SubscribeAsync(string brokerUrl, X509Certificate2 clientCertificate, int subscriberId, string topic, bool exclusive, CancellationToken cancellationToken)
 {
     var handler = new HttpClientHandler
     {
@@ -59,13 +67,13 @@ static async Task SubscribeAsync(string brokerUrl, X509Certificate2 clientCertif
 
     try
     {
-        using var response = await client.GetAsync($"{brokerUrl}/{topic}", HttpCompletionOption.ResponseHeadersRead);
+        using var response = await client.GetAsync($"{brokerUrl}/{topic}", HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         response.EnsureSuccessStatusCode();
-        await using var stream = await response.Content.ReadAsStreamAsync();
+        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var reader = new StreamReader(stream);
         while (!reader.EndOfStream)
         {
-            var content = await reader.ReadLineAsync();
+            var content = await reader.ReadLineAsync(cancellationToken);
             Console.WriteLine($"Received message for subscriber {subscriberId} - {topic}: {content}");
         }
     }

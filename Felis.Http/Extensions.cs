@@ -16,7 +16,6 @@ namespace Felis.Http;
 
 public static class Extensions
 {
-    private const string DatabasePath = "Felis.db";
     /// <summary>
     /// Adds the Felis broker with certificate path, password and listening port
     /// </summary>
@@ -25,7 +24,7 @@ public static class Extensions
     /// <param name="port">Port to bind to listen incoming connections. Default value is 7000.</param>
     /// <param name="certificateForwardingHeader">Header to use for certificate forwarding when Felis is under a proxy. Default value is 'X-ARR-ClientCert'</param>
     /// <returns>IHostBuilder</returns>
-    public static IHostBuilder WithHttp(this IHostBuilder builder, X509Certificate2 certificate, int port = 7000, int heartBeatInSeconds = 2, string certificateForwardingHeader = "X-ARR-ClientCert")
+    public static IHostBuilder WithHttp(this IHostBuilder builder, X509Certificate2 certificate, int port = 7000, string certificateForwardingHeader = "X-ARR-ClientCert")
     {
         return builder.ConfigureWebHostDefaults(webBuilder =>
         {
@@ -91,7 +90,7 @@ public static class Extensions
                 app.UseEndpoints(endpoints =>
                 {
                     endpoints.MapBrokerEndpoints();
-                    endpoints.MapGet("/", () => "Felis Broker is up and running!");
+                    endpoints.MapGet("/", () => "Felis.Http is up and running!");
                 });
 
                 app.UseHttpsRedirection();

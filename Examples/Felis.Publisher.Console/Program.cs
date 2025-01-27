@@ -4,14 +4,22 @@ using System.Security.Cryptography.X509Certificates;
 try
 {
     Console.WriteLine("Started Felis.Publisher.Console");
+    var cts = new CancellationTokenSource();
 
+    Console.CancelKeyPress += (_, eventArgs) =>
+    {
+        Console.WriteLine("Cancel event triggered");
+        cts.Cancel();
+        eventArgs.Cancel = true;
+    };
+    
     const string pfxPath = "Output.pfx";
     const string pfxPassword = "Password.1";
 
     var clientCertificate = new X509Certificate2(pfxPath, pfxPassword);
     var brokerUrl = args.FirstOrDefault(a => a.StartsWith("--broker-url="))?.Split("=")[1] ?? "https://localhost:7110";
 
-    while (true)
+    while (!cts.IsCancellationRequested)
     {
         var taskGeneric = PublishInParallelAsync(brokerUrl, clientCertificate, 20, "Generic", 0, false);
         var taskTtL = PublishInParallelAsync(brokerUrl, clientCertificate, 20, "TTL", 5, false);

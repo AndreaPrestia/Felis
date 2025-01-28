@@ -13,6 +13,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.Http", "Felis.Http\Fe
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.Broker.Standalone.Console", "Examples\Felis.Broker.Standalone.Console\Felis.Broker.Standalone.Console.csproj", "{056383DD-571F-4D11-9108-69BAAD3C3B47}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.Mqtt", "Felis.Mqtt\Felis.Mqtt.csproj", "{72DB5CA1-95DF-4129-AA75-0A3D54A4B5E4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.Broker.Mqtt.Console", "Examples\Felis.Broker.Mqtt.Console\Felis.Broker.Mqtt.Console.csproj", "{CDB1B4B0-8E61-4D9D-A1B7-196C5AD15154}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -35,6 +39,14 @@ Global
 		{056383DD-571F-4D11-9108-69BAAD3C3B47}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{056383DD-571F-4D11-9108-69BAAD3C3B47}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{056383DD-571F-4D11-9108-69BAAD3C3B47}.Release|Any CPU.Build.0 = Release|Any CPU
+		{72DB5CA1-95DF-4129-AA75-0A3D54A4B5E4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{72DB5CA1-95DF-4129-AA75-0A3D54A4B5E4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{72DB5CA1-95DF-4129-AA75-0A3D54A4B5E4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{72DB5CA1-95DF-4129-AA75-0A3D54A4B5E4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CDB1B4B0-8E61-4D9D-A1B7-196C5AD15154}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CDB1B4B0-8E61-4D9D-A1B7-196C5AD15154}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CDB1B4B0-8E61-4D9D-A1B7-196C5AD15154}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CDB1B4B0-8E61-4D9D-A1B7-196C5AD15154}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -42,6 +54,7 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{5764F447-D3B1-491F-B995-D5390569B1B6} = {4C950E14-197A-4B6C-8130-44EBE06BA7EB}
 		{056383DD-571F-4D11-9108-69BAAD3C3B47} = {4C950E14-197A-4B6C-8130-44EBE06BA7EB}
+		{CDB1B4B0-8E61-4D9D-A1B7-196C5AD15154} = {4C950E14-197A-4B6C-8130-44EBE06BA7EB}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {D605DA87-932C-4C6E-B7C8-77CED4B0C179}

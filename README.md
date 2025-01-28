@@ -1,6 +1,6 @@
 # ![Alt text](Felis.jpg)
 
-A light-weight message broker totally written in .NET based on HTTP3, QUIC and JSON.
+A light-weight message broker totally written in .NET.
 
 The **Felis** project contains the logic for dispatching, storing and validating messages.
 It stores the messages in a **LiteDB** database.
@@ -9,15 +9,11 @@ It behaves as message queue and broadcaster if a specific message for a topic is
 **Requirements**
 
 - [.NET 8](https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-8/overview)
-- [TLS 1.3](https://tls13.xargs.org)
-- [HTTP/3](https://caniuse.com/http3)
-- [QUIC](https://quicwg.org/)
-- [JSON](https://docs.foursquare.com/analytics-products/docs/data-formats-json)
+- [LiteDB](https://www.litedb.org/)
 
 **Dependencies**
 
 - LiteDB 5.0.21
-- Microsoft.AspNetCore.Authentication.Certificate 8.0.8
 
 **Usage of Broker**
 
@@ -31,15 +27,164 @@ var builder = Host.CreateDefaultBuilder(args)
         logging.AddConsole();
         logging.SetMinimumLevel(LogLevel.Debug);
     })
-    .AddFelisBroker(new X509Certificate2("Output.pfx", "Password.1"), 7110);
+    .AddFelisBroker()
+     .ConfigureServices((_, services) =>
+     {
+         services.AddHostedService<Subscriber>();
+         services.AddHostedService<Publisher>();
+     });
 
 var host = builder.Build();
 
 await host.RunAsync();
 ```
+
 The example above initialize the **Felis Broker** in a console application, with console logging provider.
 
-The **AddFelisBroker** method takes **certificate**, **port**, **heartBeatInSeconds** and **certificateForwardingHeader** as input parameters to use the broker with [mTLS](https://www.cloudflare.com/it-it/learning/access-management/what-is-mutual-tls/) authentication.
+The **AddFelisBroker** method takes **heartBeatInSeconds**.
+
+**Message entity**
+
+This entity is the representation of the data available on a specific topic.
+
+The **Message entity** is made of:
+
+Property | Type   | Context                                                              |
+--- |--------|----------------------------------------------------------------------|
+Id | guid   | the message unique id assigned by the broker.                        |
+Topic | string | the topic where the message has been published.                      |
+Payload | string | the actual content of the message published on the topic.            |
+Timestamp | number | the timestamp of the message when it was published.                  |
+Expiration | number | the message's expiration timestamp. It can be null.                  |
+Broadcast | bool   | the message's behaviour, if it's a broadcast message or a queue one. |
+
+**Publish of a message to a topic with Publish**
+
+You can inject the **MessageBroker** class to make a publish to a specific topic with the **Publish** method.
+
+```
+var messageGuid = _messageBroker.Publish("test",  $"test at {new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds()}", null, false);
+_logger.LogInformation($"Published {messageGuid}@test");
+
+```
+
+In the example above a message is published for the topic "test", with a string payload, without a time-to-live and without an exclusive consumer.
+
+****Parameters****
+
+Property | Type    | Context                                                                                                                                                                                |
+--- |---------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+topic | string  | The topic where to publish the message.                                                                                                                                                |
+payload | string  | The payload to publish.                                                                                                                                                                |
+ttl | int     | How many seconds a message can live. If not specified (or 0 value is used) the message is durable.                                                                                     |
+broadcast | boolean | Tells if the message must be broadcasted to all subscribers. If not provided or set to false Felis broker will send enqueued message only to one subscriber in a load balanced manner. |
+
+In case of success it will return the message guid, otherwise the exception mapped in the summary.
+
+**Subscribe to a topic with Subscribe**
+
+This method is used to subscribe to a topic using channels to stream structured data.
+
+```
+var subscription = _messageBroker.Subscribe("test", null);
+
+try
+{
+    await foreach (var message in subscription.MessageChannel.Reader.ReadAllAsync(stoppingToken))
+    {
+        _logger.LogDebug(
+            $"Received message for subscriber {subscription.Id} - test: {JsonSerializer.Serialize(message)}");
+    }
+}
+catch (Exception ex)
+{
+    _logger.LogError(ex, ex.Message);
+}
+finally
+{
+    _messageBroker.UnSubscribe("test", subscription);
+}
+```
+The example above create a subscription entity and listen for message available at "test" topic.
+The subscriber above is not marked as exclusive, so in case of a message published in queue mode a load
+balancing of subscribers will be adopted by Felis.
+
+***Parameters***
+
+Property | Type    | Context                                |
+--- |---------|----------------------------------------|
+topic | string  | the topic to subscribe to.             |
+exclusive | boolean | if the subscriber is exclusive or not. |
+
+****Response****
+
+It returns a subscription entity that exposes a **System.Threading.Channel<MessageModel>** property called **MessageChannel**.
+
+**How can I test it?**
+
+This repository provides the examples of usage:
+
+- **Felis.Broker.Standalone.Console**
+
+**Felis.Broker.Standalone.Console**
+
+A console application, that reference Felis project and uses the broker as in-process flow.
+
+# Http
+
+The **Felis.Http** project contains the implementation of http endpoints for publish and subscribe to topics.
+
+**Requirements**
+
+- [.NET 8](https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-8/overview)
+- [JSON](https://docs.foursquare.com/analytics-products/docs/data-formats-json)
+- [TLS 1.3](https://tls13.xargs.org)
+- [HTTP/3](https://caniuse.com/http3)
+- [QUIC](https://quicwg.org/)
+
+**Dependencies**
+
+- Felis
+- Microsoft.AspNetCore.Authentication.Certificate 8.0.8
+
+**Usage of http broker**
+
+The **Felis** broker can be used as http queue/broadcast application.
+
+Code example:
+
+```
+    var port = args.FirstOrDefault(a => a.StartsWith("--port="))?.Split("=")[1] ?? "7110";
+    var certificateName = args.FirstOrDefault(a => a.StartsWith("--certificate-name="))?.Split("=")[1] ?? "Output.pfx";
+    var certificatePassword = args.FirstOrDefault(a => a.StartsWith("--certificate-password="))?.Split("=")[1] ?? "Password.1";
+
+    var certificate = new X509Certificate2(certificateName, certificatePassword);
+    
+    var builder = Host.CreateDefaultBuilder(args)
+        .ConfigureLogging(logging =>
+        {
+            logging.ClearProviders();
+            logging.AddConsole();
+            logging.SetMinimumLevel(LogLevel.Debug);
+        })
+        .AddFelisBroker().WithHttp(new X509Certificate2(certificateName, certificatePassword), int.Parse(port))
+        .ConfigureServices((_, services) =>
+        {
+            services.AddHostedService(provider => new Subscriber(provider.GetRequiredService<ILogger<Subscriber>>(), certificate, $"https://localhost:{port}"));
+            services.AddHostedService(provider => new Publisher(provider.GetRequiredService<ILogger<Publisher>>(), certificate, $"https://localhost:{port}"));
+        });
+
+    var host = builder.Build();
+
+    await host.RunAsync(cts.Token);
+```
+The example above initialize the **Felis Broker** in a console application, with console logging provider and with Http communication protocol.
+It also provides a **Subscriber** and a **Publisher** as hosted services.
+All this flow is totally out-of-process.
+
+The **AddFelisBroker** method takes **heartBeatInSeconds** as input parameters.
+The **WithHttp** extension takes **certificate**, **port** and certificateForwardingHeader as input parameters to use the broker with [mTLS](https://www.cloudflare.com/it-it/learning/access-management/what-is-mutual-tls/) authentication.
+You can see all the implementation in the **Felis.Broker.Http.Console** project.
 
 **Message entity**
 
@@ -113,7 +258,7 @@ Status code | Type | Context |
 
 **Subscribe to a topic with GET**
 
-This endpoint is used to subscribe to a subset of topics using application/x-ndjson content-type to stream structured data. 
+This endpoint is used to subscribe to a subset of topics using application/x-ndjson content-type to stream structured data.
 
 ```
 curl -X 'GET' \
@@ -160,65 +305,6 @@ connection | keep-alive           | It keeps the connection alive             |
 This endpoint is used to publish a message with whatever contract in the payload, by topic, to every listener subscribed to Felis.
 This endpoint returns the unique identifier of the message published, assigned by the broker.
 
-```
-curl -X 'DELETE' \
-  'https://localhost:7110/topic' \
-```
-
-***Response***
-
-Status code | Type               | Context |
---- |--------------------| --- |
-200 | SuccessResult      | When the request is successfully processed. |
-400 | BadRequestResult   | When a validation or something not related to the authorization process fails. |
-401 | UnauthorizedResult | When an operation fails due to missing authorization. |
-403 | ForbiddenResult    | When an operation fails because it is not allowed in the context. |
-
-This endpoint returns the number of messages deleted from the topic. It deletes all the messages waiting to be dispatched to subscribers.
-
-**Get messages from a topic with GET**
-
-This endpoint is used to subscribe to a subset of topics using application/x-ndjson content-type to stream structured data. 
-
-```
-curl -X 'GET' \
-  'https://localhost:7110/topic/1/10' \
-  -H 'accept: application/json' \
-```
-
-***Request route***
-
-Property | Type | Context |
---- | --- | --- |
-topic | string | the topic to subscribe to. |
-page | number | the page number to search. |
-size | number | the size of the request. The maximum allowed is 100 |
-
-****Request Headers****
-
-Header | Value                                | Context                                                                     |
---- |--------------------------------------|-----------------------------------------------------------------------------|
-accept | application/json                     | The accept header.                                                          |
-
-***Response***
-
-Status code | Type | Context                                                                                                       |
---- | --- |---------------------------------------------------------------------------------------------------------------|
-200 | Ok | When the operation is successfully fullfilled. |
-204 | NoContentResult | When nothing is more available from the topic |
-400 | BadRequestResult | When a validation or something not related to the authorization process fails.                                |
-401 | UnauthorizedResult | When an operation fails due to missing authorization.                                                         |
-403 | ForbiddenResult | When an operation fails because it is not allowed in the context.                                             |
-
-This endpoint return an array of **Message entity**.
-
-****Response Headers****
-
-Header | Value                | Context                                   |
---- |----------------------|-------------------------------------------|
-content-Type | application/json | The content type returned as json. |
-
-
 **Error responses from endpoints**
 
 When an error occurs during an API request it is used the standard [RFC7807](https://datatracker.ietf.org/doc/html/rfc7807) to return HTTPS APIs errors with a **Content-Type** header with value **application/problem+json**
@@ -238,35 +324,8 @@ and the following object:
 
 This repository provides the examples of usage:
 
-- **Felis.Broker.Console**
-- **Felis.Publisher.Console**
-- **Felis.Subscriber.Console**
+- **Felis.Broker.Http.Console**
 
-**Felis.Broker.Console**
+**Felis.Broker.Http.Console**
 
-A console application, that reference Felis project.
-
-**Publish a message**
-
-To ease the testing process, I have a .NET console applications that publish to Felis broker with multiple topics.
-
-This applications sends messages on the **Generic**, **TTL**, **Broadcast** and **Exclusive** topics.
-
-**Usage of Publishers**
-
-Just launch the **Publisher** applications in the **Examples** directory.
-
-**Subscribe to a topic**
-
-To ease the testing process, I have a .NET console applications that subscribe to Felis broker with multiple subscribers.
-
-This application contains the logic to subscribe to messages by topic.
-
-**Usage of Subscribers**
-
-Just launch the **Subscriber** applications in the **Examples** directory.
-
-**Conclusion**
-
-Though there is room for further improvement, the project is fit for becoming a sound and usable product in a short time. I hope that my work can inspire similar projects or help someone else.
-I want to add some sort of alerting when something strange occurs, for example when a queue is too big or too much fails occur.
+A console application, that references **Felis.Http** project.

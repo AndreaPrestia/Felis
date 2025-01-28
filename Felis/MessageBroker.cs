@@ -6,7 +6,7 @@ using Timer = System.Timers.Timer;
 
 namespace Felis;
 
-internal sealed class MessageBroker : IDisposable
+public sealed class MessageBroker : IDisposable
 {
     private readonly ILogger<MessageBroker> _logger;
     private readonly ILiteDatabase _database;
@@ -45,23 +45,18 @@ internal sealed class MessageBroker : IDisposable
     /// <summary>
     /// Add a subscriber to a topic
     /// </summary>
-    /// <param name="ipAddress"></param>
-    /// <param name="hostname"></param>
     /// <param name="topic"></param>
     /// <param name="exclusive"></param>
     /// <returns></returns>
-    internal SubscriptionModel Subscribe(string topic, string ipAddress, string hostname, bool? exclusive)
+    public SubscriptionModel Subscribe(string topic, bool? exclusive)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(topic);
-        ArgumentException.ThrowIfNullOrWhiteSpace(ipAddress);
-        ArgumentException.ThrowIfNullOrWhiteSpace(hostname);
 
         lock (_lock)
         {
             var topicTrimmedLowered = topic.Trim().ToLowerInvariant();
 
-            var subscription = new SubscriptionModel(Guid.NewGuid(), ipAddress, hostname,
-                new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), exclusive);
+            var subscription = new SubscriptionModel(Guid.NewGuid(), new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), exclusive);
 
             var subscriptions = _subscriptions.GetOrAdd(topicTrimmedLowered, _ => new List<SubscriptionModel>());
 
@@ -73,9 +68,7 @@ internal sealed class MessageBroker : IDisposable
             }
 
             _logger.LogInformation(
-                "Subscribed '{id}' with hostname: '{hostname}' with IP: '{ipAddress}' to topic '{topic}' at {timestamp}",
-                subscription.Id, subscription.Hostname, subscription.IpAddress, topicTrimmedLowered,
-                subscription.Timestamp);
+                "Subscribed '{id}' to topic '{topic}' at {timestamp}", subscription.Id, topicTrimmedLowered, subscription.Timestamp);
 
             return subscription;
         }
@@ -86,7 +79,7 @@ internal sealed class MessageBroker : IDisposable
     /// </summary>
     /// <param name="topic"></param>
     /// <param name="subscription"></param>
-    internal void UnSubscribe(string topic, SubscriptionModel subscription)
+    public void UnSubscribe(string topic, SubscriptionModel subscription)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(topic);
         ArgumentNullException.ThrowIfNull(subscription);
@@ -98,9 +91,8 @@ internal sealed class MessageBroker : IDisposable
             _logger.LogDebug("Remove subscription from topic '{topic}'", topicTrimmedLowered);
             var unSubscribeResult = _subscriptions[topicTrimmedLowered].Remove(subscription);
             _logger.LogInformation(
-                "UnSubscribed '{id}' with hostname: '{hostname}' with IP: '{ipAddress}' to topic '{topic}' at {timestamp} with operation result '{operationResult}'",
-                subscription.Id, subscription.Hostname, subscription.IpAddress, topicTrimmedLowered,
-                subscription.Timestamp, unSubscribeResult);
+                "UnSubscribed '{id}' from topic '{topic}' at {timestamp} with operation result '{operationResult}'",
+                subscription.Id, topicTrimmedLowered, subscription.Timestamp, unSubscribeResult);
 
             if (_topicIndex.TryGetValue(topicTrimmedLowered, out var currentIndex))
             {
@@ -118,7 +110,7 @@ internal sealed class MessageBroker : IDisposable
     /// <param name="ttl">The message TTL</param>
     /// <param name="broadcast">Tells if the message must be broad-casted or sent to only one subscriber in a round robin manner</param>
     /// <returns>Message id</returns>
-    internal Guid Publish(string topic, string payload, int? ttl, bool? broadcast)
+    public Guid Publish(string topic, string payload, int? ttl, bool? broadcast)
     {
         lock (_lock)
         {
@@ -152,7 +144,7 @@ internal sealed class MessageBroker : IDisposable
     /// </summary>
     /// <param name="topic"></param>
     /// <returns></returns>
-    internal int Reset(string topic)
+    public int Reset(string topic)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(topic);
 
@@ -175,7 +167,7 @@ internal sealed class MessageBroker : IDisposable
     /// <param name="page"></param>
     /// <param name="size"></param>
     /// <returns></returns>
-    internal List<MessageModel> Messages(string topic, int page, int size)
+    public List<MessageModel> Messages(string topic, int page, int size)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(topic);
 
@@ -241,8 +233,8 @@ internal sealed class MessageBroker : IDisposable
                             {
                                 await s.MessageChannel.Writer.WriteAsync(nextMessage, token);
                                 _logger.LogInformation(
-                                    "Message '{messageId}' sent to '{ipAddress}' - '{hostname}' at {timestamp} for topic '{topic}'",
-                                    nextMessage.Id, s.IpAddress, s.Hostname,
+                                    "Message '{messageId}' sent to '{subscriptionId}' at {timestamp} for topic '{topic}'",
+                                    nextMessage.Id, s.Id,
                                     new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), nextMessage.Topic);
                             });
 
@@ -256,8 +248,8 @@ internal sealed class MessageBroker : IDisposable
                         {
                             await subscription.MessageChannel.Writer.WriteAsync(nextMessage, token);
                             _logger.LogInformation(
-                                "Message '{messageId}' sent to '{ipAddress}' - '{hostname}' at {timestamp} for topic '{topic}'",
-                                nextMessage.Id, subscription.IpAddress, subscription.Hostname,
+                                "Message '{messageId}' sent to '{subscriptionId}' at {timestamp} for topic '{topic}'",
+                                nextMessage.Id, subscription.Id,
                                 new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), nextMessage.Topic);
                         }
                     }
@@ -291,9 +283,8 @@ internal sealed class MessageBroker : IDisposable
 
                         await s.MessageChannel.Writer.WriteAsync(hearBeatMessage, token);
                         _logger.LogInformation(
-                            "Heartbeat Message '{messageId}' sent to '{ipAddress}' - '{hostname}' at {timestamp} for topic '{topic}'",
-                            hearBeatMessage.Id, s.IpAddress, s.Hostname,
-                            new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), hearBeatMessage.Topic);
+                            "Heartbeat Message '{messageId}' sent to '{subscriptionId}' at {timestamp} for topic '{topic}'",
+                            hearBeatMessage.Id, s.Id, new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), hearBeatMessage.Topic);
                     });
 
                 await Task.WhenAll(tasks);
@@ -364,9 +355,9 @@ internal sealed class MessageBroker : IDisposable
     }
 }
 
-internal record MessageModel(Guid Id, string Topic, string? Payload, long Timestamp, long? Expiration, bool Broadcast);
+public record MessageModel(Guid Id, string Topic, string? Payload, long Timestamp, long? Expiration, bool Broadcast);
 
-internal record SubscriptionModel(Guid Id, string IpAddress, string Hostname, long Timestamp, bool? Exclusive)
+public record SubscriptionModel(Guid Id, long Timestamp, bool? Exclusive)
 {
     public Channel<MessageModel> MessageChannel { get; set; } = Channel.CreateBounded<MessageModel>(1);
 }

@@ -7,11 +7,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Felis", "Felis\Felis.csproj
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples", "Examples", "{4C950E14-197A-4B6C-8130-44EBE06BA7EB}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Felis.Broker.Console", "Examples\Felis.Broker.Console\Felis.Broker.Console.csproj", "{5764F447-D3B1-491F-B995-D5390569B1B6}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.Subscriber.Console", "Examples\Felis.Subscriber.Console\Felis.Subscriber.Console.csproj", "{5AE255F7-2E72-4654-AF38-7CC586953E5F}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.Publisher.Console", "Examples\Felis.Publisher.Console\Felis.Publisher.Console.csproj", "{98EE641E-38C9-4BB7-A2FD-1D2203102703}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Felis.Broker.Http.Console", "Examples\Felis.Broker.Http.Console\Felis.Broker.Http.Console.csproj", "{5764F447-D3B1-491F-B995-D5390569B1B6}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Felis.Http", "Felis.Http\Felis.Http.csproj", "{9534C50F-20A3-4984-B141-5C8EB356CBD7}"
 EndProject
@@ -31,14 +27,6 @@ Global
 		{5764F447-D3B1-491F-B995-D5390569B1B6}.Debug|Any CPU.Build.0 = Release|Any CPU
 		{5764F447-D3B1-491F-B995-D5390569B1B6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5764F447-D3B1-491F-B995-D5390569B1B6}.Release|Any CPU.Build.0 = Release|Any CPU
-		{5AE255F7-2E72-4654-AF38-7CC586953E5F}.Debug|Any CPU.ActiveCfg = Release|Any CPU
-		{5AE255F7-2E72-4654-AF38-7CC586953E5F}.Debug|Any CPU.Build.0 = Release|Any CPU
-		{5AE255F7-2E72-4654-AF38-7CC586953E5F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{5AE255F7-2E72-4654-AF38-7CC586953E5F}.Release|Any CPU.Build.0 = Release|Any CPU
-		{98EE641E-38C9-4BB7-A2FD-1D2203102703}.Debug|Any CPU.ActiveCfg = Release|Any CPU
-		{98EE641E-38C9-4BB7-A2FD-1D2203102703}.Debug|Any CPU.Build.0 = Release|Any CPU
-		{98EE641E-38C9-4BB7-A2FD-1D2203102703}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{98EE641E-38C9-4BB7-A2FD-1D2203102703}.Release|Any CPU.Build.0 = Release|Any CPU
 		{9534C50F-20A3-4984-B141-5C8EB356CBD7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{9534C50F-20A3-4984-B141-5C8EB356CBD7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9534C50F-20A3-4984-B141-5C8EB356CBD7}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -53,8 +41,6 @@ Global
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{5764F447-D3B1-491F-B995-D5390569B1B6} = {4C950E14-197A-4B6C-8130-44EBE06BA7EB}
-		{5AE255F7-2E72-4654-AF38-7CC586953E5F} = {4C950E14-197A-4B6C-8130-44EBE06BA7EB}
-		{98EE641E-38C9-4BB7-A2FD-1D2203102703} = {4C950E14-197A-4B6C-8130-44EBE06BA7EB}
 		{056383DD-571F-4D11-9108-69BAAD3C3B47} = {4C950E14-197A-4B6C-8130-44EBE06BA7EB}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution

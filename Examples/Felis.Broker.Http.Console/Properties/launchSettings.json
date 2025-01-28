@@ -1,6 +1,6 @@
 {
   "profiles": {
-    "Felis.Broker.Console": {
+    "Felis.Broker.Http.Console": {
       "commandName": "Project"
     },
     "Container (Dockerfile)": {

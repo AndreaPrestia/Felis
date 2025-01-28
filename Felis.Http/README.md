@@ -1,12 +1,6 @@
-# ![Alt text](Felis.jpg)
+# ![Alt text](../Felis.jpg) - Http
 
-A light-weight message broker totally written in .NET based on HTTP3, QUIC and JSON.
-
-The **Felis** project contains the logic for dispatching, storing and validating messages.
-It stores the messages in a **LiteDB** database.
-It behaves as message queue and broadcaster if a specific message for a topic is tagged with broadcast property.
-It contains two projects, **Felis** that contains the broker engine and **Felis.Http** that contains the communication 
-between broker and subscribers over http protocol.
+The **Felis.Http** project contains the implementation of http endpoints for publish and subscribe to topics.
 
 **Requirements**
 
@@ -18,40 +12,47 @@ between broker and subscribers over http protocol.
 
 **Dependencies**
 
-- LiteDB 5.0.21
+- Felis
 - Microsoft.AspNetCore.Authentication.Certificate 8.0.8
 
-**Usage of standalone Broker**
+**Usage of http broker**
 
-The **Felis** broker can be used as in-process queue/broadcast application.
+The **Felis** broker can be used as http queue/broadcast application.
 
 Code example:
 
 ```
-var builder = Host.CreateDefaultBuilder(args)
-    .ConfigureLogging(logging =>
-    {
-        logging.ClearProviders();
-        logging.AddConsole();
-        logging.SetMinimumLevel(LogLevel.Debug);
-    })
-    .AddFelisBroker()
-     .ConfigureServices((_, services) =>
+    var port = args.FirstOrDefault(a => a.StartsWith("--port="))?.Split("=")[1] ?? "7110";
+    var certificateName = args.FirstOrDefault(a => a.StartsWith("--certificate-name="))?.Split("=")[1] ?? "Output.pfx";
+    var certificatePassword = args.FirstOrDefault(a => a.StartsWith("--certificate-password="))?.Split("=")[1] ?? "Password.1";
+
+    var certificate = new X509Certificate2(certificateName, certificatePassword);
+    
+    var builder = Host.CreateDefaultBuilder(args)
+        .ConfigureLogging(logging =>
         {
-            services.AddHostedService<Subscriber>();
-            services.AddHostedService<Publisher>();
+            logging.ClearProviders();
+            logging.AddConsole();
+            logging.SetMinimumLevel(LogLevel.Debug);
+        })
+        .AddFelisBroker().WithHttp(new X509Certificate2(certificateName, certificatePassword), int.Parse(port))
+        .ConfigureServices((_, services) =>
+        {
+            services.AddHostedService(provider => new Subscriber(provider.GetRequiredService<ILogger<Subscriber>>(), certificate, $"https://localhost:{port}"));
+            services.AddHostedService(provider => new Publisher(provider.GetRequiredService<ILogger<Publisher>>(), certificate, $"https://localhost:{port}"));
         });
 
-var host = builder.Build();
+    var host = builder.Build();
 
-await host.RunAsync();
+    await host.RunAsync(cts.Token);
 ```
-The example above initialize the **Felis Broker** in a console application, with console logging provider.
+The example above initialize the **Felis Broker** in a console application, with console logging provider and with Http communication protocol.
 It also provides a **Subscriber** and a **Publisher** as hosted services.
-All this flow is totally in-process.
+All this flow is totally out-of-process.
 
 The **AddFelisBroker** method takes **heartBeatInSeconds** as input parameters.
-You can see all the implementation in the **Felis.Broker.Standalone.Console** project.
+The **WithHttp** extension takes **certificate**, **port** and certificateForwardingHeader as input parameters to use the broker with [mTLS](https://www.cloudflare.com/it-it/learning/access-management/what-is-mutual-tls/) authentication.
+You can see all the implementation in the **Felis.Broker.Http.Console** project.
 
 **Message entity**
 
@@ -191,35 +192,8 @@ and the following object:
 
 This repository provides the examples of usage:
 
-- **Felis.Broker.Console**
-- **Felis.Publisher.Console**
-- **Felis.Subscriber.Console**
+- **Felis.Broker.Http.Console**
 
-**Felis.Broker.Console**
+**Felis.Broker.Http.Console**
 
-A console application, that reference Felis project.
-
-**Publish a message**
-
-To ease the testing process, I have a .NET console applications that publish to Felis broker with multiple topics.
-
-This applications sends messages on the **Generic**, **TTL**, **Broadcast** and **Exclusive** topics.
-
-**Usage of Publishers**
-
-Just launch the **Publisher** applications in the **Examples** directory.
-
-**Subscribe to a topic**
-
-To ease the testing process, I have a .NET console applications that subscribe to Felis broker with multiple subscribers.
-
-This application contains the logic to subscribe to messages by topic.
-
-**Usage of Subscribers**
-
-Just launch the **Subscriber** applications in the **Examples** directory.
-
-**Conclusion**
-
-Though there is room for further improvement, the project is fit for becoming a sound and usable product in a short time. I hope that my work can inspire similar projects or help someone else.
-I want to add some sort of alerting when something strange occurs, for example when a queue is too big or too much fails occur.
+A console application, that references **Felis.Http** project.

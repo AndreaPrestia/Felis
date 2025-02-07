@@ -21,7 +21,7 @@ public class Subscriber : BackgroundService
 
         try
         {
-            await foreach (var message in subscription.MessageChannel.Reader.ReadAllAsync(stoppingToken))
+            await foreach (var message in subscription.GetNextAvailableMessageAsync(stoppingToken))
             {
                 _logger.LogDebug(
                     $"Received message for subscriber {subscription.Id} - test: {JsonSerializer.Serialize(message)}");

@@ -83,14 +83,14 @@ In case of success it will return the message guid, otherwise the exception mapp
 
 **Subscribe to a topic with Subscribe**
 
-This method is used to subscribe to a topic using channels to stream structured data.
+This method is used to subscribe to a topic using an IAsyncEnumerable to stream data.
 
 ```
 var subscription = _messageBroker.Subscribe("test", null);
 
 try
 {
-    await foreach (var message in subscription.MessageChannel.Reader.ReadAllAsync(stoppingToken))
+    await foreach (var message in subscription.GetNextAvailableMessageAsync(stoppingToken))
     {
         _logger.LogDebug(
             $"Received message for subscriber {subscription.Id} - test: {JsonSerializer.Serialize(message)}");
@@ -118,7 +118,7 @@ exclusive | boolean | if the subscriber is exclusive or not. |
 
 ****Response****
 
-It returns a subscription entity that exposes a **System.Threading.Channel<MessageModel>** property called **MessageChannel**.
+It returns a subscription entity that exposes a method with this signature **IAsyncEnumerable<MessageModel?> GetNextAvailableMessageAsync(CancellationToken cancellationToken)** that streams messages for a subscription.
 
 **How can I test it?**
 

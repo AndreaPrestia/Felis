@@ -56,7 +56,8 @@ public sealed class MessageBroker : IDisposable
         {
             var topicTrimmedLowered = topic.Trim().ToLowerInvariant();
 
-            var subscription = new SubscriptionModel(Guid.NewGuid(), new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), exclusive);
+            var subscription = new SubscriptionModel(Guid.NewGuid(),
+                new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), exclusive);
 
             var subscriptions = _subscriptions.GetOrAdd(topicTrimmedLowered, _ => new List<SubscriptionModel>());
 
@@ -68,7 +69,8 @@ public sealed class MessageBroker : IDisposable
             }
 
             _logger.LogInformation(
-                "Subscribed '{id}' to topic '{topic}' at {timestamp}", subscription.Id, topicTrimmedLowered, subscription.Timestamp);
+                "Subscribed '{id}' to topic '{topic}' at {timestamp}", subscription.Id, topicTrimmedLowered,
+                subscription.Timestamp);
 
             return subscription;
         }
@@ -231,7 +233,7 @@ public sealed class MessageBroker : IDisposable
                         var tasks = subscriptions
                             .Select(async s =>
                             {
-                                await s.MessageChannel.Writer.WriteAsync(nextMessage, token);
+                                await s.WriteMessageAsync(nextMessage, token);
                                 _logger.LogInformation(
                                     "Message '{messageId}' sent to '{subscriptionId}' at {timestamp} for topic '{topic}'",
                                     nextMessage.Id, s.Id,
@@ -246,7 +248,7 @@ public sealed class MessageBroker : IDisposable
 
                         if (subscription != null)
                         {
-                            await subscription.MessageChannel.Writer.WriteAsync(nextMessage, token);
+                            await subscription.WriteMessageAsync(nextMessage, token);
                             _logger.LogInformation(
                                 "Message '{messageId}' sent to '{subscriptionId}' at {timestamp} for topic '{topic}'",
                                 nextMessage.Id, subscription.Id,
@@ -278,13 +280,15 @@ public sealed class MessageBroker : IDisposable
                 var tasks = subscription
                     .Value.Select(async s =>
                     {
-                        var hearBeatMessage = new MessageModel(Guid.NewGuid(), subscription.Key, $"Heartbeat: {currentTimeStamp}",
+                        var hearBeatMessage = new MessageModel(Guid.NewGuid(), subscription.Key,
+                            $"Heartbeat: {currentTimeStamp}",
                             new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), null, true);
 
-                        await s.MessageChannel.Writer.WriteAsync(hearBeatMessage, token);
+                        await s.WriteMessageAsync(hearBeatMessage, token);
                         _logger.LogInformation(
                             "Heartbeat Message '{messageId}' sent to '{subscriptionId}' at {timestamp} for topic '{topic}'",
-                            hearBeatMessage.Id, s.Id, new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), hearBeatMessage.Topic);
+                            hearBeatMessage.Id, s.Id, new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(),
+                            hearBeatMessage.Topic);
                     });
 
                 await Task.WhenAll(tasks);
@@ -359,5 +363,11 @@ public record MessageModel(Guid Id, string Topic, string? Payload, long Timestam
 
 public record SubscriptionModel(Guid Id, long Timestamp, bool? Exclusive)
 {
-    public Channel<MessageModel> MessageChannel { get; set; } = Channel.CreateBounded<MessageModel>(1);
+    private readonly Channel<MessageModel> _messageChannel = Channel.CreateBounded<MessageModel>(1);
+
+    internal async ValueTask WriteMessageAsync(MessageModel messageModel, CancellationToken cancellationToken) =>
+        await _messageChannel.Writer.WriteAsync(messageModel, cancellationToken);
+
+    public IAsyncEnumerable<MessageModel?> GetNextAvailableMessageAsync(CancellationToken cancellationToken) =>
+        _messageChannel.Reader.ReadAllAsync(cancellationToken);
 }

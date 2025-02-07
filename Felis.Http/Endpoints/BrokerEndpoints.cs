@@ -58,7 +58,7 @@ public static class BrokerEndpoints
 
                 try
                 {
-                    await foreach (var message in subscriptionEntity.MessageChannel.Reader.ReadAllAsync(cancellationToken))
+                    await foreach (var message in subscriptionEntity.GetNextAvailableMessageAsync(cancellationToken))
                     {
                         var bytes = System.Text.Encoding.UTF8.GetBytes($"{JsonSerializer.Serialize(message)}\n");
                         await dataStream.WriteAsync(bytes, cancellationToken);

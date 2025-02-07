@@ -183,7 +183,7 @@ It also provides a **Subscriber** and a **Publisher** as hosted services.
 All this flow is totally out-of-process.
 
 The **AddFelisBroker** method takes **heartBeatInSeconds** as input parameters.
-The **WithHttp** extension takes **certificate**, **port** and certificateForwardingHeader as input parameters to use the broker with [mTLS](https://www.cloudflare.com/it-it/learning/access-management/what-is-mutual-tls/) authentication.
+The **WithHttp** extension takes **certificate**, **port** and **certificateForwardingHeader** as input parameters to use the broker with **[mTLS](https://www.cloudflare.com/it-it/learning/access-management/what-is-mutual-tls/)** authentication.
 You can see all the implementation in the **Felis.Broker.Http.Console** project.
 
 **Message entity**

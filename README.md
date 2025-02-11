@@ -39,9 +39,7 @@ var host = builder.Build();
 await host.RunAsync();
 ```
 
-The example above initialize the **Felis Broker** in a console application, with console logging provider.
-
-The **AddFelisBroker** method takes **heartBeatInSeconds**.
+The example above initialize the **Felis Broker** in a console application, with console logging provider using the method **AddFelisBroker**.
 
 **Message entity**
 
@@ -83,30 +81,25 @@ In case of success it will return the message guid, otherwise the exception mapp
 
 **Subscribe to a topic with Subscribe**
 
-This method is used to subscribe to a topic using an IAsyncEnumerable to stream data.
+This method is used to subscribe to a topic. The **Subscribe** method returns an an IAsyncEnumerable to stream data.
 
 ```
-var subscription = _messageBroker.Subscribe("test", null);
 
 try
 {
-    await foreach (var message in subscription.GetNextAvailableMessageAsync(stoppingToken))
+    await foreach (var message in _messageBroker.Subscribe("test", null, stoppingToken))
     {
         _logger.LogDebug(
-            $"Received message for subscriber {subscription.Id} - test: {JsonSerializer.Serialize(message)}");
+            $"Received message: {JsonSerializer.Serialize(message)}");
     }
 }
 catch (Exception ex)
 {
     _logger.LogError(ex, ex.Message);
 }
-finally
-{
-    _messageBroker.UnSubscribe("test", subscription);
-}
 ```
-The example above create a subscription entity and listen for message available at "test" topic.
-The subscriber above is not marked as exclusive, so in case of a message published in queue mode a load
+The example above listens for messages available at "test" topic.
+The subscription above is not marked as exclusive, so in case of a message published in queue mode a load
 balancing of subscribers will be adopted by Felis.
 
 ***Parameters***
@@ -118,7 +111,7 @@ exclusive | boolean | if the subscriber is exclusive or not. |
 
 ****Response****
 
-It returns a subscription entity that exposes a method with this signature **IAsyncEnumerable<MessageModel?> GetNextAvailableMessageAsync(CancellationToken cancellationToken)** that streams messages for a subscription.
+It returns a stream of **MessageModel**.
 
 **How can I test it?**
 
@@ -182,7 +175,6 @@ The example above initialize the **Felis Broker** in a console application, with
 It also provides a **Subscriber** and a **Publisher** as hosted services.
 All this flow is totally out-of-process.
 
-The **AddFelisBroker** method takes **heartBeatInSeconds** as input parameters.
 The **WithHttp** extension takes **certificate**, **port** and **certificateForwardingHeader** as input parameters to use the broker with **[mTLS](https://www.cloudflare.com/it-it/learning/access-management/what-is-mutual-tls/)** authentication.
 You can see all the implementation in the **Felis.Broker.Http.Console** project.
 

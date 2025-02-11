@@ -22,7 +22,9 @@ public static class BrokerEndpoints
                 [FromHeader(Name = "x-broadcast")] bool? broadcast) =>
             {
                 ArgumentNullException.ThrowIfNull(context.Request.Body);
+                
                 using var reader = new StreamReader(context.Request.Body);
+                
                 var payload = await reader.ReadToEndAsync();
 
                 var messageId = messageBroker.Publish(topic, payload, ttl, broadcast);
@@ -40,15 +42,11 @@ public static class BrokerEndpoints
 
                 var dataStream = context.Response.BodyWriter.AsStream();
                 
-                var clientIp = (context.Connection.RemoteIpAddress) ??
-                               throw new InvalidOperationException("No Ip address retrieve from Context");
+                var clientIp = (context.Connection.RemoteIpAddress) ?? throw new InvalidOperationException("No Ip address retrieve from Context");
 
                 var clientHostname = (await Dns.GetHostEntryAsync(clientIp)).HostName;
 
-                var subscriptionEntity =
-                    messageBroker.Subscribe(topic, exclusive);
-                
-                logger.LogInformation("Subscribed {ipAddress}-{hostname} with id {subscriptionId}", subscriptionEntity.Id, clientIp.MapToIPv4().ToString(), clientHostname);
+                logger.LogInformation("Subscribed {ipAddress}-{hostname} to topic {topic}", clientIp.MapToIPv4().ToString(), clientHostname, topic);
 
                 context.Response.Headers.ContentType = "application/x-ndjson";
                 context.Response.Headers.CacheControl = "no-cache";
@@ -58,7 +56,7 @@ public static class BrokerEndpoints
 
                 try
                 {
-                    await foreach (var message in subscriptionEntity.GetNextAvailableMessageAsync(cancellationToken))
+                    await foreach (var message in messageBroker.Subscribe(topic, exclusive, cancellationToken))
                     {
                         var bytes = System.Text.Encoding.UTF8.GetBytes($"{JsonSerializer.Serialize(message)}\n");
                         await dataStream.WriteAsync(bytes, cancellationToken);
@@ -67,11 +65,7 @@ public static class BrokerEndpoints
                 }
                 catch (OperationCanceledException)
                 {
-                    logger.LogInformation("Subscriber '{id}' closed connection.", subscriptionEntity.Id);
-                }
-                finally
-                {
-                    messageBroker.UnSubscribe(topic, subscriptionEntity);
+                    logger.LogInformation("Subscriber '{id}' closed connection.", context.Connection.Id);
                 }
 
                 return Results.Empty;

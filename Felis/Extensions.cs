@@ -12,14 +12,13 @@ public static class Extensions
     /// Adds the Felis broker with heartBeatInSeconds
     /// </summary>
     /// <param name="hostBuilder"></param>
-    /// <param name="heartBeatInSeconds">When the Felis broker should send the heartbeat message to keep connections alive</param>
     /// <returns>IHostBuilder</returns>
-    public static IHostBuilder AddFelisBroker(this IHostBuilder hostBuilder, int heartBeatInSeconds = 2)
+    public static IHostBuilder AddFelisBroker(this IHostBuilder hostBuilder)
     {
         return hostBuilder.ConfigureServices((context, services) =>
         {
             services.AddSingleton(_ => new MessageBroker(_.GetRequiredService<ILogger<MessageBroker>>(),
-                new LiteDatabase(DatabasePath), heartBeatInSeconds));
+                new LiteDatabase(DatabasePath)));
         });
     }
 }

@@ -17,23 +17,17 @@ public class Subscriber : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var subscription = _messageBroker.Subscribe("test", null);
-
         try
         {
-            await foreach (var message in subscription.GetNextAvailableMessageAsync(stoppingToken))
+            await foreach (var message in _messageBroker.Subscribe("test", null, stoppingToken))
             {
                 _logger.LogDebug(
-                    $"Received message for subscriber {subscription.Id} - test: {JsonSerializer.Serialize(message)}");
+                    $"Received message: {JsonSerializer.Serialize(message)}");
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, ex.Message);
-        }
-        finally
-        {
-            _messageBroker.UnSubscribe("test", subscription);
         }
     }
 }

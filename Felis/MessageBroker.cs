@@ -17,7 +17,7 @@ public sealed class MessageBroker : IDisposable
     private readonly ConcurrentDictionary<string, List<SubscriptionModel>> _subscriptions = new();
     private readonly ConcurrentDictionary<string, int> _topicIndex = new();
 
-    public MessageBroker(ILogger<MessageBroker> logger, ILiteDatabase database, int heartbeatInSeconds)
+    internal MessageBroker(ILogger<MessageBroker> logger, ILiteDatabase database)
     {
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(database);
@@ -35,77 +35,15 @@ public sealed class MessageBroker : IDisposable
         _topicTimer.Enabled = true;
         _heartbeatTimer = new Timer
         {
-            Interval = heartbeatInSeconds * 1000
+            Interval = 5 * 1000
         };
         _heartbeatTimer.Elapsed += OnHeartbeatTimedEvent!;
         _heartbeatTimer.AutoReset = true;
         _heartbeatTimer.Enabled = true;
     }
-
+    
     /// <summary>
-    /// Add a subscriber to a topic
-    /// </summary>
-    /// <param name="topic"></param>
-    /// <param name="exclusive"></param>
-    /// <returns></returns>
-    public SubscriptionModel Subscribe(string topic, bool? exclusive)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(topic);
-
-        lock (_lock)
-        {
-            var topicTrimmedLowered = topic.Trim().ToLowerInvariant();
-
-            var subscription = new SubscriptionModel(Guid.NewGuid(),
-                new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), exclusive);
-
-            var subscriptions = _subscriptions.GetOrAdd(topicTrimmedLowered, _ => new List<SubscriptionModel>());
-
-            subscriptions.Add(subscription);
-
-            if (!_topicIndex.ContainsKey(topicTrimmedLowered))
-            {
-                _topicIndex.TryAdd(topicTrimmedLowered, 0);
-            }
-
-            _logger.LogInformation(
-                "Subscribed '{id}' to topic '{topic}' at {timestamp}", subscription.Id, topicTrimmedLowered,
-                subscription.Timestamp);
-
-            return subscription;
-        }
-    }
-
-    /// <summary>
-    /// Removes a subscriber from a topic
-    /// </summary>
-    /// <param name="topic"></param>
-    /// <param name="subscription"></param>
-    public void UnSubscribe(string topic, SubscriptionModel subscription)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(topic);
-        ArgumentNullException.ThrowIfNull(subscription);
-
-        lock (_lock)
-        {
-            var topicTrimmedLowered = topic.Trim().ToLowerInvariant();
-
-            _logger.LogDebug("Remove subscription from topic '{topic}'", topicTrimmedLowered);
-            var unSubscribeResult = _subscriptions[topicTrimmedLowered].Remove(subscription);
-            _logger.LogInformation(
-                "UnSubscribed '{id}' from topic '{topic}' at {timestamp} with operation result '{operationResult}'",
-                subscription.Id, topicTrimmedLowered, subscription.Timestamp, unSubscribeResult);
-
-            if (_topicIndex.TryGetValue(topicTrimmedLowered, out var currentIndex))
-            {
-                currentIndex = (currentIndex + 1) % _subscriptions[topicTrimmedLowered].Count;
-                _topicIndex[topicTrimmedLowered] = currentIndex;
-            }
-        }
-    }
-
-    /// <summary>
-    /// Publish a message to a topic
+    /// Publishes a message to a topic
     /// </summary>
     /// <param name="topic">The destination topic</param>
     /// <param name="payload">The message payload</param>
@@ -142,63 +80,43 @@ public sealed class MessageBroker : IDisposable
     }
 
     /// <summary>
-    /// Resets a queue
+    /// Subscribes and listens to incoming messages on a topic
     /// </summary>
     /// <param name="topic"></param>
+    /// <param name="exclusive"></param>
+    /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    public int Reset(string topic)
+    public IAsyncEnumerable<MessageModel?> Subscribe(string topic, bool? exclusive, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(topic);
+        
+        var subscription = new SubscriptionModel(Guid.NewGuid(),
+            new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), exclusive);
 
         lock (_lock)
         {
             var topicTrimmedLowered = topic.Trim().ToLowerInvariant();
 
-            var deletedResult = _messageCollection.DeleteMany(x => x.Topic == topicTrimmedLowered);
+            var subscriptions = _subscriptions.GetOrAdd(topicTrimmedLowered, _ => new List<SubscriptionModel>());
 
-            _logger.LogDebug("Deletes messages for topic '{topic}': {operationResult}", topic, deletedResult);
+            subscriptions.Add(subscription);
 
-            return deletedResult;
+            if (!_topicIndex.ContainsKey(topicTrimmedLowered))
+            {
+                _topicIndex.TryAdd(topicTrimmedLowered, 0);
+            }
+
+            _logger.LogInformation(
+                "Subscribed '{id}' to topic '{topic}' at {timestamp}", subscription.Id, topicTrimmedLowered,
+                subscription.Timestamp);
         }
-    }
 
-    /// <summary>
-    /// Returns all the messages to process in the queue order by timestamp
-    /// </summary>
-    /// <param name="topic"></param>
-    /// <param name="page"></param>
-    /// <param name="size"></param>
-    /// <returns></returns>
-    public List<MessageModel> Messages(string topic, int page, int size)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(topic);
-
-        lock (_lock)
+        cancellationToken.Register(() =>
         {
-            var topicTrimmedLowered = topic.Trim().ToLowerInvariant();
+            UnSubscribe(topic, subscription);
+        });
 
-            if (page <= 0)
-            {
-                page = 1;
-            }
-
-            if (size <= 0 || size > 100)
-            {
-                size = 100;
-            }
-
-            var skip = (page - 1) * size;
-
-            var messages = _messageCollection
-                .Find(x =>
-                    x.Topic == topicTrimmedLowered)
-                .OrderBy(x => x.Timestamp)
-                .Skip(skip)
-                .Take(size)
-                .ToList();
-
-            return messages;
-        }
+        return subscription.GetNextAvailableMessageAsync(cancellationToken);
     }
 
     public void Dispose()
@@ -299,6 +217,26 @@ public sealed class MessageBroker : IDisposable
             }
         });
     }
+    
+    private void UnSubscribe(string topic, SubscriptionModel subscription)
+    {
+        lock (_lock)
+        {
+            var topicTrimmedLowered = topic.Trim().ToLowerInvariant();
+
+            _logger.LogDebug("Remove subscription from topic '{topic}'", topicTrimmedLowered);
+            var unSubscribeResult = _subscriptions[topicTrimmedLowered].Remove(subscription);
+            _logger.LogInformation(
+                "UnSubscribed '{id}' from topic '{topic}' at {timestamp} with operation result '{operationResult}'",
+                subscription.Id, topicTrimmedLowered, subscription.Timestamp, unSubscribeResult);
+
+            if (_topicIndex.TryGetValue(topicTrimmedLowered, out var currentIndex))
+            {
+                currentIndex = (currentIndex + 1) % _subscriptions[topicTrimmedLowered].Count;
+                _topicIndex[topicTrimmedLowered] = currentIndex;
+            }
+        }
+    }
 
     private SubscriptionModel? GetNextSubscription(string topic)
     {
@@ -361,13 +299,13 @@ public sealed class MessageBroker : IDisposable
 
 public record MessageModel(Guid Id, string Topic, string? Payload, long Timestamp, long? Expiration, bool Broadcast);
 
-public record SubscriptionModel(Guid Id, long Timestamp, bool? Exclusive)
+record SubscriptionModel(Guid Id, long Timestamp, bool? Exclusive)
 {
     private readonly Channel<MessageModel> _messageChannel = Channel.CreateBounded<MessageModel>(1);
 
     internal async ValueTask WriteMessageAsync(MessageModel messageModel, CancellationToken cancellationToken) =>
         await _messageChannel.Writer.WriteAsync(messageModel, cancellationToken);
 
-    public IAsyncEnumerable<MessageModel?> GetNextAvailableMessageAsync(CancellationToken cancellationToken) =>
+    internal IAsyncEnumerable<MessageModel?> GetNextAvailableMessageAsync(CancellationToken cancellationToken) =>
         _messageChannel.Reader.ReadAllAsync(cancellationToken);
 }

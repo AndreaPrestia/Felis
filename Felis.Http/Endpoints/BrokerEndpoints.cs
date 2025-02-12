@@ -18,8 +18,8 @@ public static class BrokerEndpoints
             async (HttpContext context,
                 [FromServices] MessageBroker messageBroker,
                 [FromRoute] string topic,
-                [FromHeader(Name = "x-ttl")] int? ttl,
-                [FromHeader(Name = "x-broadcast")] bool? broadcast) =>
+                [FromHeader(Name = "x-ttl")] int ttl,
+                [FromHeader(Name = "x-broadcast")] bool broadcast) =>
             {
                 ArgumentNullException.ThrowIfNull(context.Request.Body);
                 
@@ -27,7 +27,7 @@ public static class BrokerEndpoints
                 
                 var payload = await reader.ReadToEndAsync();
 
-                var messageId = messageBroker.Publish(topic, payload, ttl, broadcast);
+                var messageId = broadcast ? messageBroker.Broadcast(topic, payload, ttl) : messageBroker.Enqueue(topic, payload);
 
                 return Results.Accepted($"/{topic}", messageId);
             });
@@ -36,7 +36,7 @@ public static class BrokerEndpoints
             async (ILoggerFactory loggerFactory, HttpContext context,
                 [FromServices] MessageBroker messageBroker,
                 [FromRoute] string topic,
-                [FromHeader(Name = "x-exclusive")] bool? exclusive) =>
+                [FromHeader(Name = "x-exclusive")] bool exclusive) =>
             {
                 var logger = loggerFactory.CreateLogger("Felis");
 

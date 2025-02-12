@@ -19,7 +19,7 @@ public class Subscriber : BackgroundService
     {
         try
         {
-            await foreach (var message in _messageBroker.Subscribe("test", null, stoppingToken))
+            await foreach (var message in _messageBroker.Subscribe("test", false, stoppingToken))
             {
                 _logger.LogDebug(
                     $"Received message: {JsonSerializer.Serialize(message)}");

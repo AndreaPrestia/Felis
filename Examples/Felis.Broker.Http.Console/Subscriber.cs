@@ -1,4 +1,9 @@
-﻿using System.Security.Cryptography.X509Certificates;
+﻿using System;
+using System.IO;
+using System.Net.Http;
+using System.Security.Cryptography.X509Certificates;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -26,11 +31,9 @@ public class Subscriber : BackgroundService
                 var taskGeneric =
                     SubscribeInParallelAsync(_brokerUrl, _certificate, 20, "Generic", false, stoppingToken);
                 var taskTtL = SubscribeInParallelAsync(_brokerUrl, _certificate, 10, "TTL", false, stoppingToken);
-                var taskBroadcast =
-                    SubscribeInParallelAsync(_brokerUrl, _certificate, 10, "Broadcast", false, stoppingToken);
                 var taskExclusive =
                     SubscribeInParallelAsync(_brokerUrl, _certificate, 1, "Exclusive", true, stoppingToken);
-                await Task.WhenAll(new[] { taskGeneric, taskTtL, taskBroadcast, taskExclusive });
+                await Task.WhenAll(new[] { taskGeneric, taskTtL, taskExclusive });
             }
             catch (Exception ex)
             {

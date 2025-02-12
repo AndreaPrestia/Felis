@@ -18,7 +18,7 @@ public class Publisher : BackgroundService
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            var messageGuid = _messageBroker.Enqueue("test",  $"test at {new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds()}");
+            var messageGuid = _messageBroker.Publish("test",  $"test at {new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds()}");
             _logger.LogInformation($"Published {messageGuid}@test");
             
             Thread.Sleep(5000);

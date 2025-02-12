@@ -1,10 +1,9 @@
 # ![Alt text](Felis.jpg)
 
-A light-weight message broker totally written in .NET.
+A light-weight message queue totally written in .NET.
 
 The **Felis** project contains the logic for dispatching, storing and validating messages.
 It stores the messages in a **LiteDB** database.
-It behaves as message queue and broadcaster if a specific message for a topic is tagged with broadcast property.
 
 **Requirements**
 
@@ -54,28 +53,26 @@ Topic | string | the topic where the message has been published.                
 Payload | string | the actual content of the message published on the topic.            |
 Timestamp | number | the timestamp of the message when it was published.                  |
 Expiration | number | the message's expiration timestamp. It can be null.                  |
-Broadcast | bool   | the message's behaviour, if it's a broadcast message or a queue one. |
 
-**Publish of a message to a topic with Publish**
+**Publish of a message to a topic**
 
 You can inject the **MessageBroker** class to make a publish to a specific topic with the **Publish** method.
 
 ```
-var messageGuid = _messageBroker.Publish("test",  $"test at {new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds()}", null, false);
+var messageGuid = _messageBroker.Publish("test",  $"test at {new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds()}", 20);
 _logger.LogInformation($"Published {messageGuid}@test");
 
 ```
 
-In the example above a message is published for the topic "test", with a string payload, without a time-to-live and without an exclusive consumer.
+In the example above a message is published for the topic "test", with a string payload, without a time-to-live.
 
 ****Parameters****
 
-Property | Type    | Context                                                                                                                                                                                |
---- |---------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-topic | string  | The topic where to publish the message.                                                                                                                                                |
-payload | string  | The payload to publish.                                                                                                                                                                |
-ttl | int     | How many seconds a message can live. If not specified (or 0 value is used) the message is durable.                                                                                     |
-broadcast | boolean | Tells if the message must be broadcasted to all subscribers. If not provided or set to false Felis broker will send enqueued message only to one subscriber in a load balanced manner. |
+Property | Type    | Context                                                                                 |
+--- |---------|-----------------------------------------------------------------------------------------|
+topic | string  | The topic where to publish the message.                                                 |
+payload | string  | The payload to publish.                                                                 |
+ttl | int     | How many seconds a message can live. If less or equal than zero the message is durable. |
 
 In case of success it will return the message guid, otherwise the exception mapped in the summary.
 
@@ -87,7 +84,7 @@ This method is used to subscribe to a topic. The **Subscribe** method returns an
 
 try
 {
-    await foreach (var message in _messageBroker.Subscribe("test", null, stoppingToken))
+    await foreach (var message in _messageBroker.Subscribe("test", false, stoppingToken))
     {
         _logger.LogDebug(
             $"Received message: {JsonSerializer.Serialize(message)}");
@@ -142,7 +139,7 @@ The **Felis.Http** project contains the implementation of http endpoints for pub
 
 **Usage of http broker**
 
-The **Felis** broker can be used as http queue/broadcast application.
+The **Felis** broker can be used as http queue application.
 
 Code example:
 
@@ -188,8 +185,7 @@ The JSON below represent the **Message entity** coming from the broker.
     "topic": "test",
     "payload": "{\"description\":\"Test\"}",
     "timestamp": 1724421633359,
-    "expiration": 1724421644459,
-    "broadcast": true
+    "expiration": 1724421644459
 }
 ```
 
@@ -202,7 +198,6 @@ topic | string | the topic where the message has been published.                
 payload | string | the actual content of the message published on the topic.            |
 timestamp | number | the timestamp of the message when it was published.                  |
 expiration | number | the message's expiration timestamp. It can be null.                  |
-broadcast | bool   | the message's behaviour, if it's a broadcast message or a queue one. |
 
 **Publish of a message to a topic with POST**
 
@@ -214,7 +209,6 @@ curl -X 'POST' \
   'https://localhost:7110/topic' \
   -H 'accept: application/json' \
   -H 'content-Type: application/json' \
-  -H 'x-broadcast: false' \
   -H 'x-ttl: 10' \
   -d '{
         "description": "Test description"
@@ -236,7 +230,6 @@ Header | Value                                 | Context                        
 --- |---------------------------------------|----------------------------------------------------------------------------------------------------|
 accept | application/json                      | The accept header.                                                                                 |
 content-Type | application/json                      | The content type returned.                                                                         |
-x-broadcast | true/false   | Tells if the message must be broadcasted to all subscribers. If not provided or set to false Felis broker will send enqueued message only to one subscriber in a load balanced manner.                        |
 x-ttl | 10  (a number that is more than zero) | How many seconds a message can live. If not specified (or 0 value is used) the message is durable. |
 
 ***Response***
@@ -291,26 +284,6 @@ Header | Value                | Context                                   |
 content-Type | application/x-ndjson | The content type returned as json stream. |
 cache-control | no-cache             | It avoids to cache the response           |
 connection | keep-alive           | It keeps the connection alive             |
-
-**Reset a topic with DELETE**
-
-This endpoint is used to publish a message with whatever contract in the payload, by topic, to every listener subscribed to Felis.
-This endpoint returns the unique identifier of the message published, assigned by the broker.
-
-**Error responses from endpoints**
-
-When an error occurs during an API request it is used the standard [RFC7807](https://datatracker.ietf.org/doc/html/rfc7807) to return HTTPS APIs errors with a **Content-Type** header with value **application/problem+json**
-and the following object:
-
-```
-{
-    Type = "https://httpstatuses.io/500",
-    Detail = "Error details",
-    Status = 500,
-    Title = "An error has occurred",
-    Instance = "/Test/1/10 GET",
-}
-```
 
 **How can I test it?**
 

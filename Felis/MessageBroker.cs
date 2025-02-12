@@ -33,12 +33,12 @@ public sealed class MessageBroker : IDisposable
     }
 
     /// <summary>
-    /// Publishes a message to a topic in a queue manner
+    /// Publishes a message to a topic
     /// </summary>
     /// <param name="topic">The destination topic</param>
     /// <param name="payload">The message payload</param>
     /// <returns>Message id</returns>
-    public Guid Enqueue(string topic, string payload)
+    public Guid Publish(string topic, string payload)
     {
         lock (_lock)
         {
@@ -49,7 +49,7 @@ public sealed class MessageBroker : IDisposable
 
             var timestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
 
-            var message = new MessageModel(Guid.NewGuid(), topicTrimmedLowered, payload, timestamp, 0, false);
+            var message = new MessageModel(Guid.NewGuid(), topicTrimmedLowered, payload, timestamp);
 
             NotifyPublish?.Invoke(this, message);
 
@@ -57,36 +57,6 @@ public sealed class MessageBroker : IDisposable
         }
     }
     
-    /// <summary>
-    /// Publishes a message to a topic in a broadcast manner
-    /// </summary>
-    /// <param name="topic">The destination topic</param>
-    /// <param name="payload">The message payload</param>
-    /// <param name="ttl">The message TTL</param>
-    /// <returns>Message id</returns>
-    public Guid Broadcast(string topic, string payload, int ttl)
-    {
-        lock (_lock)
-        {
-            ArgumentException.ThrowIfNullOrWhiteSpace(topic);
-            ArgumentException.ThrowIfNullOrWhiteSpace(payload);
-
-            var topicTrimmedLowered = topic.Trim().ToLowerInvariant();
-
-            var timestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
-
-            var message = new MessageModel(Guid.NewGuid(), topicTrimmedLowered, payload,
-                timestamp,
-                ttl > 0
-                    ? new DateTimeOffset(DateTime.UtcNow.AddSeconds(ttl)).ToUnixTimeMilliseconds()
-                    : 0, true);
-
-            NotifyPublish?.Invoke(this, message);
-
-            return message.Id;
-        }
-    }
-
     /// <summary>
     /// Subscribes and listens to incoming messages on a topic
     /// </summary>
@@ -137,11 +107,38 @@ public sealed class MessageBroker : IDisposable
     {
         try
         {
-            await ManageMessage(message);
+            var enqueueResult = await EnqueueMessage(message);
+            _logger.LogDebug("Message '{messageId}' enqueue result: {enqueueResult}", message.Id, enqueueResult);
         }
         catch (Exception ex)
         {
             _logger.LogError("An error '{error}' has occurred during publish", ex.Message);
+        }
+    }
+    
+    private async void OnMessageSubscribed(object source, string topic)
+    {
+        try
+        {
+            var nextMessages = _messageCollection
+                .Query()
+                .Where(x =>
+                    x.Topic == topic
+                )
+                .OrderBy(x => x.Timestamp)
+                .ToList();
+
+            if (nextMessages.Count == 0) return;
+
+            foreach (var nextMessage in nextMessages)
+            {
+                var enqueueResult = await EnqueueMessage(nextMessage);
+                _logger.LogDebug("Message '{messageId}' enqueue result: {enqueueResult}", nextMessage.Id, enqueueResult);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError("An error '{error}' has occurred during subscribe", ex.Message);
         }
     }
 
@@ -159,39 +156,11 @@ public sealed class MessageBroker : IDisposable
 
             var deleteResult = DeleteMessage(message);
             _logger.LogDebug("Message '{id}' deleted: {operationResult}", message.Id, deleteResult);
-            return deleteResult;
+            return true;
         }
 
         MessageStore(message);
         return false;
-    }
-
-    private async Task<bool> BroadcastMessage(MessageModel message)
-    {
-        var subscriptions = _subscriptions[message.Topic];
-
-        if (subscriptions.Count <= 0)
-        {
-            MessageStore(message);
-            return false;
-        }
-
-        var tasks = subscriptions
-            .Select(async s =>
-            {
-                await s.WriteMessageAsync(message, CancellationToken.None);
-                _logger.LogInformation(
-                    "Message '{messageId}' sent to '{subscriptionId}' at {timestamp} for topic '{topic}'",
-                    message.Id, s.Id,
-                    new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), message.Topic);
-            });
-
-        await Task.WhenAll(tasks);
-
-        var deleteResult = DeleteMessage(message);
-        _logger.LogDebug("Message '{id}' deleted: {operationResult}", message.Id, deleteResult);
-
-        return deleteResult;
     }
 
     private void MessageStore(MessageModel message)
@@ -203,49 +172,7 @@ public sealed class MessageBroker : IDisposable
                 message.Id, message.Topic, message.Payload);
         }
     }
-
-    private async void OnMessageSubscribed(object source, string topic)
-    {
-        var currentTimeStamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
-
-        try
-        {
-            var nextMessages = _messageCollection
-                .Query()
-                .Where(x =>
-                    x.Topic == topic
-                    && (x.Expiration == 0 || x.Expiration > currentTimeStamp)
-                )
-                .OrderBy(x => x.Timestamp)
-                .ToList();
-
-            if (nextMessages.Count == 0) return;
-
-            foreach (var nextMessage in nextMessages)
-            {
-                await ManageMessage(nextMessage);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError("An error '{error}' has occurred during subscribe", ex.Message);
-        }
-    }
-
-    private async Task ManageMessage(MessageModel message)
-    {
-        if (message.Broadcast)
-        {
-            var broadcastResult = await BroadcastMessage(message);
-            _logger.LogDebug("Message '{messageId}' broadcast result: {broadcastResult}", message.Id, broadcastResult);
-        }
-        else
-        {
-            var enqueueResult = await EnqueueMessage(message);
-            _logger.LogDebug("Message '{messageId}' enqueue result: {enqueueResult}", message.Id, enqueueResult);
-        }
-    }
-
+   
     private bool DeleteMessage(MessageModel nextMessage)
     {
         var deleteResult = _messageCollection.Delete(nextMessage.Id);
@@ -300,7 +227,6 @@ public sealed class MessageBroker : IDisposable
             {
                 _logger.LogDebug("Found exclusive subscription '{subscriptionId}' for topic '{topic}'",
                     exclusiveSubscription.Id, topic);
-
                 return exclusiveSubscription;
             }
 
@@ -331,7 +257,7 @@ public sealed class MessageBroker : IDisposable
     }
 }
 
-public record MessageModel(Guid Id, string Topic, string? Payload, long Timestamp, long Expiration, bool Broadcast);
+public record MessageModel(Guid Id, string Topic, string? Payload, long Timestamp);
 
 record SubscriptionModel(Guid Id, long Timestamp, bool Exclusive)
 {

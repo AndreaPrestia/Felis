@@ -17,9 +17,7 @@ public static class BrokerEndpoints
         endpointRouteBuilder.MapPost("/{topic}",
             async (HttpContext context,
                 [FromServices] MessageBroker messageBroker,
-                [FromRoute] string topic,
-                [FromHeader(Name = "x-ttl")] int ttl,
-                [FromHeader(Name = "x-broadcast")] bool broadcast) =>
+                [FromRoute] string topic) =>
             {
                 ArgumentNullException.ThrowIfNull(context.Request.Body);
                 
@@ -27,7 +25,7 @@ public static class BrokerEndpoints
                 
                 var payload = await reader.ReadToEndAsync();
 
-                var messageId = broadcast ? messageBroker.Broadcast(topic, payload, ttl) : messageBroker.Enqueue(topic, payload);
+                var messageId = messageBroker.Publish(topic, payload);
 
                 return Results.Accepted($"/{topic}", messageId);
             });

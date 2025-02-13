@@ -15,7 +15,9 @@ public sealed class MessageBroker : IDisposable
     private readonly ConcurrentDictionary<string, int> _topicIndex = new();
 
     private delegate void NotifyMessagePublish(object sender, MessageModel message);
+
     private delegate void NotifySubscribeByTopic(object sender, string topic);
+
     private event NotifyMessagePublish? NotifyPublish;
     private event NotifySubscribeByTopic? NotifySubscribe;
 
@@ -56,7 +58,7 @@ public sealed class MessageBroker : IDisposable
             return message.Id;
         }
     }
-    
+
     /// <summary>
     /// Subscribes and listens to incoming messages on a topic
     /// </summary>
@@ -115,26 +117,23 @@ public sealed class MessageBroker : IDisposable
             _logger.LogError("An error '{error}' has occurred during publish", ex.Message);
         }
     }
-    
+
     private async void OnMessageSubscribed(object source, string topic)
     {
         try
         {
-            var nextMessages = _messageCollection
+            var message = _messageCollection
                 .Query()
                 .Where(x =>
                     x.Topic == topic
                 )
                 .OrderBy(x => x.Timestamp)
-                .ToList();
+                .FirstOrDefault();
 
-            if (nextMessages.Count == 0) return;
+            if (message == null) return;
 
-            foreach (var nextMessage in nextMessages)
-            {
-                var enqueueResult = await EnqueueMessage(nextMessage);
-                _logger.LogDebug("Message '{messageId}' enqueue result: {enqueueResult}", nextMessage.Id, enqueueResult);
-            }
+            var enqueueResult = await EnqueueMessage(message);
+            _logger.LogDebug("Message '{messageId}' enqueue result: {enqueueResult}", message.Id, enqueueResult);
         }
         catch (Exception ex)
         {
@@ -172,7 +171,7 @@ public sealed class MessageBroker : IDisposable
                 message.Id, message.Topic, message.Payload);
         }
     }
-   
+
     private bool DeleteMessage(MessageModel nextMessage)
     {
         var deleteResult = _messageCollection.Delete(nextMessage.Id);

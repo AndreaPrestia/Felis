@@ -14,16 +14,37 @@ public class Publisher : BackgroundService
         _logger = logger;
     }
 
-    protected override Task ExecuteAsync(CancellationToken stoppingToken)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            var messageGuid = _messageBroker.Publish("test",  $"test at {new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds()}");
-            _logger.LogInformation($"Published {messageGuid}@test");
-            
+            var taskGeneric = PublishInParallelAsync(20, "Generic");
+            var taskExclusive = PublishInParallelAsync(20, "Exclusive");
+            await Task.WhenAll(new [] {taskGeneric, taskExclusive});
+            _logger.LogInformation("Publish finished, waiting 5 seconds to next round");
             Thread.Sleep(5000);
         }
+    }
+    
+    private async Task PublishInParallelAsync(int numberOfPublishers, string queue)
+    {
+        try
+        {
+            var publisherTasks = new Task[numberOfPublishers];
+            for (var i = 0; i < numberOfPublishers; i++)
+            {
+                publisherTasks[i] = Task.Run(() =>
+                {
+                    var message = _messageBroker.Publish(queue,  $"{queue} at {new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds()}");
+                    _logger.LogInformation($"Published {message.Id}@{queue}");
+                });
+            }
 
-        return Task.CompletedTask;
+            await Task.WhenAll(publisherTasks);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError("Error in publisher: '{0}'", ex.Message);
+        }
     }
 }

@@ -1,7 +1,4 @@
-﻿using System;
-using System.Linq;
-using System.Security.Cryptography.X509Certificates;
-using System.Threading;
+﻿using System.Security.Cryptography.X509Certificates;
 using Felis;
 using Felis.Broker.Http.Console;
 using Felis.Http;

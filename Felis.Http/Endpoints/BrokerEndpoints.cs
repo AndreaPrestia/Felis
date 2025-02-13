@@ -14,10 +14,10 @@ public static class BrokerEndpoints
     {
         ArgumentNullException.ThrowIfNull(endpointRouteBuilder);
 
-        endpointRouteBuilder.MapPost("/{topic}",
+        endpointRouteBuilder.MapPost("/{queue}",
             async (HttpContext context,
                 [FromServices] MessageBroker messageBroker,
-                [FromRoute] string topic) =>
+                [FromRoute] string queue) =>
             {
                 ArgumentNullException.ThrowIfNull(context.Request.Body);
                 
@@ -25,15 +25,15 @@ public static class BrokerEndpoints
                 
                 var payload = await reader.ReadToEndAsync();
 
-                var messageId = messageBroker.Publish(topic, payload);
+                var message = messageBroker.Publish(queue, payload);
 
-                return Results.Accepted($"/{topic}", messageId);
+                return Results.Accepted($"/{queue}", message);
             });
         
-        endpointRouteBuilder.MapGet("/{topic}",
+        endpointRouteBuilder.MapGet("/{queue}",
             async (ILoggerFactory loggerFactory, HttpContext context,
                 [FromServices] MessageBroker messageBroker,
-                [FromRoute] string topic,
+                [FromRoute] string queue,
                 [FromHeader(Name = "x-exclusive")] bool exclusive) =>
             {
                 var logger = loggerFactory.CreateLogger("Felis");
@@ -44,7 +44,7 @@ public static class BrokerEndpoints
 
                 var clientHostname = (await Dns.GetHostEntryAsync(clientIp)).HostName;
 
-                logger.LogInformation("Subscribed {ipAddress}-{hostname} to topic {topic}", clientIp.MapToIPv4().ToString(), clientHostname, topic);
+                logger.LogInformation("Subscribed {ipAddress}-{hostname} to queue {queue}", clientIp.MapToIPv4().ToString(), clientHostname, queue);
 
                 context.Response.Headers.ContentType = "application/x-ndjson";
                 context.Response.Headers.CacheControl = "no-cache";
@@ -54,7 +54,7 @@ public static class BrokerEndpoints
 
                 try
                 {
-                    await foreach (var message in messageBroker.Subscribe(topic, exclusive, cancellationToken))
+                    await foreach (var message in messageBroker.Subscribe(queue, exclusive, cancellationToken))
                     {
                         var bytes = System.Text.Encoding.UTF8.GetBytes($"{JsonSerializer.Serialize(message)}\n");
                         await dataStream.WriteAsync(bytes, cancellationToken);

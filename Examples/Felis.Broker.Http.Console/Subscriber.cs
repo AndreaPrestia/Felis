@@ -1,9 +1,4 @@
-﻿using System;
-using System.IO;
-using System.Net.Http;
-using System.Security.Cryptography.X509Certificates;
-using System.Threading;
-using System.Threading.Tasks;
+﻿using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -30,10 +25,9 @@ public class Subscriber : BackgroundService
             {
                 var taskGeneric =
                     SubscribeInParallelAsync(_brokerUrl, _certificate, 20, "Generic", false, stoppingToken);
-                var taskTtL = SubscribeInParallelAsync(_brokerUrl, _certificate, 10, "TTL", false, stoppingToken);
                 var taskExclusive =
                     SubscribeInParallelAsync(_brokerUrl, _certificate, 1, "Exclusive", true, stoppingToken);
-                await Task.WhenAll(new[] { taskGeneric, taskTtL, taskExclusive });
+                await Task.WhenAll(new[] { taskGeneric, taskExclusive });
             }
             catch (Exception ex)
             {
@@ -47,7 +41,7 @@ public class Subscriber : BackgroundService
     }
 
     private async Task SubscribeInParallelAsync(string brokerUrl, X509Certificate2 clientCertificate,
-        int numberOfSubscribers, string topic, bool exclusive, CancellationToken cancellationToken)
+        int numberOfSubscribers, string queue, bool exclusive, CancellationToken cancellationToken)
     {
         try
         {
@@ -56,7 +50,7 @@ public class Subscriber : BackgroundService
             {
                 var subscriberId = i + 1;
                 subscriberTasks[i] = Task.Run(() =>
-                    SubscribeAsync(brokerUrl, clientCertificate, subscriberId, topic, exclusive, cancellationToken));
+                    SubscribeAsync(brokerUrl, clientCertificate, subscriberId, queue, exclusive, cancellationToken));
             }
 
             await Task.WhenAll(subscriberTasks);
@@ -68,7 +62,7 @@ public class Subscriber : BackgroundService
     }
 
     private async Task SubscribeAsync(string brokerUrl, X509Certificate2 clientCertificate, int subscriberId,
-        string topic, bool exclusive, CancellationToken cancellationToken)
+        string queue, bool exclusive, CancellationToken cancellationToken)
     {
         var handler = new HttpClientHandler
         {
@@ -83,7 +77,7 @@ public class Subscriber : BackgroundService
 
         try
         {
-            using var response = await client.GetAsync($"{brokerUrl}/{topic}", HttpCompletionOption.ResponseHeadersRead,
+            using var response = await client.GetAsync($"{brokerUrl}/{queue}", HttpCompletionOption.ResponseHeadersRead,
                 cancellationToken);
             response.EnsureSuccessStatusCode();
             await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
@@ -91,7 +85,7 @@ public class Subscriber : BackgroundService
             while (!reader.EndOfStream)
             {
                 var content = await reader.ReadLineAsync(cancellationToken);
-                _logger.LogInformation($"Received message for subscriber {subscriberId} - {topic}: {content}");
+                _logger.LogInformation($"Received message for subscriber {subscriberId} - {queue}: {content}");
             }
         }
         catch (HttpRequestException e)

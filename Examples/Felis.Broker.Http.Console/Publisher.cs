@@ -1,9 +1,5 @@
-﻿using System;
-using System.Net.Http;
-using System.Net.Http.Json;
+﻿using System.Net.Http.Json;
 using System.Security.Cryptography.X509Certificates;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -28,10 +24,9 @@ public class Publisher : BackgroundService
         {
             try
             {
-                var taskGeneric = PublishInParallelAsync(_brokerUrl, _certificate, 20, "Generic", 0);
-                var taskTtL = PublishInParallelAsync(_brokerUrl, _certificate, 20, "TTL", 5);
-                var taskExclusive = PublishInParallelAsync(_brokerUrl, _certificate, 20, "Exclusive", 0);
-                await Task.WhenAll(new [] {taskGeneric, taskTtL, taskExclusive});
+                var taskGeneric = PublishInParallelAsync(_brokerUrl, _certificate, 20, "Generic");
+                var taskExclusive = PublishInParallelAsync(_brokerUrl, _certificate, 20, "Exclusive");
+                await Task.WhenAll(new [] {taskGeneric, taskExclusive});
                 _logger.LogInformation("Publish finished, waiting 5 seconds to next round");
                 Thread.Sleep(5000);
             }
@@ -46,14 +41,14 @@ public class Publisher : BackgroundService
         }
     }
     
-    private async Task PublishInParallelAsync(string brokerUrl, X509Certificate2 clientCertificate, int numberOfPublishers, string topic, int ttl)
+    private async Task PublishInParallelAsync(string brokerUrl, X509Certificate2 clientCertificate, int numberOfPublishers, string queue)
     {
         try
         {
             var publisherTasks = new Task[numberOfPublishers];
             for (var i = 0; i < numberOfPublishers; i++)
             {
-                publisherTasks[i] = Task.Run(() => PublishAsync(brokerUrl, clientCertificate, topic, ttl));
+                publisherTasks[i] = Task.Run(() => PublishAsync(brokerUrl, clientCertificate, queue));
             }
 
             await Task.WhenAll(publisherTasks);
@@ -64,7 +59,7 @@ public class Publisher : BackgroundService
         }
     }
 
-    private async Task PublishAsync(string brokerUrl, X509Certificate2 clientCertificate, string topic, int ttl)
+    private async Task PublishAsync(string brokerUrl, X509Certificate2 clientCertificate, string queue)
     {
         var handler = new HttpClientHandler
         {
@@ -75,13 +70,12 @@ public class Publisher : BackgroundService
         using var client = new HttpClient(handler);
         client.DefaultRequestVersion = new Version(3, 0);
         client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionExact;
-        client.DefaultRequestHeaders.TryAddWithoutValidation("x-ttl", ttl.ToString());
 
         try
         {
-            using var response = await client.PostAsJsonAsync($"{brokerUrl}/{topic}", new
+            using var response = await client.PostAsJsonAsync($"{brokerUrl}/{queue}", new
             {
-                description = $"{topic} at {new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds()}"
+                description = $"{queue} at {new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds()}"
             });
             response.EnsureSuccessStatusCode();
         }

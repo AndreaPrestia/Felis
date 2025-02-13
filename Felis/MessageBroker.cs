@@ -14,9 +14,7 @@ public sealed class MessageBroker : IDisposable
     private readonly ConcurrentDictionary<string, int> _topicIndex = new();
 
     private delegate void NotifyMessagePublish(object sender, MessageModel message);
-
     private delegate void NotifySubscribeByTopic(object sender, string queue);
-
     private event NotifyMessagePublish? NotifyPublish;
     private event NotifySubscribeByTopic? NotifySubscribe;
 

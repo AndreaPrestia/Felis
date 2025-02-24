@@ -144,7 +144,7 @@ public sealed class MessageBroker : IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError("An error '{error}' has occurred during publish", ex.Message);
+            _logger.LogError("An error '{error}' has occurred during OnMessagePublished", ex.Message);
         }
     }
 
@@ -152,6 +152,14 @@ public sealed class MessageBroker : IDisposable
     {
         try
         {
+            var subscription = GetNextSubscription(queue);
+
+            if (subscription == null)
+            {
+                _logger.LogInformation("No active subscriptions found for queue '{queue}'. No processing will be done.", queue);
+                return;
+            }
+            
             _database.BeginTrans();
             
             var message = _messageCollection
@@ -167,28 +175,20 @@ public sealed class MessageBroker : IDisposable
                 _database.Rollback();
                 return;
             }
+                
+            await subscription.WriteMessageAsync(message, CancellationToken.None);
+            _logger.LogInformation(
+                "Message '{messageId}' sent to '{subscriptionId}' at {timestamp} for queue '{queue}'",
+                message.Id, subscription.Id,
+                new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), message.Queue);
 
-            var subscription = GetNextSubscription(message.Queue);
-
-            if (subscription != null)
-            {
-                await subscription.WriteMessageAsync(message, CancellationToken.None);
-                _logger.LogInformation(
-                    "Message '{messageId}' sent to '{subscriptionId}' at {timestamp} for queue '{queue}'",
-                    message.Id, subscription.Id,
-                    new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), message.Queue);
-
-                var deleteResult = _messageCollection.Delete(message.Id);
-                _logger.LogDebug("Message '{id}' deleted: {operationResult}", message.Id, deleteResult);
-                _database.Commit();
-                return;
-            }
-
-            _database.Rollback();
+            var deleteResult = _messageCollection.Delete(message.Id);
+            _logger.LogDebug("Message '{id}' deleted: {operationResult}", message.Id, deleteResult);
+            _database.Commit();
         }
         catch (Exception ex)
         {
-            _logger.LogError("An error '{error}' has occurred during subscribe", ex.Message);
+            _logger.LogError("An error '{error}' has occurred during OnMessageSubscribed", ex.Message);
         }
     }
 

@@ -75,7 +75,8 @@ public sealed class MessageBroker : IDisposable
 
         if (!_topicIndex.ContainsKey(topicTrimmedLowered))
         {
-            _topicIndex.TryAdd(topicTrimmedLowered, 0);
+            var addedTopicToIndexResult = _topicIndex.TryAdd(topicTrimmedLowered, 0);
+            _logger.LogDebug("Add topic '{topic}' to index result: {addedTopicToIndexResult}", topicTrimmedLowered, addedTopicToIndexResult);
         }
 
         _logger.LogInformation(
@@ -110,18 +111,23 @@ public sealed class MessageBroker : IDisposable
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(queue);
 
-        _database.BeginTrans();
+        var transactionStarted = _database.BeginTrans();
         
         try
         {
             var normalizedTopic = queue.ToLower().Trim();
             var deletedItems = _messageCollection.DeleteMany(x => x.Queue == normalizedTopic);
-            _database.Commit();
+            var commitResult = _database.Commit();
+            _logger.LogDebug("Commit result: {commitResult}", commitResult);
             return deletedItems;
         }
         catch (Exception)
         {
-            _database.Rollback();
+            if (transactionStarted)
+            {
+                var rollbackResult = _database.Rollback();
+                _logger.LogDebug("Rollback result: {rollbackResult}", rollbackResult);
+            }
             throw;
         }
     }
@@ -150,6 +156,7 @@ public sealed class MessageBroker : IDisposable
 
     private async void OnMessageSubscribed(object source, string queue)
     {
+        var transactionStarted = false;
         try
         {
             var subscription = GetNextSubscription(queue);
@@ -160,7 +167,7 @@ public sealed class MessageBroker : IDisposable
                 return;
             }
             
-            _database.BeginTrans();
+            transactionStarted = _database.BeginTrans();
             
             var message = _messageCollection
                 .Query()
@@ -184,10 +191,16 @@ public sealed class MessageBroker : IDisposable
 
             var deleteResult = _messageCollection.Delete(message.Id);
             _logger.LogDebug("Message '{id}' deleted: {operationResult}", message.Id, deleteResult);
-            _database.Commit();
+            var commitResult = _database.Commit();
+            _logger.LogDebug("Commit result: {commitResult}", commitResult);
         }
         catch (Exception ex)
         {
+            if (transactionStarted)
+            {
+                var rollbackResult = _database.Rollback();
+                _logger.LogDebug("Rollback result: {rollbackResult}", rollbackResult);
+            }
             _logger.LogError("An error '{error}' has occurred during OnMessageSubscribed", ex.Message);
         }
     }
@@ -249,7 +262,7 @@ public sealed class MessageBroker : IDisposable
 
 public record MessageModel(Guid Id, string Queue, string? Payload, long Timestamp);
 
-record SubscriptionModel(Guid Id, long Timestamp, bool Exclusive)
+internal record SubscriptionModel(Guid Id, long Timestamp, bool Exclusive)
 {
     private readonly Channel<MessageModel> _messageChannel = Channel.CreateBounded<MessageModel>(1);
 

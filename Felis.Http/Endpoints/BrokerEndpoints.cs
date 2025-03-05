@@ -10,7 +10,7 @@ namespace Felis.Http.Endpoints;
 
 public static class BrokerEndpoints
 {
-       public static void MapBrokerEndpoints(this IEndpointRouteBuilder endpointRouteBuilder)
+    public static void MapBrokerEndpoints(this IEndpointRouteBuilder endpointRouteBuilder)
     {
         ArgumentNullException.ThrowIfNull(endpointRouteBuilder);
 
@@ -20,16 +20,16 @@ public static class BrokerEndpoints
                 [FromRoute] string queue) =>
             {
                 ArgumentNullException.ThrowIfNull(context.Request.Body);
-                
+
                 using var reader = new StreamReader(context.Request.Body);
-                
+
                 var payload = await reader.ReadToEndAsync();
 
                 var message = messageBroker.Publish(queue, payload);
 
                 return Results.Accepted($"/{queue}", message);
             });
-        
+
         endpointRouteBuilder.MapGet("/{queue}",
             async (ILoggerFactory loggerFactory, HttpContext context,
                 [FromServices] MessageBroker messageBroker,
@@ -39,12 +39,14 @@ public static class BrokerEndpoints
                 var logger = loggerFactory.CreateLogger("Felis");
 
                 var dataStream = context.Response.BodyWriter.AsStream();
-                
-                var clientIp = (context.Connection.RemoteIpAddress) ?? throw new InvalidOperationException("No Ip address retrieve from Context");
+
+                var clientIp = (context.Connection.RemoteIpAddress) ??
+                               throw new InvalidOperationException("No Ip address retrieve from Context");
 
                 var clientHostname = (await Dns.GetHostEntryAsync(clientIp)).HostName;
 
-                logger.LogInformation("Subscribed {ipAddress}-{hostname} to queue {queue}", clientIp.MapToIPv4().ToString(), clientHostname, queue);
+                logger.LogInformation("Subscribed {ipAddress}-{hostname} to queue {queue}",
+                    clientIp.MapToIPv4().ToString(), clientHostname, queue);
 
                 context.Response.Headers.ContentType = "application/x-ndjson";
                 context.Response.Headers.CacheControl = "no-cache";
@@ -68,5 +70,8 @@ public static class BrokerEndpoints
 
                 return Results.Empty;
             });
+
+        endpointRouteBuilder.MapDelete("/{queue}", ([FromServices] MessageBroker messageBroker,
+            [FromRoute] string queue) => Results.Ok(messageBroker.Reset(queue)));
     }
 }

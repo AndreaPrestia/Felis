@@ -232,7 +232,7 @@ public sealed class MessageBroker : IDisposable
                 var commitResult = _database.Commit();
                 _logger.LogDebug("Commit result: {commitResult}", commitResult);
             }
-            catch (Exception ex)
+            catch
             {
                 if (transactionStarted)
                 {
@@ -240,7 +240,7 @@ public sealed class MessageBroker : IDisposable
                     _logger.LogDebug("Rollback result: {rollbackResult}", rollbackResult);
                 }
 
-                _logger.LogError("An error '{error}' has occurred during OnMessageSubscribed", ex.Message);
+                throw;
             }
             finally
             {

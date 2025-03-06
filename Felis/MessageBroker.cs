@@ -12,9 +12,12 @@ public sealed class MessageBroker : IDisposable
     private readonly ILiteCollection<MessageModel> _messageCollection;
     private readonly ConcurrentDictionary<string, List<SubscriptionModel>> _subscriptions = new();
     private readonly ConcurrentDictionary<string, int> _topicIndex = new();
+    private readonly SemaphoreSlim _semaphore = new(1, 1);
 
     private delegate void NotifyMessagePublish(object sender, MessageModel message);
+
     private delegate void NotifySubscribeByTopic(object sender, string queue);
+
     private event NotifyMessagePublish? NotifyPublish;
     private event NotifySubscribeByTopic? NotifySubscribe;
 
@@ -36,21 +39,32 @@ public sealed class MessageBroker : IDisposable
     /// </summary>
     /// <param name="queue">The destination queue</param>
     /// <param name="payload">The message payload</param>
+    /// <param name="cancellationToken"></param>
     /// <returns>Message id</returns>
-    public MessageModel Publish(string queue, string payload)
+    public async Task<MessageModel> PublishAsync(string queue, string payload,
+        CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(queue);
         ArgumentException.ThrowIfNullOrWhiteSpace(payload);
 
-        var normalizedName = queue.Trim().ToLowerInvariant();
+        await _semaphore.WaitAsync(cancellationToken);
 
-        var timestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
+        try
+        {
+            var normalizedName = queue.Trim().ToLowerInvariant();
 
-        var message = new MessageModel(Guid.NewGuid(), normalizedName, payload, timestamp);
+            var timestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
 
-        NotifyPublish?.Invoke(this, message);
+            var message = new MessageModel(Guid.NewGuid(), normalizedName, payload, timestamp);
 
-        return message;
+            NotifyPublish?.Invoke(this, message);
+
+            return message;
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
     }
 
     /// <summary>
@@ -76,7 +90,8 @@ public sealed class MessageBroker : IDisposable
         if (!_topicIndex.ContainsKey(topicTrimmedLowered))
         {
             var addedTopicToIndexResult = _topicIndex.TryAdd(topicTrimmedLowered, 0);
-            _logger.LogDebug("Add topic '{topic}' to index result: {addedTopicToIndexResult}", topicTrimmedLowered, addedTopicToIndexResult);
+            _logger.LogDebug("Add topic '{topic}' to index result: {addedTopicToIndexResult}", topicTrimmedLowered,
+                addedTopicToIndexResult);
         }
 
         _logger.LogInformation(
@@ -92,7 +107,9 @@ public sealed class MessageBroker : IDisposable
 
             if (_topicIndex.TryGetValue(topicTrimmedLowered, out var currentIndex))
             {
-                currentIndex = _subscriptions[topicTrimmedLowered].Count > 0 ? (currentIndex + 1) % _subscriptions[topicTrimmedLowered].Count : 0;
+                currentIndex = _subscriptions[topicTrimmedLowered].Count > 0
+                    ? (currentIndex + 1) % _subscriptions[topicTrimmedLowered].Count
+                    : 0;
                 _topicIndex[topicTrimmedLowered] = currentIndex;
             }
         });
@@ -106,13 +123,16 @@ public sealed class MessageBroker : IDisposable
     /// Reset the content of a queue
     /// </summary>
     /// <param name="queue"></param>
+    /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    public int Reset(string queue)
+    public async Task<int> ResetAsync(string queue, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(queue);
 
+        await _semaphore.WaitAsync(cancellationToken);
+
         var transactionStarted = _database.BeginTrans();
-        
+
         try
         {
             var normalizedTopic = queue.ToLower().Trim();
@@ -128,7 +148,12 @@ public sealed class MessageBroker : IDisposable
                 var rollbackResult = _database.Rollback();
                 _logger.LogDebug("Rollback result: {rollbackResult}", rollbackResult);
             }
+
             throw;
+        }
+        finally
+        {
+            _semaphore.Release();
         }
     }
 
@@ -139,69 +164,92 @@ public sealed class MessageBroker : IDisposable
         NotifySubscribe -= OnMessageSubscribed;
     }
 
-    private void OnMessagePublished(object source, MessageModel message)
+    private async void OnMessagePublished(object source, MessageModel message)
     {
         try
         {
-            _messageCollection.Insert(message.Id, message);
-            _logger.LogDebug("Added message '{id}' for queue '{queue}' in storage with payload '{payload}'",
-                message.Id, message.Queue, message.Payload);
-            NotifySubscribe?.Invoke(this, message.Queue);
+            await _semaphore.WaitAsync();
+            try
+            {
+                _messageCollection.Insert(message.Id, message);
+                _logger.LogDebug("Added message '{id}' for queue '{queue}' in storage with payload '{payload}'",
+                    message.Id, message.Queue, message.Payload);
+                NotifySubscribe?.Invoke(this, message.Queue);
+            }
+            finally
+            {
+                _semaphore.Release();
+            }
         }
-        catch (Exception ex)
+        catch (Exception e)
         {
-            _logger.LogError("An error '{error}' has occurred during OnMessagePublished", ex.Message);
+            _logger.LogError("An error '{error}' has occurred during OnMessagePublished", e.Message);
         }
     }
 
     private async void OnMessageSubscribed(object source, string queue)
     {
-        var transactionStarted = false;
         try
         {
-            var subscription = GetNextSubscription(queue);
+            await _semaphore.WaitAsync();
 
-            if (subscription == null)
+            var transactionStarted = false;
+            try
             {
-                _logger.LogInformation("No active subscriptions found for queue '{queue}'. No processing will be done.", queue);
-                return;
-            }
-            
-            transactionStarted = _database.BeginTrans();
-            
-            var message = _messageCollection
-                .Query()
-                .Where(x =>
-                    x.Queue == queue
-                )
-                .OrderBy(x => x.Timestamp)
-                .FirstOrDefault();
+                var subscription = GetNextSubscription(queue);
 
-            if (message == null)
+                if (subscription == null)
+                {
+                    _logger.LogInformation(
+                        "No active subscriptions found for queue '{queue}'. No processing will be done.", queue);
+                    return;
+                }
+
+                transactionStarted = _database.BeginTrans();
+
+                var message = _messageCollection
+                    .Query()
+                    .Where(x =>
+                        x.Queue == queue
+                    )
+                    .OrderBy(x => x.Timestamp)
+                    .FirstOrDefault();
+
+                if (message == null)
+                {
+                    _database.Rollback();
+                    return;
+                }
+
+                await subscription.WriteMessageAsync(message, CancellationToken.None);
+                _logger.LogInformation(
+                    "Message '{messageId}' sent to '{subscriptionId}' at {timestamp} for queue '{queue}'",
+                    message.Id, subscription.Id,
+                    new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), message.Queue);
+
+                var deleteResult = _messageCollection.Delete(message.Id);
+                _logger.LogDebug("Message '{id}' deleted: {operationResult}", message.Id, deleteResult);
+                var commitResult = _database.Commit();
+                _logger.LogDebug("Commit result: {commitResult}", commitResult);
+            }
+            catch (Exception ex)
             {
-                _database.Rollback();
-                return;
-            }
-                
-            await subscription.WriteMessageAsync(message, CancellationToken.None);
-            _logger.LogInformation(
-                "Message '{messageId}' sent to '{subscriptionId}' at {timestamp} for queue '{queue}'",
-                message.Id, subscription.Id,
-                new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), message.Queue);
+                if (transactionStarted)
+                {
+                    var rollbackResult = _database.Rollback();
+                    _logger.LogDebug("Rollback result: {rollbackResult}", rollbackResult);
+                }
 
-            var deleteResult = _messageCollection.Delete(message.Id);
-            _logger.LogDebug("Message '{id}' deleted: {operationResult}", message.Id, deleteResult);
-            var commitResult = _database.Commit();
-            _logger.LogDebug("Commit result: {commitResult}", commitResult);
+                _logger.LogError("An error '{error}' has occurred during OnMessageSubscribed", ex.Message);
+            }
+            finally
+            {
+                _semaphore.Release();
+            }
         }
-        catch (Exception ex)
+        catch (Exception e)
         {
-            if (transactionStarted)
-            {
-                var rollbackResult = _database.Rollback();
-                _logger.LogDebug("Rollback result: {rollbackResult}", rollbackResult);
-            }
-            _logger.LogError("An error '{error}' has occurred during OnMessageSubscribed", ex.Message);
+            _logger.LogError("An error '{error}' has occurred during OnMessageSubscribed", e.Message);
         }
     }
 

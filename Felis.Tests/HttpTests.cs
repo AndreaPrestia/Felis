@@ -53,6 +53,9 @@ public class HttpTests : IDisposable
         var receivedMessages = new List<MessageModel>(messagesToSend.Count);
         var cts = new CancellationTokenSource();
 
+        var deletedItems = await ResetAsync(QueueName, cts.Token);
+        _testOutputHelper.WriteLine($"Deleted items from queue '{QueueName}': {deletedItems}");
+        
         // Act - Start subscriber (HTTP2 keep-alive GET)
         var subscriberTask = Task.Run(async () =>
         {
@@ -126,6 +129,14 @@ public class HttpTests : IDisposable
         var publishResponse = await _publishClient.PostAsync($"{_brokerUrl}/{queue}", content, cancellationToken);
         publishResponse.EnsureSuccessStatusCode();
         return await publishResponse.Content.ReadFromJsonAsync<MessageModel?>(cancellationToken);
+    }
+    
+    private async Task<int> ResetAsync(string queue, CancellationToken cancellationToken)
+    {
+        var resetResponse = await _publishClient.DeleteAsync($"{_brokerUrl}/{queue}", cancellationToken);
+        resetResponse.EnsureSuccessStatusCode();
+        var deletedItems = await resetResponse.Content.ReadAsStringAsync(cancellationToken);
+        return !string.IsNullOrEmpty(deletedItems) ? int.Parse(deletedItems) : 0;
     }
 
     public void Dispose()

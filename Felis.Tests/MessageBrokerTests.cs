@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Xunit.Abstractions;
 
 namespace Felis.Tests;
 
@@ -7,10 +8,12 @@ public class MessageBrokerTests : IDisposable
 {
     private readonly IHost _host;
     private readonly MessageBroker _messageBroker;
+    private readonly ITestOutputHelper _testOutputHelper;
     private const string QueueName = "test-queue";
 
-    public MessageBrokerTests()
+    public MessageBrokerTests(ITestOutputHelper testOutputHelper)
     {
+        _testOutputHelper = testOutputHelper;
         _host = Host.CreateDefaultBuilder()
             .AddFelisBroker()
             .Build();
@@ -25,9 +28,12 @@ public class MessageBrokerTests : IDisposable
     {
         // Arrange
         var messagesToSend = Enumerable.Range(0, numberOfMessages).Select(s => $"Message{s + 1}").ToList();
-        _messageBroker.Reset(QueueName);
         var receivedMessages = new List<MessageModel>(messagesToSend.Count);
+        var sentMessages = new List<MessageModel>(messagesToSend.Count);
         var cts = new CancellationTokenSource();
+
+        var deletedItems = await _messageBroker.ResetAsync(QueueName, cts.Token);
+        _testOutputHelper.WriteLine($"Deleted items from queue '{QueueName}': {deletedItems}");
 
         // Act - Start subscriber independently
         var subscriberTask = Task.Run(async () =>
@@ -48,7 +54,11 @@ public class MessageBrokerTests : IDisposable
         }, cts.Token);
 
         // Act - Publish messages independently
-        var sentMessages = messagesToSend.Select(msg => _messageBroker.Publish(QueueName, msg)).ToList();
+        foreach (var msg in messagesToSend)
+        {
+            var sentMessage = await _messageBroker.PublishAsync(QueueName, msg, cts.Token);
+            sentMessages.Add(sentMessage);
+        }
 
         // Wait for subscription to complete
         await subscriberTask;

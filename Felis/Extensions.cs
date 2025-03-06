@@ -15,9 +15,9 @@ public static class Extensions
     /// <returns>IHostBuilder</returns>
     public static IHostBuilder AddFelisBroker(this IHostBuilder hostBuilder)
     {
-        return hostBuilder.ConfigureServices((context, services) =>
+        return hostBuilder.ConfigureServices((_, services) =>
         {
-            services.AddSingleton(_ => new MessageBroker(_.GetRequiredService<ILogger<MessageBroker>>(),
+            services.AddSingleton(p => new MessageBroker(p.GetRequiredService<ILogger<MessageBroker>>(),
                 new LiteDatabase(DatabasePath)));
         });
     }

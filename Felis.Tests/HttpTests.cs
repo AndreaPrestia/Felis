@@ -88,7 +88,6 @@ public class HttpTests : IDisposable
 
                     if (receivedMessages.Count == messagesToSend.Count)
                     {
-                        await Task.Delay(200, cts.Token);
                         break;
                     }
                 }

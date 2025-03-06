@@ -92,7 +92,7 @@ public sealed class MessageBroker : IDisposable
 
             if (_topicIndex.TryGetValue(topicTrimmedLowered, out var currentIndex))
             {
-                currentIndex = (currentIndex + 1) % _subscriptions[topicTrimmedLowered].Count;
+                currentIndex = _subscriptions[topicTrimmedLowered].Count > 0 ? (currentIndex + 1) % _subscriptions[topicTrimmedLowered].Count : 0;
                 _topicIndex[topicTrimmedLowered] = currentIndex;
             }
         });

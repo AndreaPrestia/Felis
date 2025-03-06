@@ -1,5 +1,4 @@
 ﻿using System.Net.Http.Json;
-using System.Runtime.ConstrainedExecution;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using Felis.Http;
@@ -8,8 +7,9 @@ using Xunit.Abstractions;
 
 namespace Felis.Tests;
 
-public class HttpTests
+public class HttpTests : IDisposable
 {
+    private readonly IHost _host;
     private readonly ITestOutputHelper _testOutputHelper;
     private readonly X509Certificate2 _certificate;
     private readonly string _brokerUrl;
@@ -35,11 +35,11 @@ public class HttpTests
         _publishClient.DefaultRequestVersion = new Version(3, 0);
         _publishClient.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionExact;
 
-        var host = Host.CreateDefaultBuilder().AddFelisBroker()
+        _host = Host.CreateDefaultBuilder().AddFelisBroker()
             .WithHttp(_certificate, Port)
             .Build();
 
-        Task.Run(() => host.RunAsync());
+        Task.Run(async () => await _host.RunAsync());
     }
 
     [Theory]
@@ -99,7 +99,7 @@ public class HttpTests
             {
                 _testOutputHelper.WriteLine(ex.ToString());
             }
-        });
+        }, cts.Token);
 
         // Act - Publish messages via HTTP POST
         foreach (var msg in messagesToSend)
@@ -127,5 +127,13 @@ public class HttpTests
         var publishResponse = await _publishClient.PostAsync($"{_brokerUrl}/{queue}", content, cancellationToken);
         publishResponse.EnsureSuccessStatusCode();
         return await publishResponse.Content.ReadFromJsonAsync<MessageModel?>(cancellationToken);
+    }
+
+    public void Dispose()
+    {
+        _certificate.Dispose();
+        _publishClient.Dispose();
+        _host.Dispose();
+        GC.SuppressFinalize(this);
     }
 }

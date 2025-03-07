@@ -39,7 +39,7 @@ public class HttpTests : IDisposable
             .WithHttp(_certificate, Port)
             .Build();
 
-        Task.Run(async () => await _host.RunAsync());
+        _host.Start();
     }
 
     [Theory]
@@ -88,13 +88,12 @@ public class HttpTests : IDisposable
                             receivedMessages.Add(messageReceived);
                         }
                     }
-
                     if (receivedMessages.Count == messagesToSend.Count)
                     {
                         break;
                     }
                 }
-
+                
                 await cts.CancelAsync();
             }
             catch (Exception ex)

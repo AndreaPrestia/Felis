@@ -21,7 +21,6 @@
 
     <ItemGroup>
       <ProjectReference Include="..\Felis.Http\Felis.Http.csproj" />
-      <ProjectReference Include="..\Felis\Felis.csproj" />
     </ItemGroup>
 
     <ItemGroup>

@@ -287,10 +287,6 @@ connection | keep-alive           | It keeps the connection alive             |
 
 **How can I test it?**
 
-This repository provides the examples of usage:
+This repository provides a test project where you can find tests for **MessageBroker** class and **Http** integration.
 
-- **Felis.Broker.Http.Console**
-
-**Felis.Broker.Http.Console**
-
-A console application, that references **Felis.Http** project.
+The project name is **Felis.Tests**.

@@ -10,43 +10,44 @@ namespace Felis.Http.Endpoints;
 
 public static class BrokerEndpoints
 {
-       public static void MapBrokerEndpoints(this IEndpointRouteBuilder endpointRouteBuilder)
+    public static void MapBrokerEndpoints(this IEndpointRouteBuilder endpointRouteBuilder)
     {
         ArgumentNullException.ThrowIfNull(endpointRouteBuilder);
 
-        endpointRouteBuilder.MapPost("/{topic}",
-            async (HttpContext context,
+        endpointRouteBuilder.MapPost("/{queue}",
+            async (CancellationToken cancellationToken, 
+                HttpContext context,
                 [FromServices] MessageBroker messageBroker,
-                [FromRoute] string topic,
-                [FromHeader(Name = "x-ttl")] int ttl,
-                [FromHeader(Name = "x-broadcast")] bool broadcast) =>
+                [FromRoute] string queue) =>
             {
                 ArgumentNullException.ThrowIfNull(context.Request.Body);
-                
+
                 using var reader = new StreamReader(context.Request.Body);
-                
-                var payload = await reader.ReadToEndAsync();
 
-                var messageId = broadcast ? messageBroker.Broadcast(topic, payload, ttl) : messageBroker.Enqueue(topic, payload);
+                var payload = await reader.ReadToEndAsync(cancellationToken);
 
-                return Results.Accepted($"/{topic}", messageId);
+                var message = await messageBroker.PublishAsync(queue, payload, cancellationToken);
+
+                return Results.Accepted($"/{queue}", message);
             });
-        
-        endpointRouteBuilder.MapGet("/{topic}",
+
+        endpointRouteBuilder.MapGet("/{queue}",
             async (ILoggerFactory loggerFactory, HttpContext context,
                 [FromServices] MessageBroker messageBroker,
-                [FromRoute] string topic,
+                [FromRoute] string queue,
                 [FromHeader(Name = "x-exclusive")] bool exclusive) =>
             {
                 var logger = loggerFactory.CreateLogger("Felis");
 
                 var dataStream = context.Response.BodyWriter.AsStream();
-                
-                var clientIp = (context.Connection.RemoteIpAddress) ?? throw new InvalidOperationException("No Ip address retrieve from Context");
+
+                var clientIp = (context.Connection.RemoteIpAddress) ??
+                               throw new InvalidOperationException("No Ip address retrieve from Context");
 
                 var clientHostname = (await Dns.GetHostEntryAsync(clientIp)).HostName;
 
-                logger.LogInformation("Subscribed {ipAddress}-{hostname} to topic {topic}", clientIp.MapToIPv4().ToString(), clientHostname, topic);
+                logger.LogInformation("Subscribed {ipAddress}-{hostname} to queue {queue}",
+                    clientIp.MapToIPv4().ToString(), clientHostname, queue);
 
                 context.Response.Headers.ContentType = "application/x-ndjson";
                 context.Response.Headers.CacheControl = "no-cache";
@@ -56,7 +57,7 @@ public static class BrokerEndpoints
 
                 try
                 {
-                    await foreach (var message in messageBroker.Subscribe(topic, exclusive, cancellationToken))
+                    await foreach (var message in messageBroker.Subscribe(queue, exclusive, cancellationToken))
                     {
                         var bytes = System.Text.Encoding.UTF8.GetBytes($"{JsonSerializer.Serialize(message)}\n");
                         await dataStream.WriteAsync(bytes, cancellationToken);
@@ -70,5 +71,8 @@ public static class BrokerEndpoints
 
                 return Results.Empty;
             });
+
+        endpointRouteBuilder.MapDelete("/{queue}", async (CancellationToken cancellationToken, [FromServices] MessageBroker messageBroker,
+            [FromRoute] string queue) => Results.Ok(await messageBroker.ResetAsync(queue, cancellationToken)));
     }
 }

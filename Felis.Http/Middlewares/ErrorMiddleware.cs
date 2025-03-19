@@ -28,13 +28,13 @@ public class ErrorMiddleware
 
         try
         {
-            _logger.LogDebug($"Processing request {url} {method}");
+            _logger.LogDebug("Processing request '{url}' '{method}'", url, method);
 
             await _next.Invoke(context);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, ex.Message);
+            _logger.LogError(ex, "An error has occurred in Http component.");
 
             var status = ex switch
             {
@@ -52,13 +52,13 @@ public class ErrorMiddleware
             context.Response.StatusCode = status.Item1;
 
             await context.Response.WriteAsync(
-                JsonSerializer.Serialize(new ProblemDetails()
+                JsonSerializer.Serialize(new ProblemDetails
                 {
                     Type = $"https://httpstatuses.io/{status.Item1}",
                     Detail = ex.Message,
                     Status = status.Item1,
                     Title = status.Item2,
-                    Instance = $"{url} {method}",
+                    Instance = $"{url} {method}"
                 }));
         }
     }

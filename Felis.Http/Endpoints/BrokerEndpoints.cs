@@ -41,7 +41,7 @@ public static class BrokerEndpoints
 
                 var dataStream = context.Response.BodyWriter.AsStream();
 
-                var clientIp = (context.Connection.RemoteIpAddress) ??
+                var clientIp = context.Connection.RemoteIpAddress ??
                                throw new InvalidOperationException("No Ip address retrieve from Context");
 
                 var clientHostname = (await Dns.GetHostEntryAsync(clientIp)).HostName;

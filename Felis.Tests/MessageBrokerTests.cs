@@ -133,7 +133,7 @@ public class MessageBrokerTests : IDisposable
         // Initialize subscriber message storage
         for (var i = 1; i <= numberOfSubscribers; i++)
         {
-            receivedMessagesBySubscriber[i] = new List<Message>();
+            receivedMessagesBySubscriber[i] = [];
         }
 
         // Act - Start subscribers
@@ -195,7 +195,7 @@ public class MessageBrokerTests : IDisposable
         // Initialize subscriber message storage
         for (var i = 1; i <= numberOfSubscribers; i++)
         {
-            receivedMessagesBySubscriber[i] = new List<Message>();
+            receivedMessagesBySubscriber[i] = [];
         }
 
         // Act - Start subscribers

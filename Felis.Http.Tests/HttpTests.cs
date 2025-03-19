@@ -207,7 +207,7 @@ public class HttpTests : IDisposable
         // Initialize subscriber message storage
         for (var i = 1; i <= numberOfSubscribers; i++)
         {
-            receivedMessagesBySubscriber[i] = new List<Message>();
+            receivedMessagesBySubscriber[i] = [];
         }
 
         // Act - Start subscribers
@@ -244,11 +244,9 @@ public class HttpTests : IDisposable
                             }
                         }
 
-                        if (receivedMessages.Count >= numberOfMessages)
-                        {
-                            await localCts.CancelAsync();
-                            break;
-                        }
+                        if (receivedMessages.Count < numberOfMessages) continue;
+                        await localCts.CancelAsync();
+                        break;
                     }
                 }
                 catch (Exception ex)
@@ -306,7 +304,7 @@ public class HttpTests : IDisposable
         // Initialize subscriber message storage
         for (var i = 1; i <= numberOfSubscribers; i++)
         {
-            receivedMessagesBySubscriber[i] = new List<Message>();
+            receivedMessagesBySubscriber[i] = [];
         }
 
         // Act - Start subscribers
@@ -342,11 +340,9 @@ public class HttpTests : IDisposable
                             }
                         }
 
-                        if (receivedMessagesBySubscriber[subscriberId].Count >= numberOfMessages)
-                        {
-                            await sharedCts.CancelAsync();
-                            break;
-                        }
+                        if (receivedMessagesBySubscriber[subscriberId].Count < numberOfMessages) continue;
+                        await sharedCts.CancelAsync();
+                        break;
                     }
                 }
                 catch (Exception ex)

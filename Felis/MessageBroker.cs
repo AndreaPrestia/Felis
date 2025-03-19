@@ -76,7 +76,7 @@ public sealed class MessageBroker : IDisposable
 
         var topicTrimmedLowered = queue.Trim().ToLowerInvariant();
 
-        var subscriptions = _subscriptions.GetOrAdd(topicTrimmedLowered, _ => new List<Subscription>());
+        var subscriptions = _subscriptions.GetOrAdd(topicTrimmedLowered, _ => []);
 
         subscriptions.Add(subscription);
 
@@ -98,13 +98,11 @@ public sealed class MessageBroker : IDisposable
                 "UnSubscribed '{id}' from queue '{queue}' at {timestamp} with operation result '{operationResult}'",
                 subscription.Id, topicTrimmedLowered, subscription.Timestamp, unSubscribeResult);
 
-            if (_topicIndex.TryGetValue(topicTrimmedLowered, out var currentIndex))
-            {
-                currentIndex = _subscriptions[topicTrimmedLowered].Count > 0
-                    ? (currentIndex + 1) % _subscriptions[topicTrimmedLowered].Count
-                    : 0;
-                _topicIndex[topicTrimmedLowered] = currentIndex;
-            }
+            if (!_topicIndex.TryGetValue(topicTrimmedLowered, out var currentIndex)) return;
+            currentIndex = _subscriptions[topicTrimmedLowered].Count > 0
+                ? (currentIndex + 1) % _subscriptions[topicTrimmedLowered].Count
+                : 0;
+            _topicIndex[topicTrimmedLowered] = currentIndex;
         });
 
         NotifySubscribe?.Invoke(this, topicTrimmedLowered);
@@ -193,32 +191,29 @@ public sealed class MessageBroker : IDisposable
                     return;
                 }
 
-                if (_zoneTree.TryGet(queue, out var storedBytes))
+                if (!_zoneTree.TryGet(queue, out var storedBytes)) return;
+                var messages = MessagePackSerializer.Deserialize<List<Message>>(storedBytes);
+                if (messages.Count <= 0) return;
+                var message = messages[0];
+                messages.RemoveAt(0);
+                await subscription.WriteMessageAsync(message, CancellationToken.None);
+                _logger.LogInformation(
+                    "Message '{messageId}' sent to '{subscriptionId}' at {timestamp} for queue '{queue}'",
+                    message.Id, subscription.Id,
+                    new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), message.Queue);
+                if (messages.Count != 0)
                 {
-                    var messages = MessagePackSerializer.Deserialize<List<Message>>(storedBytes);
-                    if (messages.Count > 0)
-                    {
-                        var message = messages[0];
-                        messages.RemoveAt(0);
-                        await subscription.WriteMessageAsync(message, CancellationToken.None);
-                        _logger.LogInformation(
-                            "Message '{messageId}' sent to '{subscriptionId}' at {timestamp} for queue '{queue}'",
-                            message.Id, subscription.Id,
-                            new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), message.Queue);
-                        if (messages.Count != 0)
-                        {
-                            var updatedQueue = MessagePackSerializer.Serialize(messages);
-                            _zoneTree.Upsert(queue, updatedQueue);
-                            await _maintainer.WaitForBackgroundThreadsAsync();
-                            NotifySubscribe?.Invoke(this, queue);
-                        }
-                        else
-                        {
-                           var deletedQueue = _zoneTree.TryDelete(queue, out var optIndex);
-                           _logger.LogDebug("Queue '{queue}' deleted '{deleted}' with optIndex {optIndex}", queue, deletedQueue, optIndex);
-                           await _maintainer.WaitForBackgroundThreadsAsync();
-                        }
-                    }
+                    var updatedQueue = MessagePackSerializer.Serialize(messages);
+                    _zoneTree.Upsert(queue, updatedQueue);
+                    await _maintainer.WaitForBackgroundThreadsAsync();
+                    NotifySubscribe?.Invoke(this, queue);
+                }
+                else
+                {
+                    var deletedQueue = _zoneTree.TryDelete(queue, out var optIndex);
+                    _logger.LogDebug("Queue '{queue}' deleted '{deleted}' with optIndex {optIndex}", queue,
+                        deletedQueue, optIndex);
+                    await _maintainer.WaitForBackgroundThreadsAsync();
                 }
             }
             finally
@@ -240,7 +235,7 @@ public sealed class MessageBroker : IDisposable
             return null;
         }
 
-        if (!_subscriptions.TryGetValue(queue, out List<Subscription>? subscriptions))
+        if (!_subscriptions.TryGetValue(queue, out var subscriptions))
         {
             _logger.LogWarning("No subscriptions available for queue '{queue}'.", queue);
             return null;

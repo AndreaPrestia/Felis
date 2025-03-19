@@ -69,8 +69,8 @@ public class MessageBrokerTests : IDisposable
 
     [Theory]
     [Trait("Category", "Order")]
-    [InlineData(20)]
-    public async Task PublishAndSubscribe_ShouldMaintainOrderWithSubscribeDelay(int numberOfMessages)
+    [InlineData(20, 5)]
+    public async Task PublishAndSubscribe_ShouldMaintainOrderWithSubscribeDelay(int numberOfMessages, int delayInSeconds)
     {
         // Arrange
         var messagesToSend = Enumerable.Range(0, numberOfMessages).Select(s => $"Message{s + 1}").ToList();
@@ -84,7 +84,7 @@ public class MessageBrokerTests : IDisposable
         // Act - Start subscriber independently
         var subscriberTask = Task.Run(async () =>
         {
-            await Task.Delay(TimeSpan.FromSeconds(5), cts.Token);
+            await Task.Delay(TimeSpan.FromSeconds(delayInSeconds), cts.Token);
             await foreach (var message in _messageBroker.Subscribe(QueueName, true, cts.Token))
             {
                 if (message != null)

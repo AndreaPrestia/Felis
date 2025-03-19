@@ -108,6 +108,84 @@ public class HttpTests : IDisposable
         Assert.Equal(messagesToSend.Count, receivedMessages.Count);
         Assert.Equal(sentMessages, receivedMessages);
     }
+    
+    [Theory]
+    [Trait("Category", "Order")]
+    [InlineData(20, 5)]
+    public async Task PublishAndSubscribe_ShouldMaintainOrderDelay(int numberOfMessages, int delayInSeconds)
+    {
+        // Arrange
+        var messagesToSend = Enumerable.Range(0, numberOfMessages).Select(s => $"HttpMessage{s + 1}").ToList();
+        var sentMessages = new List<Message>(messagesToSend.Count);
+        var receivedMessages = new List<Message>(messagesToSend.Count);
+        var cts = new CancellationTokenSource();
+
+        var deletedItems = await ResetAsync(QueueName, cts.Token);
+        _testOutputHelper.WriteLine($"Deleted items from queue '{QueueName}': {deletedItems}");
+
+        var subscriberCts = new CancellationTokenSource();
+        // Act - Start subscriber (HTTP2 keep-alive GET)
+        var subscriberTask = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(delayInSeconds), cts.Token);
+                using var client = new HttpClient();
+                client.DefaultRequestVersion = new Version(3, 0);
+                client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionExact;
+                client.DefaultRequestHeaders.TryAddWithoutValidation("x-exclusive", "false");
+
+                using var response = await client.GetAsync($"{_brokerUrl}/{QueueName}",
+                    HttpCompletionOption.ResponseHeadersRead, subscriberCts.Token);
+                response.EnsureSuccessStatusCode();
+                await using var stream = await response.Content.ReadAsStreamAsync(subscriberCts.Token);
+                using var reader = new StreamReader(stream);
+                while (!reader.EndOfStream)
+                {
+                    var content = await reader.ReadLineAsync(subscriberCts.Token);
+                    if (content != null)
+                    {
+                        var messageReceived = JsonSerializer.Deserialize<Message?>(content);
+
+                        if (messageReceived != null)
+                        {
+                            receivedMessages.Add(messageReceived);
+                        }
+                    }
+
+                    if (receivedMessages.Count == messagesToSend.Count)
+                    {
+                        break;
+                    }
+                }
+
+                await subscriberCts.CancelAsync();
+            }
+            catch (Exception ex)
+            {
+                _testOutputHelper.WriteLine(ex.ToString());
+            }
+        }, subscriberCts.Token);
+
+        // Act - Publish messages via HTTP POST
+        foreach (var msg in messagesToSend)
+        {
+            var sentMessage = await PublishAsync(msg, QueueName, cts.Token);
+            if (sentMessage != null)
+            {
+                sentMessages.Add(sentMessage);
+            }
+        }
+
+        // Wait for subscription to complete
+        await subscriberTask;
+
+        // Assert
+        Assert.NotNull(sentMessages);
+        Assert.NotNull(receivedMessages);
+        Assert.Equal(messagesToSend.Count, receivedMessages.Count);
+        Assert.Equal(sentMessages, receivedMessages);
+    }
 
     [Theory]
     [Trait("Category", "Order")]
@@ -166,13 +244,12 @@ public class HttpTests : IDisposable
                             }
                         }
 
-                        if (receivedMessagesBySubscriber[subscriberId].Count >= numberOfMessages / numberOfSubscribers)
+                        if (receivedMessages.Count >= numberOfMessages)
                         {
+                            await localCts.CancelAsync();
                             break;
                         }
                     }
-
-                    await localCts.CancelAsync();
                 }
                 catch (Exception ex)
                 {
@@ -192,7 +269,7 @@ public class HttpTests : IDisposable
                 sentMessages.Add(sentMessage);
             }
         }
-
+        
         // Act - Start subscriber (HTTP2 keep-alive GET)
         await Task.WhenAll(subscribersTask);
 
@@ -200,12 +277,15 @@ public class HttpTests : IDisposable
         Assert.NotNull(sentMessages);
         Assert.NotNull(receivedMessages);
         Assert.Equal(messagesToSend.Count, receivedMessages.Count);
-        Assert.Equal(sentMessages, receivedMessages.OrderBy(x => x.Payload).ToList());
+        lock (receivedMessages)
+        {
+            Assert.Equal(sentMessages, receivedMessages.OrderBy(x => x.Payload).ToList());
+        }
         Assert.Equal(numberOfSubscribers, receivedMessagesBySubscriber.Count);
         Assert.True(receivedMessagesBySubscriber.All(x => x.Value.Count == numberOfMessages / numberOfSubscribers));
     }
-    
-        [Theory]
+
+    [Theory]
     [Trait("Category", "Order")]
     [InlineData(4, 4)]
     public async Task PublishAndSubscribe_ShouldMaintainOrderMultipleSubscribersWithExclusive(int numberOfMessages,
@@ -217,6 +297,7 @@ public class HttpTests : IDisposable
         var sentMessages = new List<Message>(messagesToSend.Count);
         var receivedMessagesBySubscriber = new ConcurrentDictionary<int, List<Message>>();
         var cts = new CancellationTokenSource();
+        var sharedCts = new CancellationTokenSource();
         var subscribersTask = new List<Task>();
 
         var deletedItems = await ResetAsync(QueueName, cts.Token);
@@ -232,7 +313,6 @@ public class HttpTests : IDisposable
         for (var i = 0; i < numberOfSubscribers; i++)
         {
             var subscriberId = i + 1;
-            var localCts = new CancellationTokenSource();
             var subscriberTask = Task.Run(async () =>
             {
                 try
@@ -240,16 +320,17 @@ public class HttpTests : IDisposable
                     using var client = new HttpClient();
                     client.DefaultRequestVersion = new Version(3, 0);
                     client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionExact;
-                    client.DefaultRequestHeaders.TryAddWithoutValidation("x-exclusive", subscriberId == 1 ? "true" : "false");
+                    client.DefaultRequestHeaders.TryAddWithoutValidation("x-exclusive",
+                        subscriberId == 1 ? "true" : "false");
 
                     using var response = await client.GetAsync($"{_brokerUrl}/{QueueName}",
-                        HttpCompletionOption.ResponseHeadersRead, localCts.Token);
+                        HttpCompletionOption.ResponseHeadersRead, sharedCts.Token);
                     response.EnsureSuccessStatusCode();
-                    await using var stream = await response.Content.ReadAsStreamAsync(localCts.Token);
+                    await using var stream = await response.Content.ReadAsStreamAsync(sharedCts.Token);
                     using var reader = new StreamReader(stream);
-                    while (!reader.EndOfStream)
+                    while (!reader.EndOfStream && !sharedCts.Token.IsCancellationRequested)
                     {
-                        var content = await reader.ReadLineAsync(localCts.Token);
+                        var content = await reader.ReadLineAsync(sharedCts.Token);
                         if (content != null)
                         {
                             var messageReceived = JsonSerializer.Deserialize<Message?>(content);
@@ -263,17 +344,16 @@ public class HttpTests : IDisposable
 
                         if (receivedMessagesBySubscriber[subscriberId].Count >= numberOfMessages)
                         {
+                            await sharedCts.CancelAsync();
                             break;
                         }
                     }
-
-                    await localCts.CancelAsync();
                 }
                 catch (Exception ex)
                 {
                     _testOutputHelper.WriteLine(ex.ToString());
                 }
-            }, localCts.Token);
+            }, sharedCts.Token);
 
             subscribersTask.Add(subscriberTask);
         }
@@ -287,15 +367,18 @@ public class HttpTests : IDisposable
                 sentMessages.Add(sentMessage);
             }
         }
-
+        
         // Act - Start subscriber (HTTP2 keep-alive GET)
-        await Task.WhenAny(subscribersTask);
+        await Task.WhenAll(subscribersTask);
 
         // Assert
         Assert.NotNull(sentMessages);
         Assert.NotNull(receivedMessages);
         Assert.Equal(messagesToSend.Count, receivedMessages.Count);
-        Assert.Equal(sentMessages, receivedMessages.OrderBy(x => x.Payload).ToList());
+        lock (receivedMessages)
+        {
+            Assert.Equal(sentMessages, receivedMessages.OrderBy(x => x.Payload).ToList());
+        }
         Assert.Equal(numberOfSubscribers, receivedMessagesBySubscriber.Count);
         Assert.Equal(sentMessages, receivedMessagesBySubscriber[1].OrderBy(x => x.Payload).ToList());
         Assert.Empty(receivedMessagesBySubscriber.Where(x => x.Key != 1).SelectMany(e => e.Value));

@@ -137,7 +137,6 @@ public class MessageBrokerTests : IDisposable
         }
 
         // Act - Start subscribers
-
         for (var i = 0; i < numberOfSubscribers; i++)
         {
             var subscriberId = i + 1;

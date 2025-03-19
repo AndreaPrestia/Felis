@@ -20,13 +20,14 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Felis.Http\Felis.Http.csproj" />
-    </ItemGroup>
-
-    <ItemGroup>
       <EmbeddedResource Include="Output.pfx">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </EmbeddedResource>
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Felis.Http\Felis.Http.csproj" />
+      <ProjectReference Include="..\Felis\Felis.csproj" />
     </ItemGroup>
 
 </Project>

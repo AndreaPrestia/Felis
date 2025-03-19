@@ -3,16 +3,19 @@
 A light-weight message queue totally written in .NET.
 
 The **Felis** project contains the logic for dispatching, storing and validating messages.
-It stores the messages in a **LiteDB** database.
+It stores the messages in a **ZoneTree** storage.
 
 **Requirements**
 
 - [.NET 8](https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-8/overview)
-- [LiteDB](https://www.litedb.org/)
+- [MessagePack](https://msgpack.org/)
+- [ZoneTree](https://github.com/koculu/ZoneTree)
 
 **Dependencies**
 
-- LiteDB 5.0.21
+- Microsoft.Extensions.Hosting.Abstractions 8.0.1
+- MessagePack 3.1.3
+- ZoneTree 1.8.5
 
 **Usage of Broker**
 
@@ -26,7 +29,7 @@ var builder = Host.CreateDefaultBuilder(args)
         logging.AddConsole();
         logging.SetMinimumLevel(LogLevel.Debug);
     })
-    .AddFelisBroker()
+    .AddBroker()
      .ConfigureServices((_, services) =>
      {
          services.AddHostedService<Subscriber>();
@@ -38,7 +41,7 @@ var host = builder.Build();
 await host.RunAsync();
 ```
 
-The example above initialize the **Felis Broker** in a console application, with console logging provider using the method **AddFelisBroker**.
+The example above initialize the **Felis Broker** in a console application, with console logging provider using the method **AddBroker**.
 
 **Message entity**
 
@@ -46,17 +49,17 @@ This entity is the representation of the data available on a specific queue.
 
 The **Message entity** is made of:
 
-Property | Type   | Context                                                              |
---- |--------|----------------------------------------------------------------------|
-Id | guid   | the message unique id assigned by the broker.                        |
-Queue | string | the queue where the message has been published.                      |
-Payload | string | the actual content of the message published on the queue.            |
-Timestamp | number | the timestamp of the message when it was published.                  |
-Expiration | number | the message's expiration timestamp. It can be null.                  |
+| Property   | Type   | Context                                                   |
+|------------|--------|-----------------------------------------------------------|
+| Id         | guid   | the message unique id assigned by the broker.             |
+| Queue      | string | the queue where the message has been published.           |
+| Payload    | string | the actual content of the message published on the queue. |
+| Timestamp  | number | the timestamp of the message when it was published.       |
+| Expiration | number | the message's expiration timestamp. It can be null.       |
 
 **Publish of a message to a queue**
 
-You can inject the **MessageBroker** class to make a publish to a specific queue with the **Publish** method.
+You can inject the **MessageBroker** class to make a publishing to a specific queue with the **Publish** method.
 
 ```
 var messageGuid = _messageBroker.Publish("test",  $"test at {new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds()}", 20);
@@ -64,21 +67,21 @@ _logger.LogInformation($"Published {messageGuid}@test");
 
 ```
 
-In the example above a message is published for the queue "test", with a string payload, without a time-to-live.
+In the example above a message is published for the queue "test", with a string payload, with a time-to-live of 20 seconds.
 
 ****Parameters****
 
-Property | Type    | Context                                                                                 |
---- |---------|-----------------------------------------------------------------------------------------|
-queue | string  | The queue where to publish the message.                                                 |
-payload | string  | The payload to publish.                                                                 |
-ttl | int     | How many seconds a message can live. If less or equal than zero the message is durable. |
+| Property | Type   | Context                                                                                 |
+|----------|--------|-----------------------------------------------------------------------------------------|
+| queue    | string | The queue where to publish the message.                                                 |
+| payload  | string | The payload to publish.                                                                 |
+| ttl      | int    | How many seconds a message can live. If less or equal than zero the message is durable. |
 
 In case of success it will return the message guid, otherwise the exception mapped in the summary.
 
 **Subscribe to a queue with Subscribe**
 
-This method is used to subscribe to a queue. The **Subscribe** method returns an an IAsyncEnumerable to stream data.
+This method is used to subscribe to a queue. The **Subscribe** method returns an IAsyncEnumerable to stream data.
 
 ```
 
@@ -101,24 +104,14 @@ balancing of subscribers will be adopted by Felis.
 
 ***Parameters***
 
-Property | Type    | Context                                |
---- |---------|----------------------------------------|
-queue | string  | the queue to subscribe to.             |
-exclusive | boolean | if the subscriber is exclusive or not. |
+| Property  | Type    | Context                                |
+|-----------|---------|----------------------------------------|
+| queue     | string  | the queue to subscribe to.             |
+| exclusive | boolean | if the subscriber is exclusive or not. |
 
 ****Response****
 
 It returns a stream of **MessageModel**.
-
-**How can I test it?**
-
-This repository provides the examples of usage:
-
-- **Felis.Broker.Standalone.Console**
-
-**Felis.Broker.Standalone.Console**
-
-A console application, that reference Felis project and uses the broker as in-process flow.
 
 # Http
 
@@ -157,7 +150,8 @@ Code example:
             logging.AddConsole();
             logging.SetMinimumLevel(LogLevel.Debug);
         })
-        .AddFelisBroker().WithHttp(new X509Certificate2(certificateName, certificatePassword), int.Parse(port))
+        .AddBroker()
+        .WithHttp(new X509Certificate2(certificateName, certificatePassword), int.Parse(port))
         .ConfigureServices((_, services) =>
         {
             services.AddHostedService(provider => new Subscriber(provider.GetRequiredService<ILogger<Subscriber>>(), certificate, $"https://localhost:{port}"));
@@ -191,13 +185,13 @@ The JSON below represent the **Message entity** coming from the broker.
 
 The **Message entity** is made of:
 
-Property | Type   | Context                                                              |
---- |--------|----------------------------------------------------------------------|
-id | guid   | the message unique id assigned by the broker.                        |
-queue | string | the queue where the message has been published.                      |
-payload | string | the actual content of the message published on the queue.            |
-timestamp | number | the timestamp of the message when it was published.                  |
-expiration | number | the message's expiration timestamp. It can be null.                  |
+| Property   | Type   | Context                                                   |
+|------------|--------|-----------------------------------------------------------|
+| id         | guid   | the message unique id assigned by the broker.             |
+| queue      | string | the queue where the message has been published.           |
+| payload    | string | the actual content of the message published on the queue. |
+| timestamp  | number | the timestamp of the message when it was published.       |
+| expiration | number | the message's expiration timestamp. It can be null.       |
 
 **Publish of a message to a queue with POST**
 
@@ -226,20 +220,20 @@ The string of the message to dispatch. The json above its just an example.
 
 ****Request headers****
 
-Header | Value                                 | Context                                                                                            |
---- |---------------------------------------|----------------------------------------------------------------------------------------------------|
-accept | application/json                      | The accept header.                                                                                 |
-content-Type | application/json                      | The content type returned.                                                                         |
-x-ttl | 10  (a number that is more than zero) | How many seconds a message can live. If not specified (or 0 value is used) the message is durable. |
+| Header       | Value                                 | Context                                                                                            |
+|--------------|---------------------------------------|----------------------------------------------------------------------------------------------------|
+| accept       | application/json                      | The accept header.                                                                                 |
+| content-Type | application/json                      | The content type returned.                                                                         |
+| x-ttl        | 10  (a number that is more than zero) | How many seconds a message can live. If not specified (or 0 value is used) the message is durable. |
 
 ***Response***
 
-Status code | Type | Context |
---- | --- | --- |
-202 | AcceptedResult | When the request is successfully processed. |
-400 | BadRequestResult | When a validation or something not related to the authorization process fails. |
-401 | UnauthorizedResult | When an operation fails due to missing authorization. |
-403 | ForbiddenResult | When an operation fails because it is not allowed in the context. |
+| Status code | Type               | Context                                                                        |
+|-------------|--------------------|--------------------------------------------------------------------------------|
+| 202         | AcceptedResult     | When the request is successfully processed.                                    |
+| 400         | BadRequestResult   | When a validation or something not related to the authorization process fails. |
+| 401         | UnauthorizedResult | When an operation fails due to missing authorization.                          |
+| 403         | ForbiddenResult    | When an operation fails because it is not allowed in the context.              |
 
 **Subscribe to a queue with GET**
 
@@ -254,36 +248,37 @@ curl -X 'GET' \
 
 ***Request route***
 
-Property | Type | Context |
---- | --- | --- |
-queue | string | the queue to subscribe to. |
+| Property | Type   | Context                    |
+|----------|--------|----------------------------|
+| queue    | string | the queue to subscribe to. |
 
 ****Request Headers****
 
-Header | Value                                | Context                                                                     |
---- |--------------------------------------|-----------------------------------------------------------------------------|
-accept | application/json                     | The accept header.                                                          |
-x-exclusive | true/false                     | Tells to the broker that this subscriber is an exclusive one for the queue, so the messages will all go only to it.                                                          |
+| Header      | Value            | Context                                                                                                             |
+|-------------|------------------|---------------------------------------------------------------------------------------------------------------------|
+| accept      | application/json | The accept header.                                                                                                  |
+| x-exclusive | true/false       | Tells to the broker that this subscriber is an exclusive one for the queue, so the messages will all go only to it. |
 
 ***Response***
 
-Status code | Type | Context                                                                                                       |
---- | --- |---------------------------------------------------------------------------------------------------------------|
-200 | Ok | When the subscription is successfully made and the application/x-ndjson header is returned to the client with the **Message entity**. |
-204 | NoContentResult | When nothing is more available from the queue |
-400 | BadRequestResult | When a validation or something not related to the authorization process fails.                                |
-401 | UnauthorizedResult | When an operation fails due to missing authorization.                                                         |
-403 | ForbiddenResult | When an operation fails because it is not allowed in the context.                                             |
+| Status code | Type               | Context                                                                                                                               |
+|-------------|--------------------|---------------------------------------------------------------------------------------------------------------------------------------|
+| 200         | Ok                 | When the subscription is successfully made and the application/x-ndjson header is returned to the client with the **Message entity**. |
+| 204         | NoContentResult    | When nothing is more available from the queue                                                                                         |
+| 400         | BadRequestResult   | When a validation or something not related to the authorization process fails.                                                        |
+| 401         | UnauthorizedResult | When an operation fails due to missing authorization.                                                                                 |
+| 403         | ForbiddenResult    | When an operation fails because it is not allowed in the context.                                                                     |
 
 This endpoint pushes to the subscriber the **Message entity**.
 
 ****Response Headers****
 
-Header | Value                | Context                                   |
---- |----------------------|-------------------------------------------|
-content-Type | application/x-ndjson | The content type returned as json stream. |
-cache-control | no-cache             | It avoids to cache the response           |
-connection | keep-alive           | It keeps the connection alive             |
+| Header        | Value                | Context                                   |
+|---------------|----------------------|-------------------------------------------|
+| content-Type  | application/x-ndjson | The content type returned as json stream. |
+| cache-control | no-cache             | It avoids to cache the response           |
+| connection    | keep-alive           | It keeps the connection alive             |
+
 
 **How can I test it?**
 

@@ -15,7 +15,7 @@ public static class BrokerEndpoints
         ArgumentNullException.ThrowIfNull(endpointRouteBuilder);
 
         endpointRouteBuilder.MapPost("/{queue}",
-            async (CancellationToken cancellationToken, 
+            async (CancellationToken cancellationToken,
                 HttpContext context,
                 [FromServices] MessageBroker messageBroker,
                 [FromRoute] string queue) =>
@@ -26,7 +26,7 @@ public static class BrokerEndpoints
 
                 var payload = await reader.ReadToEndAsync(cancellationToken);
 
-                var message = await messageBroker.PublishAsync(queue, payload, cancellationToken);
+                var message = messageBroker.Publish(queue, payload);
 
                 return Results.Accepted($"/{queue}", message);
             });
@@ -72,7 +72,7 @@ public static class BrokerEndpoints
                 return Results.Empty;
             });
 
-        endpointRouteBuilder.MapDelete("/{queue}", async (CancellationToken cancellationToken, [FromServices] MessageBroker messageBroker,
-            [FromRoute] string queue) => Results.Ok(await messageBroker.ResetAsync(queue, cancellationToken)));
+        endpointRouteBuilder.MapDelete("/{queue}", ([FromServices] MessageBroker messageBroker,
+            [FromRoute] string queue) => Results.Ok(messageBroker.Reset(queue)));
     }
 }

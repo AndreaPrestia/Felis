@@ -35,7 +35,8 @@ public class HttpTests : IDisposable
         _publishClient.DefaultRequestVersion = new Version(3, 0);
         _publishClient.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionExact;
 
-        _host = Host.CreateDefaultBuilder().AddFelisBroker()
+        _host = Host.CreateDefaultBuilder()
+            .AddBroker()
             .WithHttp(_certificate, Port)
             .Build();
 
@@ -49,13 +50,14 @@ public class HttpTests : IDisposable
     {
         // Arrange
         var messagesToSend = Enumerable.Range(0, numberOfMessages).Select(s => $"HttpMessage{s + 1}").ToList();
-        var sentMessages = new List<MessageModel>(messagesToSend.Count);
-        var receivedMessages = new List<MessageModel>(messagesToSend.Count);
+        var sentMessages = new List<Message>(messagesToSend.Count);
+        var receivedMessages = new List<Message>(messagesToSend.Count);
         var cts = new CancellationTokenSource();
 
         var deletedItems = await ResetAsync(QueueName, cts.Token);
         _testOutputHelper.WriteLine($"Deleted items from queue '{QueueName}': {deletedItems}");
         
+        var subscriberCts = new CancellationTokenSource();
         // Act - Start subscriber (HTTP2 keep-alive GET)
         var subscriberTask = Task.Run(async () =>
         {
@@ -72,16 +74,16 @@ public class HttpTests : IDisposable
                 client.DefaultRequestHeaders.TryAddWithoutValidation("x-exclusive", "false");
 
                 using var response = await client.GetAsync($"{_brokerUrl}/{QueueName}",
-                    HttpCompletionOption.ResponseHeadersRead, cts.Token);
+                    HttpCompletionOption.ResponseHeadersRead, subscriberCts.Token);
                 response.EnsureSuccessStatusCode();
-                await using var stream = await response.Content.ReadAsStreamAsync(cts.Token);
+                await using var stream = await response.Content.ReadAsStreamAsync(subscriberCts.Token);
                 using var reader = new StreamReader(stream);
                 while (!reader.EndOfStream)
                 {
-                    var content = await reader.ReadLineAsync(cts.Token);
+                    var content = await reader.ReadLineAsync(subscriberCts.Token);
                     if (content != null)
                     {
-                        var messageReceived = JsonSerializer.Deserialize<MessageModel?>(content);
+                        var messageReceived = JsonSerializer.Deserialize<Message?>(content);
 
                         if (messageReceived != null)
                         {
@@ -94,13 +96,13 @@ public class HttpTests : IDisposable
                     }
                 }
                 
-                await cts.CancelAsync();
+                await subscriberCts.CancelAsync();
             }
             catch (Exception ex)
             {
                 _testOutputHelper.WriteLine(ex.ToString());
             }
-        }, cts.Token);
+        }, subscriberCts.Token);
 
         // Act - Publish messages via HTTP POST
         foreach (var msg in messagesToSend)
@@ -122,20 +124,20 @@ public class HttpTests : IDisposable
         Assert.Equal(sentMessages, receivedMessages);
     }
 
-    private async Task<MessageModel?> PublishAsync(string message, string queue, CancellationToken cancellationToken)
+    private async Task<Message?> PublishAsync(string message, string queue, CancellationToken cancellationToken)
     {
         var content = JsonContent.Create(message);
         var publishResponse = await _publishClient.PostAsync($"{_brokerUrl}/{queue}", content, cancellationToken);
         publishResponse.EnsureSuccessStatusCode();
-        return await publishResponse.Content.ReadFromJsonAsync<MessageModel?>(cancellationToken);
+        return await publishResponse.Content.ReadFromJsonAsync<Message?>(cancellationToken);
     }
     
-    private async Task<int> ResetAsync(string queue, CancellationToken cancellationToken)
+    private async Task<bool> ResetAsync(string queue, CancellationToken cancellationToken)
     {
         var resetResponse = await _publishClient.DeleteAsync($"{_brokerUrl}/{queue}", cancellationToken);
         resetResponse.EnsureSuccessStatusCode();
         var deletedItems = await resetResponse.Content.ReadAsStringAsync(cancellationToken);
-        return !string.IsNullOrEmpty(deletedItems) ? int.Parse(deletedItems) : 0;
+        return !string.IsNullOrEmpty(deletedItems) && bool.Parse(deletedItems);
     }
 
     public void Dispose()

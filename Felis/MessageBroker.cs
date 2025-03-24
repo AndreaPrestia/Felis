@@ -93,16 +93,19 @@ public sealed class MessageBroker : IDisposable
 
         cancellationToken.Register(() =>
         {
-            var unSubscribeResult = _subscriptions[topicTrimmedLowered].Remove(subscription);
-            _logger.LogInformation(
-                "UnSubscribed '{id}' from queue '{queue}' at {timestamp} with operation result '{operationResult}'",
-                subscription.Id, topicTrimmedLowered, subscription.Timestamp, unSubscribeResult);
+            if (_subscriptions.TryGetValue(topicTrimmedLowered, out List<Subscription>? value))
+            {
+                var unSubscribeResult = value.Remove(subscription);
+                _logger.LogInformation(
+                    "UnSubscribed '{id}' from queue '{queue}' at {timestamp} with operation result '{operationResult}'",
+                    subscription.Id, topicTrimmedLowered, subscription.Timestamp, unSubscribeResult);
 
-            if (!_topicIndex.TryGetValue(topicTrimmedLowered, out var currentIndex)) return;
-            currentIndex = _subscriptions[topicTrimmedLowered].Count > 0
-                ? (currentIndex + 1) % _subscriptions[topicTrimmedLowered].Count
-                : 0;
-            _topicIndex[topicTrimmedLowered] = currentIndex;
+                if (!_topicIndex.TryGetValue(topicTrimmedLowered, out var currentIndex)) return;
+                currentIndex = _subscriptions[topicTrimmedLowered].Count > 0
+                    ? (currentIndex + 1) % _subscriptions[topicTrimmedLowered].Count
+                    : 0;
+                _topicIndex[topicTrimmedLowered] = currentIndex;
+            }
         });
 
         NotifySubscribe?.Invoke(this, topicTrimmedLowered);

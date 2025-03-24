@@ -171,7 +171,7 @@ public class MessageBrokerTests : IDisposable
         Assert.NotNull(sentMessages);
         Assert.NotNull(receivedMessages);
         Assert.Equal(messagesToSend.Count, receivedMessages.Count);
-        Assert.Equal(sentMessages, receivedMessages.OrderBy(x => x.Payload).ToList());
+        Assert.Equal(sentMessages, receivedMessages.Reverse().ToList());
         Assert.Equal(numberOfSubscribers, receivedMessagesBySubscriber.Count);
         Assert.True(receivedMessagesBySubscriber.All(x => x.Value.Count == numberOfMessages / numberOfSubscribers));
     }
@@ -232,7 +232,7 @@ public class MessageBrokerTests : IDisposable
         Assert.NotNull(sentMessages);
         Assert.NotNull(receivedMessages);
         Assert.Equal(messagesToSend.Count, receivedMessages.Count);
-        Assert.Equal(sentMessages, receivedMessages.OrderBy(x => x.Payload).ToList());
+        Assert.Equal(sentMessages, receivedMessages.Reverse().ToList());
         Assert.Equal(numberOfSubscribers, receivedMessagesBySubscriber.Count);
         Assert.Equal(sentMessages, receivedMessagesBySubscriber[1].OrderBy(x => x.Payload).ToList());
         Assert.Empty(receivedMessagesBySubscriber.Where(x => x.Key != 1).SelectMany(e => e.Value));

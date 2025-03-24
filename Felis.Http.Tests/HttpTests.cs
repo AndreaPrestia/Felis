@@ -25,7 +25,7 @@ public class HttpTests : IDisposable
         _publishClient.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionExact;
 
         _host = Host.CreateDefaultBuilder()
-            .AddBroker()
+            .AddBroker("FelisHttp")
             .WithHttps(port: Port)
             .Build();
 
@@ -381,6 +381,12 @@ public class HttpTests : IDisposable
     {
         var content = JsonContent.Create(message);
         var publishResponse = await _publishClient.PostAsync($"{_brokerUrl}/{queue}", content, cancellationToken);
+        var responseContent = await publishResponse.Content.ReadAsStringAsync(cancellationToken);
+        if (!publishResponse.IsSuccessStatusCode)
+        {
+            _testOutputHelper.WriteLine(publishResponse.ReasonPhrase);
+            _testOutputHelper.WriteLine(responseContent);
+        }
         publishResponse.EnsureSuccessStatusCode();
         return await publishResponse.Content.ReadFromJsonAsync<Message?>(cancellationToken);
     }
@@ -388,6 +394,12 @@ public class HttpTests : IDisposable
     private async Task<bool> ResetAsync(string queue, CancellationToken cancellationToken)
     {
         var resetResponse = await _publishClient.DeleteAsync($"{_brokerUrl}/{queue}", cancellationToken);
+        var responseContent = await resetResponse.Content.ReadAsStringAsync(cancellationToken);
+        if (!resetResponse.IsSuccessStatusCode)
+        {
+            _testOutputHelper.WriteLine(resetResponse.ReasonPhrase);
+            _testOutputHelper.WriteLine(responseContent);
+        }
         resetResponse.EnsureSuccessStatusCode();
         var deletedItems = await resetResponse.Content.ReadAsStringAsync(cancellationToken);
         return !string.IsNullOrEmpty(deletedItems) && bool.Parse(deletedItems);

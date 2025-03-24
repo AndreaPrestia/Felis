@@ -43,17 +43,14 @@ public sealed class MessageBroker : IDisposable
     /// </summary>
     /// <param name="queue">The destination queue</param>
     /// <param name="payload">The message payload</param>
+    /// <param name="ttl">The message time to live</param>
     /// <returns>Message id</returns>
-    public Message Publish(string queue, string payload)
+    public Message Publish(string queue, string payload, int? ttl)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(queue);
         ArgumentException.ThrowIfNullOrWhiteSpace(payload);
 
-        var normalizedName = queue.Trim().ToLowerInvariant();
-
-        var timestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
-
-        var message = new Message(Guid.NewGuid(), normalizedName, payload, timestamp);
+        var message = new Message(Guid.NewGuid(), queue.Trim().ToLowerInvariant(), payload, new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), ttl is > 0 ? new DateTimeOffset(DateTime.UtcNow.AddSeconds(ttl.Value)).ToUnixTimeMilliseconds() : null);
 
         NotifyPublish?.Invoke(this, message);
 
@@ -196,9 +193,18 @@ public sealed class MessageBroker : IDisposable
 
                 if (!_zoneTree.TryGet(queue, out var storedBytes)) return;
                 var messages = MessagePackSerializer.Deserialize<List<Message>>(storedBytes);
+
+                var now = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
+                
+                var removedExpiredMessages = messages.RemoveAll(msg => msg.Expiration.HasValue && msg.Expiration <= now);
+
                 if (messages.Count <= 0) return;
+
+                _logger.LogDebug("Removed expired message: {removedExpiredMessages}", removedExpiredMessages);
+                
                 var message = messages[0];
                 messages.RemoveAt(0);
+                
                 await subscription.WriteMessageAsync(message, CancellationToken.None);
                 _logger.LogInformation(
                     "Message '{messageId}' sent to '{subscriptionId}' at {timestamp} for queue '{queue}'",
@@ -290,7 +296,8 @@ public record Message(
     [property: Key(0)] Guid Id,
     [property: Key(1)] string Queue,
     [property: Key(2)] string? Payload,
-    [property: Key(4)] long Timestamp);
+    [property: Key(4)] long Timestamp,
+    [property:Key(5)] long? Expiration);
 
 internal record Subscription(Guid Id, long Timestamp, bool Exclusive)
 {

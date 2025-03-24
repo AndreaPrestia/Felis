@@ -15,7 +15,7 @@ public class MessageBrokerTests : IDisposable
     {
         _testOutputHelper = testOutputHelper;
         var host = Host.CreateDefaultBuilder()
-            .AddBroker()
+            .AddBroker("Felis")
             .Build();
 
         _messageBroker = host.Services.GetRequiredService<MessageBroker>();
@@ -55,7 +55,7 @@ public class MessageBrokerTests : IDisposable
         }, cts.Token);
 
         // Act - Publish messages independently
-        sentMessages.AddRange(messagesToSend.Select(messageToSend => _messageBroker.Publish(QueueName, messageToSend)));
+        sentMessages.AddRange(messagesToSend.Select(messageToSend => _messageBroker.Publish(QueueName, messageToSend, null)));
 
         // Wait for subscription to complete
         await subscriberTask;
@@ -102,7 +102,7 @@ public class MessageBrokerTests : IDisposable
         }, cts.Token);
 
         // Act - Publish messages independently
-        sentMessages.AddRange(messagesToSend.Select(messageToSend => _messageBroker.Publish(QueueName, messageToSend)));
+        sentMessages.AddRange(messagesToSend.Select(messageToSend => _messageBroker.Publish(QueueName, messageToSend, null)));
 
         // Wait for subscription to complete
         await subscriberTask;
@@ -162,7 +162,7 @@ public class MessageBrokerTests : IDisposable
         }
 
         // Act - Publish messages
-        sentMessages.AddRange(messagesToSend.Select(messageToSend => _messageBroker.Publish(QueueName, messageToSend)));
+        sentMessages.AddRange(messagesToSend.Select(messageToSend => _messageBroker.Publish(QueueName, messageToSend, null)));
 
         // Wait for all subscribers to finish
         await Task.WhenAll(subscribersTask);
@@ -223,7 +223,7 @@ public class MessageBrokerTests : IDisposable
         }
 
         // Act - Publish messages
-        sentMessages.AddRange(messagesToSend.Select(messageToSend => _messageBroker.Publish(QueueName, messageToSend)));
+        sentMessages.AddRange(messagesToSend.Select(messageToSend => _messageBroker.Publish(QueueName, messageToSend, null)));
 
         // Wait for all subscribers to finish
         await Task.WhenAny(subscribersTask);

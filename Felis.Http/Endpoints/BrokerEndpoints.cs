@@ -18,7 +18,8 @@ public static class BrokerEndpoints
             async (CancellationToken cancellationToken,
                 HttpContext context,
                 [FromServices] MessageBroker messageBroker,
-                [FromRoute] string queue) =>
+                [FromRoute] string queue,
+                [FromHeader(Name = "ttl")] int? ttl) =>
             {
                 ArgumentNullException.ThrowIfNull(context.Request.Body);
 
@@ -26,7 +27,7 @@ public static class BrokerEndpoints
 
                 var payload = await reader.ReadToEndAsync(cancellationToken);
 
-                var message = messageBroker.Publish(queue, payload);
+                var message = messageBroker.Publish(queue, payload, ttl);
 
                 return Results.Accepted($"/{queue}", message);
             });

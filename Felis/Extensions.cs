@@ -6,17 +6,17 @@ namespace Felis;
 
 public static class Extensions
 {
-    private const string DatabasePath = "Felis";
     /// <summary>
     /// Adds the Felis broker
     /// </summary>
     /// <param name="hostBuilder"></param>
+    /// <param name="databasePath"></param>
     /// <returns>IHostBuilder</returns>
-    public static IHostBuilder AddBroker(this IHostBuilder hostBuilder)
+    public static IHostBuilder AddBroker(this IHostBuilder hostBuilder, string databasePath)
     {
         return hostBuilder.ConfigureServices((_, services) =>
         {
-            services.AddSingleton(p => new MessageBroker(DatabasePath, p.GetRequiredService<ILogger<MessageBroker>>()));
+            services.AddSingleton(p => new MessageBroker(databasePath, p.GetRequiredService<ILogger<MessageBroker>>()));
         });
     }
 }

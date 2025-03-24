@@ -35,7 +35,7 @@ Code example:
             logging.AddConsole();
             logging.SetMinimumLevel(LogLevel.Debug);
         })
-        .AddBroker()
+        .AddBroker("FelisHttp")
         .WithHttp(new X509Certificate2(certificateName, certificatePassword), int.Parse(port))
         .ConfigureServices((_, services) =>
         {

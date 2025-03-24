@@ -29,7 +29,7 @@ var builder = Host.CreateDefaultBuilder(args)
         logging.AddConsole();
         logging.SetMinimumLevel(LogLevel.Debug);
     })
-    .AddBroker()
+    .AddBroker("Felis")
      .ConfigureServices((_, services) =>
      {
          services.AddHostedService<Subscriber>();
@@ -41,7 +41,7 @@ var host = builder.Build();
 await host.RunAsync();
 ```
 
-The example above initialize the **Felis Broker** in a console application, with console logging provider using the method **AddBroker**.
+The example above initialize the **Felis Broker** in a console application, with console logging provider using the method **AddBroker** that takes the database path as input.
 
 **Message entity**
 

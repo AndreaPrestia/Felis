@@ -27,7 +27,7 @@ public static class BrokerEndpoints
 
                 var payload = await reader.ReadToEndAsync(cancellationToken);
 
-                var message = messageBroker.Publish(queue, payload, ttl);
+                var message = await messageBroker.PublishAsync(queue, payload, ttl);
 
                 return Results.Accepted($"/{queue}", message);
             });
@@ -73,7 +73,7 @@ public static class BrokerEndpoints
                 return Results.Empty;
             });
 
-        endpointRouteBuilder.MapDelete("/{queue}", ([FromServices] MessageBroker messageBroker,
-            [FromRoute] string queue) => Results.Ok(messageBroker.Reset(queue)));
+        endpointRouteBuilder.MapDelete("/{queue}", async ([FromServices] MessageBroker messageBroker,
+            [FromRoute] string queue) => Results.Ok(await messageBroker.ResetAsync(queue)));
     }
 }

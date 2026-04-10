@@ -15,44 +15,89 @@ public sealed class MessageBroker : IDisposable
     private readonly IMaintainer _maintainer;
     private readonly ConcurrentDictionary<string, List<Subscription>> _subscriptions = new();
     private readonly ConcurrentDictionary<string, int> _topicIndex = new();
-    private readonly SemaphoreSlim _semaphore = new(1, 1);
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _queueLocks = new();
+    private readonly ConcurrentDictionary<string, long> _queueWriteSeq = new();
+    private readonly ConcurrentDictionary<string, long> _queueReadSeq = new();
+    private readonly int _channelCapacity;
 
-    private delegate void NotifyMessagePublish(object sender, Message message);
-    private delegate void NotifySubscribeByTopic(object sender, string queue);
-    private event NotifyMessagePublish? NotifyPublish;
-    private event NotifySubscribeByTopic? NotifySubscribe;
-
-    internal MessageBroker(string dataPath, ILogger<MessageBroker> logger)
+    internal MessageBroker(MessageBrokerOptions options, ILogger<MessageBroker> logger)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(dataPath);
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentException.ThrowIfNullOrWhiteSpace(options.DataPath);
         ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
+        _channelCapacity = options.ChannelCapacity;
         _zoneTree = new ZoneTreeFactory<string, Memory<byte>>()
             .SetComparer(new StringInvariantIgnoreCaseComparerAscending())
-            .SetDataDirectory(dataPath)
+            .SetDataDirectory(options.DataPath)
             .SetKeySerializer(new Utf8StringSerializer())
             .OpenOrCreate();
         _maintainer = _zoneTree.CreateMaintainer();
         _maintainer.EnableJobForCleaningInactiveCaches = true;
-        NotifyPublish += OnMessagePublished;
-        NotifySubscribe += OnMessageSubscribed;
+        InitializeSequences();
     }
+
+    private void InitializeSequences()
+    {
+        using var iterator = _zoneTree.CreateIterator();
+        iterator.SeekFirst();
+        while (iterator.HasCurrent)
+        {
+            var key = iterator.CurrentKey;
+            var separatorIndex = key.IndexOf('|');
+            if (separatorIndex >= 0)
+            {
+                var queueName = key[..separatorIndex];
+                var seqStr = key[(separatorIndex + 1)..];
+                if (long.TryParse(seqStr, out var seq))
+                {
+                    _queueWriteSeq.AddOrUpdate(queueName, seq, (_, existing) => Math.Max(existing, seq));
+                    _queueReadSeq.AddOrUpdate(queueName, seq - 1, (_, existing) => Math.Min(existing, seq - 1));
+                }
+            }
+            iterator.Next();
+        }
+    }
+
+    private SemaphoreSlim GetQueueLock(string queue) =>
+        _queueLocks.GetOrAdd(queue, _ => new SemaphoreSlim(1, 1));
+
+    private static string MakeKey(string queue, long seq) => $"{queue}|{seq:D20}";
 
     /// <summary>
     /// Publishes a message to a queue
     /// </summary>
     /// <param name="queue">The destination queue</param>
     /// <param name="payload">The message payload</param>
-    /// <param name="ttl">The message time to live</param>
-    /// <returns>Message id</returns>
-    public Message Publish(string queue, string payload, int? ttl)
+    /// <param name="ttl">The message time to live in seconds</param>
+    /// <returns>The published message</returns>
+    public async Task<Message> PublishAsync(string queue, string payload, int? ttl)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(queue);
         ArgumentException.ThrowIfNullOrWhiteSpace(payload);
 
-        var message = new Message(Guid.NewGuid(), queue.Trim().ToLowerInvariant(), payload, new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), ttl is > 0 ? new DateTimeOffset(DateTime.UtcNow.AddSeconds(ttl.Value)).ToUnixTimeMilliseconds() : null);
+        var normalizedQueue = queue.Trim().ToLowerInvariant();
+        var message = new Message(Guid.NewGuid(), normalizedQueue, payload,
+            DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            ttl is > 0 ? DateTimeOffset.UtcNow.AddSeconds(ttl.Value).ToUnixTimeMilliseconds() : null);
 
-        NotifyPublish?.Invoke(this, message);
+        var queueLock = GetQueueLock(normalizedQueue);
+        await queueLock.WaitAsync();
+        try
+        {
+            var seq = _queueWriteSeq.AddOrUpdate(normalizedQueue, 1, (_, v) => v + 1);
+            _queueReadSeq.TryAdd(normalizedQueue, 0);
+            _zoneTree.Upsert(MakeKey(normalizedQueue, seq), MessagePackSerializer.Serialize(message));
+            _logger.LogDebug(
+                "Added message '{id}' for queue '{queue}' in storage with payload '{payload}'",
+                message.Id, normalizedQueue, message.Payload);
+        }
+        finally
+        {
+            queueLock.Release();
+        }
+
+        _ = DeliverPendingMessagesAsync(normalizedQueue);
 
         return message;
     }
@@ -69,43 +114,28 @@ public sealed class MessageBroker : IDisposable
         ArgumentException.ThrowIfNullOrWhiteSpace(queue);
 
         var subscription = new Subscription(Guid.NewGuid(),
-            new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), exclusive);
+            DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), exclusive, _channelCapacity);
 
-        var topicTrimmedLowered = queue.Trim().ToLowerInvariant();
+        var normalizedQueue = queue.Trim().ToLowerInvariant();
 
-        var subscriptions = _subscriptions.GetOrAdd(topicTrimmedLowered, _ => []);
-
+        var subscriptions = _subscriptions.GetOrAdd(normalizedQueue, _ => []);
         subscriptions.Add(subscription);
 
-        if (!_topicIndex.ContainsKey(topicTrimmedLowered))
-        {
-            var addedTopicToIndexResult = _topicIndex.TryAdd(topicTrimmedLowered, 0);
-            _logger.LogDebug("Add topic '{topic}' to index result: {addedTopicToIndexResult}", topicTrimmedLowered,
-                addedTopicToIndexResult);
-        }
+        _topicIndex.TryAdd(normalizedQueue, 0);
 
         _logger.LogInformation(
-            "Subscribed '{id}' to queue '{queue}' at {timestamp}", subscription.Id, topicTrimmedLowered,
+            "Subscribed '{id}' to queue '{queue}' at {timestamp}", subscription.Id, normalizedQueue,
             subscription.Timestamp);
 
         cancellationToken.Register(() =>
         {
-            if (_subscriptions.TryGetValue(topicTrimmedLowered, out List<Subscription>? value))
-            {
-                var unSubscribeResult = value.Remove(subscription);
-                _logger.LogInformation(
-                    "UnSubscribed '{id}' from queue '{queue}' at {timestamp} with operation result '{operationResult}'",
-                    subscription.Id, topicTrimmedLowered, subscription.Timestamp, unSubscribeResult);
-
-                if (!_topicIndex.TryGetValue(topicTrimmedLowered, out var currentIndex)) return;
-                currentIndex = _subscriptions[topicTrimmedLowered].Count > 0
-                    ? (currentIndex + 1) % _subscriptions[topicTrimmedLowered].Count
-                    : 0;
-                _topicIndex[topicTrimmedLowered] = currentIndex;
-            }
+            subscription.MarkCancelled();
+            _logger.LogInformation(
+                "UnSubscribed '{id}' from queue '{queue}'",
+                subscription.Id, normalizedQueue);
         });
 
-        NotifySubscribe?.Invoke(this, topicTrimmedLowered);
+        _ = DeliverPendingMessagesAsync(normalizedQueue);
 
         return subscription.GetNextAvailableMessageAsync(cancellationToken);
     }
@@ -115,178 +145,124 @@ public sealed class MessageBroker : IDisposable
     /// </summary>
     /// <param name="queue"></param>
     /// <returns></returns>
-    public bool Reset(string queue)
+    public async Task<bool> ResetAsync(string queue)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(queue);
-        _semaphore.Wait();
+        var normalizedQueue = queue.Trim().ToLowerInvariant();
+        var queueLock = GetQueueLock(normalizedQueue);
+        await queueLock.WaitAsync();
         try
         {
-            var queueNormalized = queue.ToLower().Trim();
-            var deleteResult = _zoneTree.TryDelete(queueNormalized, out _);
-            _logger.LogDebug("Delete result: {deleteResult}", deleteResult);
-            return deleteResult;
+            var writeSeq = _queueWriteSeq.GetValueOrDefault(normalizedQueue, 0);
+            var readSeq = _queueReadSeq.GetValueOrDefault(normalizedQueue, 0);
+            var deleted = false;
+
+            for (var seq = readSeq + 1; seq <= writeSeq; seq++)
+            {
+                if (_zoneTree.TryDelete(MakeKey(normalizedQueue, seq), out _))
+                    deleted = true;
+            }
+
+            _queueReadSeq[normalizedQueue] = writeSeq;
+            _logger.LogDebug("Reset queue '{queue}': deleted up to seq {seq}", normalizedQueue, writeSeq);
+            return deleted;
         }
         finally
         {
-            _semaphore.Release();
+            queueLock.Release();
         }
     }
 
     public void Dispose()
     {
-        NotifyPublish -= OnMessagePublished;
-        NotifySubscribe -= OnMessageSubscribed;
         _maintainer.Dispose();
         _zoneTree.Dispose();
     }
 
-    private async void OnMessagePublished(object source, Message message)
+    private async Task DeliverPendingMessagesAsync(string queue)
     {
         try
         {
-            await _semaphore.WaitAsync();
-            try
-            {
-                var messages = new List<Message>();
-                if (_zoneTree.TryGet(message.Queue, out var storedBytes))
-                {
-                    if (storedBytes.Length > 0)
-                        messages = MessagePackSerializer.Deserialize<List<Message>>(storedBytes);
-                }
-
-                messages.Add(message);
-                var serializedQueue = MessagePackSerializer.Serialize(messages);
-                var upsertResult = _zoneTree.Upsert(message.Queue, serializedQueue);
-                _logger.LogDebug(
-                    "Added message '{id}' for queue '{queue}' in storage with payload '{payload}' with upsertResult {upsertResult}",
-                    message.Id, message.Queue, message.Payload, upsertResult);
-                await _maintainer.WaitForBackgroundThreadsAsync();
-                NotifySubscribe?.Invoke(this, message.Queue);
-            }
-            finally
-            {
-                _semaphore.Release();
-            }
-        }
-        catch (Exception e)
-        {
-            _logger.LogError("An error '{error}' has occurred during OnMessagePublished", e.Message);
-        }
-    }
-
-    private async void OnMessageSubscribed(object source, string queue)
-    {
-        try
-        {
-            await _semaphore.WaitAsync();
-
+            var queueLock = GetQueueLock(queue);
+            await queueLock.WaitAsync();
             try
             {
                 var subscription = GetNextSubscription(queue);
+                if (subscription == null) return;
 
-                if (subscription == null)
-                {
-                    _logger.LogInformation(
-                        "No active subscriptions found for queue '{queue}'. No processing will be done.", queue);
-                    return;
-                }
+                var message = DequeueFirstValidMessage(queue);
+                if (message == null) return;
 
-                if (!_zoneTree.TryGet(queue, out var storedBytes)) return;
-                var messages = MessagePackSerializer.Deserialize<List<Message>>(storedBytes);
-
-                var now = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
-                
-                var removedExpiredMessages = messages.RemoveAll(msg => msg.Expiration.HasValue && msg.Expiration <= now);
-
-                if (messages.Count <= 0) return;
-
-                _logger.LogDebug("Removed expired message: {removedExpiredMessages}", removedExpiredMessages);
-                
-                var message = messages[0];
-                messages.RemoveAt(0);
-                
                 await subscription.WriteMessageAsync(message, CancellationToken.None);
                 _logger.LogInformation(
                     "Message '{messageId}' sent to '{subscriptionId}' at {timestamp} for queue '{queue}'",
                     message.Id, subscription.Id,
-                    new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds(), message.Queue);
-                if (messages.Count != 0)
-                {
-                    var updatedQueue = MessagePackSerializer.Serialize(messages);
-                    _zoneTree.Upsert(queue, updatedQueue);
-                    await _maintainer.WaitForBackgroundThreadsAsync();
-                    NotifySubscribe?.Invoke(this, queue);
-                }
-                else
-                {
-                    var deletedQueue = _zoneTree.TryDelete(queue, out var optIndex);
-                    _logger.LogDebug("Queue '{queue}' deleted '{deleted}' with optIndex {optIndex}", queue,
-                        deletedQueue, optIndex);
-                    await _maintainer.WaitForBackgroundThreadsAsync();
-                }
+                    DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), message.Queue);
             }
             finally
             {
-                _semaphore.Release();
+                queueLock.Release();
             }
+
+            _ = DeliverPendingMessagesAsync(queue);
         }
         catch (Exception e)
         {
-            _logger.LogError("An error '{error}' has occurred during OnMessageSubscribed", e.Message);
+            _logger.LogError("An error '{error}' has occurred during delivery for queue '{queue}'", e.Message, queue);
         }
+    }
+
+    private Message? DequeueFirstValidMessage(string queue)
+    {
+        var writeSeq = _queueWriteSeq.GetValueOrDefault(queue, 0);
+        var readSeq = _queueReadSeq.GetValueOrDefault(queue, 0);
+        var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        while (readSeq < writeSeq)
+        {
+            readSeq++;
+            var key = MakeKey(queue, readSeq);
+
+            if (!_zoneTree.TryGet(key, out var bytes) || bytes.Length == 0)
+            {
+                _queueReadSeq[queue] = readSeq;
+                continue;
+            }
+
+            var message = MessagePackSerializer.Deserialize<Message>(bytes);
+            _zoneTree.TryDelete(key, out _);
+            _queueReadSeq[queue] = readSeq;
+
+            if (message.Expiration.HasValue && message.Expiration <= now)
+            {
+                _logger.LogDebug("Expired message '{id}' from queue '{queue}'", message.Id, queue);
+                continue;
+            }
+
+            return message;
+        }
+
+        return null;
     }
 
     private Subscription? GetNextSubscription(string queue)
     {
-        if (_subscriptions.IsEmpty)
-        {
-            _logger.LogWarning("No subscriptions available.");
+        if (!_subscriptions.TryGetValue(queue, out var subscriptions) ||
+            subscriptions is not { Count: > 0 })
             return null;
-        }
 
-        if (!_subscriptions.TryGetValue(queue, out var subscriptions))
-        {
-            _logger.LogWarning("No subscriptions available for queue '{queue}'.", queue);
-            return null;
-        }
+        var active = subscriptions.Where(x => !x.IsCancelled).ToList();
+        if (active.Count == 0) return null;
 
-        if (subscriptions == null! || subscriptions.Count == 0)
-        {
-            _logger.LogWarning("No subscriptions for queue '{queue}'. No processing will be done.", queue);
-            return null;
-        }
-
-        var exclusiveSubscription = subscriptions.FirstOrDefault(x => x.Exclusive);
-
-        if (exclusiveSubscription != null)
-        {
-            _logger.LogDebug("Found exclusive subscription '{subscriptionId}' for queue '{queue}'",
-                exclusiveSubscription.Id, queue);
-            return exclusiveSubscription;
-        }
+        var exclusive = active.FirstOrDefault(x => x.Exclusive);
+        if (exclusive != null) return exclusive;
 
         if (!_topicIndex.TryGetValue(queue, out var currentIndex))
-        {
             currentIndex = 0;
-            _topicIndex[queue] = currentIndex;
-        }
 
-        var subscription = subscriptions.ElementAt(currentIndex);
-
-        if (subscription == null!)
-        {
-            _logger.LogWarning("No subscription found for queue '{queue}' at index {currentIndex}", queue,
-                currentIndex);
-            return null;
-        }
-
-        _logger.LogDebug("Found subscription for queue '{queue}' for index {currentIndex}", queue, currentIndex);
-
-        _topicIndex[queue] = (currentIndex + 1) % subscriptions.Count;
-
-        _logger.LogDebug("New calculated index for next iteration for queue '{queue}' {currentIndex}", queue,
-            _topicIndex[queue]);
-
+        currentIndex %= active.Count;
+        var subscription = active[currentIndex];
+        _topicIndex[queue] = (currentIndex + 1) % active.Count;
         return subscription;
     }
 }
@@ -297,11 +273,15 @@ public record Message(
     [property: Key(1)] string Queue,
     [property: Key(2)] string? Payload,
     [property: Key(4)] long Timestamp,
-    [property:Key(5)] long? Expiration);
+    [property: Key(5)] long? Expiration);
 
-internal record Subscription(Guid Id, long Timestamp, bool Exclusive)
+internal record Subscription(Guid Id, long Timestamp, bool Exclusive, int ChannelCapacity)
 {
-    private readonly Channel<Message> _messageChannel = Channel.CreateBounded<Message>(1);
+    private readonly Channel<Message> _messageChannel = Channel.CreateBounded<Message>(ChannelCapacity);
+    private volatile bool _cancelled;
+
+    internal bool IsCancelled => _cancelled;
+    internal void MarkCancelled() => _cancelled = true;
 
     internal async ValueTask WriteMessageAsync(Message message, CancellationToken cancellationToken) =>
         await _messageChannel.Writer.WriteAsync(message, cancellationToken);

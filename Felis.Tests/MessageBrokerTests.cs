@@ -32,7 +32,7 @@ public class MessageBrokerTests : IDisposable
         var sentMessages = new List<Message>(messagesToSend.Count);
         var cts = new CancellationTokenSource();
 
-        var deletedItems = _messageBroker.Reset(QueueName);
+        var deletedItems = await _messageBroker.ResetAsync(QueueName);
         _testOutputHelper.WriteLine($"Deleted items from queue '{QueueName}': {deletedItems}");
 
         // Act - Start subscriber independently
@@ -55,7 +55,10 @@ public class MessageBrokerTests : IDisposable
         }, cts.Token);
 
         // Act - Publish messages independently
-        sentMessages.AddRange(messagesToSend.Select(messageToSend => _messageBroker.Publish(QueueName, messageToSend, null)));
+        foreach (var messageToSend in messagesToSend)
+        {
+            sentMessages.Add(await _messageBroker.PublishAsync(QueueName, messageToSend, null));
+        }
 
         // Wait for subscription to complete
         await subscriberTask;
@@ -78,7 +81,7 @@ public class MessageBrokerTests : IDisposable
         var sentMessages = new List<Message>(messagesToSend.Count);
         var cts = new CancellationTokenSource();
 
-        var deletedItems = _messageBroker.Reset(QueueName);
+        var deletedItems = await _messageBroker.ResetAsync(QueueName);
         _testOutputHelper.WriteLine($"Deleted items from queue '{QueueName}': {deletedItems}");
 
         // Act - Start subscriber independently
@@ -102,7 +105,10 @@ public class MessageBrokerTests : IDisposable
         }, cts.Token);
 
         // Act - Publish messages independently
-        sentMessages.AddRange(messagesToSend.Select(messageToSend => _messageBroker.Publish(QueueName, messageToSend, null)));
+        foreach (var messageToSend in messagesToSend)
+        {
+            sentMessages.Add(await _messageBroker.PublishAsync(QueueName, messageToSend, null));
+        }
 
         // Wait for subscription to complete
         await subscriberTask;
@@ -127,7 +133,7 @@ public class MessageBrokerTests : IDisposable
         var receivedMessagesBySubscriber = new ConcurrentDictionary<int, List<Message>>();
         var subscribersTask = new List<Task>();
 
-        var deletedItems = _messageBroker.Reset(QueueName);
+        var deletedItems = await _messageBroker.ResetAsync(QueueName);
         _testOutputHelper.WriteLine($"Deleted items from queue '{QueueName}': {deletedItems}");
 
         // Initialize subscriber message storage
@@ -162,7 +168,10 @@ public class MessageBrokerTests : IDisposable
         }
 
         // Act - Publish messages
-        sentMessages.AddRange(messagesToSend.Select(messageToSend => _messageBroker.Publish(QueueName, messageToSend, null)));
+        foreach (var messageToSend in messagesToSend)
+        {
+            sentMessages.Add(await _messageBroker.PublishAsync(QueueName, messageToSend, null));
+        }
 
         // Wait for all subscribers to finish
         await Task.WhenAll(subscribersTask);
@@ -189,7 +198,7 @@ public class MessageBrokerTests : IDisposable
         var receivedMessagesBySubscriber = new ConcurrentDictionary<int, List<Message>>();
         var subscribersTask = new List<Task>();
 
-        var deletedItems = _messageBroker.Reset(QueueName);
+        var deletedItems = await _messageBroker.ResetAsync(QueueName);
         _testOutputHelper.WriteLine($"Deleted items from queue '{QueueName}': {deletedItems}");
 
         // Initialize subscriber message storage
@@ -223,7 +232,10 @@ public class MessageBrokerTests : IDisposable
         }
 
         // Act - Publish messages
-        sentMessages.AddRange(messagesToSend.Select(messageToSend => _messageBroker.Publish(QueueName, messageToSend, null)));
+        foreach (var messageToSend in messagesToSend)
+        {
+            sentMessages.Add(await _messageBroker.PublishAsync(QueueName, messageToSend, null));
+        }
 
         // Wait for all subscribers to finish
         await Task.WhenAny(subscribersTask);
